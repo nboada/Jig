@@ -86,6 +86,7 @@ export async function listCredentials(db: Db, options: CredentialListOptions = {
 
 /** All credential tags in use, with how many credentials carry each. */
 export async function listCredentialTags(db: Db): Promise<{ tag: string; count: number }[]> {
+  assertEncryptionReady();
   const rows = await db.query<{ tag: string; count: number | string }>(
     `SELECT tag, count(*) AS count FROM credentials, jsonb_array_elements_text(tags) AS tag
      GROUP BY tag ORDER BY count(*) DESC, tag`,
@@ -141,6 +142,15 @@ async function buildFields(
   fields: { id?: string; label: string; secret: boolean; value: string }[],
   previous: StoredField[] = [],
 ): Promise<StoredField[]> {
+  const submittedIds = new Set<string>();
+  for (const f of fields) {
+    if (f.id) {
+      if (submittedIds.has(f.id)) {
+        throw new SnippetError("Each field can appear only once.", "invalid");
+      }
+      submittedIds.add(f.id);
+    }
+  }
   const byId = new Map(previous.map((f) => [f.id, f]));
   return Promise.all(
     fields.map(async (f) => {
@@ -198,6 +208,7 @@ export async function updateCredential(db: Db, slug: string, input: CredentialIn
 }
 
 export async function deleteCredential(db: Db, slug: string): Promise<void> {
-  const rows = await db.query(`DELETE FROM credentials WHERE slug = $1 RETURNING id`, [slugSchema.parse(slug)]);
+  assertEncryptionReady();
+  const rows = await db.query(`DELETE FROM credentials WHERE slug = $1 RETURNING id`, [parse(slugSchema, slug)]);
   if (!rows.length) throw new SnippetError(`No credential with the slug "${slug}"`, "not_found");
 }

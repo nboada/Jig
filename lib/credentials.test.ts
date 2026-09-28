@@ -1,13 +1,16 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import {
   createCredential,
+  deleteCredential,
   getCredential,
   listCredentials,
+  listCredentialTags,
   revealField,
   updateCredential,
 } from "./credentials";
 import { CredentialsUnavailable } from "./crypto";
 import { pgliteDb, prepare, type Db } from "./db";
+import { SnippetError } from "./snippets";
 
 const KEY = Buffer.alloc(32, 7).toString("base64");
 const OTHER_KEY = Buffer.alloc(32, 8).toString("base64");
@@ -130,5 +133,30 @@ describe("credentials", () => {
     await expect(getCredential(db, slug)).rejects.toBeInstanceOf(CredentialsUnavailable);
     await expect(createCredential(db, shopify)).rejects.toBeInstanceOf(CredentialsUnavailable);
     expect((await listCredentials(db)).length).toBe(1);
+  });
+
+  test("an update with two fields sharing one id rejects", async () => {
+    const c = await createCredential(db, shopify);
+    const [store, key] = c.fields;
+    await expect(
+      updateCredential(db, slug, {
+        ...shopify,
+        fields: [
+          { id: key.id, label: "API key", secret: true, value: "" },
+          { id: key.id, label: "Duplicate", secret: false, value: "oops" },
+        ],
+      }),
+    ).rejects.toThrow("only once");
+  });
+
+  test("deleteCredential and listCredentialTags reject when the key is missing", async () => {
+    await createCredential(db, shopify);
+    delete process.env.SNIPPETA_ENCRYPTION_KEY;
+    await expect(deleteCredential(db, slug)).rejects.toBeInstanceOf(CredentialsUnavailable);
+    await expect(listCredentialTags(db)).rejects.toBeInstanceOf(CredentialsUnavailable);
+  });
+
+  test("deleteCredential with an invalid slug rejects with SnippetError", async () => {
+    await expect(deleteCredential(db, "Not A Slug!")).rejects.toBeInstanceOf(SnippetError);
   });
 });
