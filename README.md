@@ -80,4 +80,3 @@ Tokens are stored as SHA-256 hashes, shown once, and can be revoked on the Conne
 
 - OAuth, which the claude.ai web and desktop connectors need. CLI agents work with bearer tokens today.
 - A syntax-highlighting code editor (the editor is a plain textarea with tab indenting).
-- Login rate limiting. Use a long `ADMIN_PASSWORD`.

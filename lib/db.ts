@@ -49,6 +49,11 @@ const SCHEMA = [
     last_used_at timestamptz
   )`,
   `CREATE INDEX IF NOT EXISTS snippets_updated_at_idx ON snippets (updated_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS login_attempts (
+    ip text NOT NULL,
+    attempted_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip, attempted_at)`,
 ];
 
 async function migrate(db: Db) {

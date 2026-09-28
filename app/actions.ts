@@ -1,11 +1,12 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
+import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { createSnippet, deleteSnippet, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
 import { createToken, revokeToken } from "@/lib/tokens";
 
@@ -18,7 +19,23 @@ function safeNext(value: FormDataEntryValue | null) {
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
   if (!process.env.ADMIN_PASSWORD) return { error: "ADMIN_PASSWORD is not set on the server." };
-  if (!checkPassword(String(form.get("password") ?? ""))) return { error: "Wrong password." };
+  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
+  try {
+    const db = await getDb();
+    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
+    if (blocked) {
+      return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
+    }
+    if (!checkPassword(String(form.get("password") ?? ""))) {
+      await recordFailure(db, ip);
+      return { error: "Wrong password." };
+    }
+    await clearFailures(db, ip);
+  } catch (error) {
+    // Refuse rather than allow unlimited guesses when the check itself fails.
+    console.error("[snippeta] login check failed", error);
+    return { error: "Could not check the login right now. Try again." };
+  }
   (await cookies()).set(SESSION_COOKIE, await createSessionValue(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
