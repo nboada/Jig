@@ -51,9 +51,7 @@ function key(): Promise<CryptoKey> {
 }
 
 export async function encryptSecret(plain: string, context: string): Promise<string> {
-  const ivRandom = crypto.getRandomValues(new Uint8Array(12));
-  const iv = new Uint8Array(ivRandom);
-  // @ts-ignore Bun/Node type incompatibility with crypto.subtle
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv, additionalData: encoder.encode(context) },
     await key(),
