@@ -1,0 +1,83 @@
+# Snippeta
+
+A cloud library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) that your AI agents can reach over MCP. Ask Claude Code, Codex or Kimi to "add the GSAP snippet from Snippeta" and they fetch it, install its dependencies and wire it into the project.
+
+Every edit is saved as a new version, so when a snippet stops working you can see exactly what changed and roll it back, from the dashboard or from an agent.
+
+## What is in here
+
+- **Dashboard** (Next.js 16): search, tags, a multi-file editor, version history with diffs, one-click restore.
+- **MCP endpoint** at `/api/mcp` (Streamable HTTP, bearer token auth) with these tools:
+
+| Tool | What it does |
+| --- | --- |
+| `search_snippets` | Find by keyword, language or tag. Also searches file contents. |
+| `get_snippet` | Files, dependencies and integration instructions, latest or any version. Suggests matches for a wrong slug. |
+| `create_snippet` | Save a new snippet (one or more files). |
+| `update_snippet` | Save a new version. Only changed fields are needed. `baseVersion` stops an agent from overwriting a newer edit. |
+| `list_snippet_versions` | History with change notes and who made each change. |
+| `diff_snippet_versions` | Unified diff between two versions. |
+| `restore_snippet_version` | Roll back by saving an old version as the newest one. Nothing is ever deleted from history. |
+
+Deleting a snippet is only possible from the dashboard, never from an agent.
+
+## A snippet
+
+- Title, slug (stable, used by agents), description, primary language, tags
+- One or more files, e.g. `lenis.js` and `lenis.css`
+- Dependencies to install, e.g. `gsap@^3.13`
+- Instructions for agents: where files go, setup steps, gotchas
+
+## Run locally
+
+```bash
+cd snippeta
+bun install
+cp .env.example .env.local   # set ADMIN_PASSWORD and SESSION_SECRET
+bun run dev
+```
+
+Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`, so there is nothing else to install.
+
+## Deploy to Vercel
+
+1. New Vercel project from this repo, **Root Directory: `snippeta`**. The framework is detected as Next.js and bun is used from `bun.lock`.
+2. Storage tab: add a **Neon** Postgres database. This sets `DATABASE_URL`. Tables are created on the first request.
+3. Environment variables: `ADMIN_PASSWORD`, `SESSION_SECRET` (`openssl rand -hex 32`), optionally `SNIPPETA_TIMEZONE` (defaults to `Australia/Sydney`).
+4. Optional: add a domain such as `snippets.talkk.com.au`.
+5. Log in, open **Connect**, create a token per agent and copy the setup command it shows.
+
+## Connect an agent
+
+The Connect page shows these with your URL and token filled in.
+
+```bash
+# Claude Code (available in every project)
+claude mcp add --transport http --scope user snippeta https://YOUR_DOMAIN/api/mcp \
+  --header "Authorization: Bearer snp_..."
+
+# Kimi Code CLI
+kimi mcp add --transport http snippeta https://YOUR_DOMAIN/api/mcp \
+  --header "Authorization: Bearer snp_..."
+```
+
+```toml
+# Codex: ~/.codex/config.toml, plus export SNIPPETA_TOKEN=snp_... in your shell profile
+[mcp_servers.snippeta]
+url = "https://YOUR_DOMAIN/api/mcp"
+bearer_token_env_var = "SNIPPETA_TOKEN"
+```
+
+Tokens are stored as SHA-256 hashes, shown once, and can be revoked on the Connect page. Each version records which token saved it.
+
+## Scripts
+
+- `bun run dev`, `bun run build`, `bun run start`
+- `bun run test`: data layer, diffs and tokens against an in-memory PGlite
+- `bun run typecheck`
+
+## Not built yet
+
+- OAuth, which the claude.ai web and desktop connectors need. CLI agents work with bearer tokens today.
+- A syntax-highlighting code editor (the editor is a plain textarea with tab indenting).
+- Login rate limiting. Use a long `ADMIN_PASSWORD`.
