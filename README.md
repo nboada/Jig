@@ -6,7 +6,7 @@ Every edit is saved as a new version, so when a snippet stops working you can se
 
 ## What is in here
 
-- **Dashboard** (Next.js 16): search, tags, a multi-file editor, version history with diffs, one-click restore.
+- **Dashboard** (Next.js 16): search, tags, a multi-file editor, version history with diffs, one-click restore, notes, and encrypted credentials.
 - **MCP endpoint** at `/api/mcp` (Streamable HTTP, bearer token auth) with these tools:
 
 | Tool | What it does |
@@ -18,8 +18,12 @@ Every edit is saved as a new version, so when a snippet stops working you can se
 | `list_snippet_versions` | History with change notes and who made each change. |
 | `diff_snippet_versions` | Unified diff between two versions. |
 | `restore_snippet_version` | Roll back by saving an old version as the newest one. Nothing is ever deleted from history. |
+| `search_notes` | Find notes by keyword or tag, including the note text. |
+| `get_note` | A note's text, latest or any version. |
+| `create_note` / `update_note` | Save a note or a new version of one. `baseVersion` works as for snippets. |
+| `list_note_versions` / `restore_note_version` | Note history and rollback. |
 
-Deleting a snippet is only possible from the dashboard, never from an agent.
+Deleting a snippet or note is only possible from the dashboard, never from an agent. Credentials are not reachable over MCP at all.
 
 ## A snippet
 

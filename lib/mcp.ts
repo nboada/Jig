@@ -16,6 +16,17 @@ import {
   type Snippet,
   type SnippetSummary,
 } from "./snippets";
+import {
+  createNote,
+  getNote,
+  listNotes,
+  listNoteTags,
+  listNoteVersions,
+  restoreNoteVersion,
+  updateNote,
+  type Note,
+  type NoteSummary,
+} from "./notes";
 import { fileSchema, languageSchema } from "./validation";
 
 export const SERVER_INSTRUCTIONS = `Snippeta is the user's personal library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) shared across their projects.
@@ -25,7 +36,11 @@ When the user asks for a snippet "from Snippeta" (e.g. "add the GSAP snippet", "
 2. Call get_snippet with the slug to fetch the files, dependencies and integration instructions.
 3. Install any listed dependencies with the project's package manager, then adapt the files to the project's structure and conventions. Follow the snippet's instructions.
 
-When the user asks to save or update a snippet, use create_snippet or update_snippet. Every update is saved as a new version, so nothing is ever lost. Always pass a short message describing the change. Use list_snippet_versions, diff_snippet_versions and restore_snippet_version to inspect history or roll back when a snippet stopped working.`;
+When the user asks to save or update a snippet, use create_snippet or update_snippet. Every update is saved as a new version, so nothing is ever lost. Always pass a short message describing the change. Use list_snippet_versions, diff_snippet_versions and restore_snippet_version to inspect history or roll back when a snippet stopped working.
+
+Snippeta also holds the user's notes: free-form markdown such as setup steps, client details or decisions. Use search_notes and get_note when the user refers to one of their notes, and create_note or update_note to save one. Notes are versioned like snippets, so always pass a short message on update.
+
+Snippeta also stores the user's credentials, but they are never available to agents. When a task needs a password, API key or other secret, ask the user for it.`;
 
 type Text = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -64,6 +79,25 @@ export function formatSnippet(s: Snippet): string {
   return out.join("\n");
 }
 
+function formatNoteSummary(n: NoteSummary) {
+  const tags = n.tags.length ? ` [${n.tags.join(", ")}]` : "";
+  const excerpt = n.excerpt ? `\n  ${n.excerpt.length > 160 ? `${n.excerpt.slice(0, 160)}…` : n.excerpt}` : "";
+  return `- ${n.slug}: ${n.title} (v${n.version})${tags}${excerpt}`;
+}
+
+export function formatNote(n: Note): string {
+  const out = [
+    `# ${n.title}`,
+    "",
+    `Slug: ${n.slug}`,
+    `Version: ${n.version}${n.version === n.currentVersion ? " (latest)" : ` of ${n.currentVersion} (older version)`}`,
+  ];
+  if (n.tags.length) out.push(`Tags: ${n.tags.join(", ")}`);
+  out.push(`Saved: ${n.versionCreatedAt}${n.message ? ` (${n.message})` : ""}`);
+  out.push("", "## Note", "", n.body || "(empty)");
+  return out.join("\n");
+}
+
 async function run(fn: () => Promise<Text>): Promise<Text> {
   try {
     return await fn();
@@ -92,6 +126,8 @@ const editableFields = {
     .optional()
     .describe("Packages to install, e.g. [\"gsap@^3.13\", \"lenis\"]. Composer packages use vendor/name."),
 };
+
+const noteSlugArg = z.string().trim().min(1).describe("The note's slug, e.g. shopify-theme-deploys. Find it with search_notes.");
 
 export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
   server.registerTool(
@@ -257,6 +293,137 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       run(async () => {
         const snippet = await restoreVersion(await getDb(), slug, version, sourceOf(ctx), message);
         return text(`Restored ${slug} to the content of version ${version}. It is now version ${snippet.version}.`);
+      }),
+  );
+
+  server.registerTool(
+    "search_notes",
+    {
+      title: "Search notes",
+      description:
+        "Find the user's notes by keyword or tag. Matches titles, slugs, tags and note text. Call with no arguments to list everything.",
+      inputSchema: z.object({
+        query: z.string().optional().describe("Keywords, e.g. \"acme hosting\"."),
+        tag: z.string().optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    ({ query, tag, limit }) =>
+      run(async () => {
+        const db = await getDb();
+        const results = await listNotes(db, { query, tag, limit: limit ?? 50 });
+        if (results.length) return text(`${results.length} note(s):\n\n${results.map(formatNoteSummary).join("\n")}`);
+        const tags = await listNoteTags(db);
+        return text(
+          `No notes matched.${tags.length ? ` Tags in use: ${tags.map((t) => t.tag).join(", ")}.` : " There are no notes yet."}`,
+        );
+      }),
+  );
+
+  server.registerTool(
+    "get_note",
+    {
+      title: "Get note",
+      description: "Read a note. Returns the latest version unless a version number is given.",
+      inputSchema: z.object({
+        slug: noteSlugArg,
+        version: z.number().int().positive().optional().describe("A specific version from list_note_versions."),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    ({ slug, version }) =>
+      run(async () => {
+        const note = await getNote(await getDb(), slug, version);
+        if (note) return text(formatNote(note));
+        throw new SnippetError(
+          version ? `Note "${slug}" has no version ${version}.` : `No note with the slug "${slug}". Use search_notes to find it.`,
+          "not_found",
+        );
+      }),
+  );
+
+  server.registerTool(
+    "create_note",
+    {
+      title: "Create note",
+      description: "Save a new note: free-form markdown such as setup steps, client details or decisions. Version 1 is created.",
+      inputSchema: z.object({
+        title: z.string().describe("Short human title, e.g. \"Acme hosting setup\"."),
+        slug: z.string().optional().describe("Optional; derived from the title when left out."),
+        tags: z.array(z.string()).optional().describe("Lowercase keywords, e.g. [\"acme\", \"hosting\"]."),
+        body: z.string().describe("The note, in markdown. Never include passwords or API keys."),
+        message: z.string().optional().describe("Why the note was created, for the history."),
+      }),
+    },
+    (args, ctx) =>
+      run(async () => {
+        const note = await createNote(await getDb(), args, sourceOf(ctx));
+        return text(`Created "${note.title}" as ${note.slug} (version 1).`);
+      }),
+  );
+
+  server.registerTool(
+    "update_note",
+    {
+      title: "Update note",
+      description: "Save a new version of a note. Only pass the fields that change; `body` replaces the whole text.",
+      inputSchema: z.object({
+        slug: noteSlugArg,
+        title: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        body: z.string().optional().describe("The complete new text, in markdown."),
+        message: z.string().describe("What changed and why."),
+        baseVersion: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("The version your edit is based on. The update is refused if a newer version was saved since."),
+      }),
+    },
+    ({ slug, ...patch }, ctx) =>
+      run(async () => {
+        const { note, changed } = await updateNote(await getDb(), slug, patch, sourceOf(ctx));
+        return text(
+          changed ? `Saved ${note.slug} as version ${note.version}.` : `Nothing changed, ${note.slug} is still at version ${note.version}.`,
+        );
+      }),
+  );
+
+  server.registerTool(
+    "list_note_versions",
+    {
+      title: "List note versions",
+      description: "Show the version history of a note, newest first, with each change message.",
+      inputSchema: z.object({ slug: noteSlugArg }),
+      annotations: { readOnlyHint: true },
+    },
+    ({ slug }) =>
+      run(async () => {
+        const versions = await listNoteVersions(await getDb(), slug);
+        const lines = versions.map(
+          (v, i) => `- v${v.version}${i === 0 ? " (latest)" : ""}, ${v.createdAt}, by ${v.source}: ${v.message || "(no message)"}`,
+        );
+        return text(`History of ${slug}:\n\n${lines.join("\n")}`);
+      }),
+  );
+
+  server.registerTool(
+    "restore_note_version",
+    {
+      title: "Restore note version",
+      description: "Roll a note back to an earlier version. This saves a new version with the old content, so it can be undone.",
+      inputSchema: z.object({
+        slug: noteSlugArg,
+        version: z.number().int().positive().describe("The version to bring back."),
+        message: z.string().optional(),
+      }),
+    },
+    ({ slug, version, message }, ctx) =>
+      run(async () => {
+        const note = await restoreNoteVersion(await getDb(), slug, version, sourceOf(ctx), message);
+        return text(`Restored ${slug} to the content of version ${version}. It is now version ${note.version}.`);
       }),
   );
 }
