@@ -9,6 +9,8 @@ import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } fr
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { createSnippet, deleteSnippet, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
 import { createNote, deleteNote, restoreNoteVersion, updateNote } from "@/lib/notes";
+import { createCredential, deleteCredential, revealField, updateCredential } from "@/lib/credentials";
+import { CredentialsUnavailable, DecryptError } from "@/lib/crypto";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
@@ -134,4 +136,42 @@ export async function restoreNote(form: FormData) {
   await restoreNoteVersion(await getDb(), slug, Number(form.get("version")));
   revalidatePath("/", "layout");
   redirect(`/notes/${slug}/history`);
+}
+
+export async function saveCredential(_: FormState, form: FormData): Promise<FormState> {
+  await requireAuth();
+  const slug = String(form.get("slug") ?? "");
+  let target: string;
+  try {
+    const data = JSON.parse(String(form.get("payload") ?? "{}"));
+    const db = await getDb();
+    target = (slug ? await updateCredential(db, slug, data) : await createCredential(db, data)).slug;
+  } catch (error) {
+    if (error instanceof SnippetError || error instanceof CredentialsUnavailable) return { error: error.message };
+    console.error("[snippeta] credential save failed", error);
+    return { error: "Could not save the credential. Try again." };
+  }
+  revalidatePath("/", "layout");
+  redirect(`/credentials/${target}`);
+}
+
+export async function removeCredential(form: FormData) {
+  await requireAuth();
+  await deleteCredential(await getDb(), String(form.get("slug")));
+  revalidatePath("/", "layout");
+  redirect("/credentials");
+}
+
+/** Decrypts one secret for the Reveal and Copy buttons. */
+export async function revealSecret(slug: string, fieldId: string): Promise<{ value?: string; error?: string }> {
+  await requireAuth();
+  try {
+    return { value: await revealField(await getDb(), String(slug), String(fieldId)) };
+  } catch (error) {
+    if (error instanceof SnippetError || error instanceof DecryptError || error instanceof CredentialsUnavailable) {
+      return { error: error.message };
+    }
+    console.error("[snippeta] reveal failed", error);
+    return { error: "Could not reveal this value. Try again." };
+  }
 }

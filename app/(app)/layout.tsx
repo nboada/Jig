@@ -20,6 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/notes" className="hover:text-text">
               Notes
             </Link>
+            <Link href="/credentials" className="hover:text-text">
+              Credentials
+            </Link>
             <Link href="/connect" className="hover:text-text">
               Connect
             </Link>
@@ -29,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               items={[
                 { href: "/snippets/new", label: "Snippet" },
                 { href: "/notes/new", label: "Note" },
+                { href: "/credentials/new", label: "Credential" },
               ]}
             />
             <form action={logout}>

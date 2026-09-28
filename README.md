@@ -32,12 +32,17 @@ Deleting a snippet or note is only possible from the dashboard, never from an ag
 - Dependencies to install, e.g. `gsap@^3.13`
 - Instructions for agents: where files go, setup steps, gotchas
 
+## Notes and credentials
+
+- **Notes**: free-form markdown with the same version history as snippets. Agents can search, read and save them over MCP.
+- **Credentials**: logins and API keys for your own reference. Each has a title, URL, tags, a note and labelled fields, and any field can be marked secret. Secret values are encrypted with `SNIPPETA_ENCRYPTION_KEY` and only shown when you click Reveal or Copy. They are never available over MCP, and there is no history: changing a value replaces it.
+
 ## Run locally
 
 ```bash
 cd snippeta
 bun install
-cp .env.example .env.local   # set ADMIN_PASSWORD and SESSION_SECRET
+cp .env.example .env.local   # set ADMIN_PASSWORD, SESSION_SECRET and SNIPPETA_ENCRYPTION_KEY
 bun run dev
 ```
 
@@ -47,7 +52,7 @@ Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`
 
 1. New Vercel project from this repo, **Root Directory: `snippeta`**. The framework is detected as Next.js and bun is used from `bun.lock`.
 2. Storage tab: add a **Neon** Postgres database. This sets `DATABASE_URL`. Tables are created on the first request.
-3. Environment variables: `ADMIN_PASSWORD`, `SESSION_SECRET` (`openssl rand -hex 32`), optionally `SNIPPETA_TIMEZONE` (defaults to `Australia/Sydney`).
+3. Environment variables: `ADMIN_PASSWORD`, `SESSION_SECRET` (`openssl rand -hex 32`), `SNIPPETA_ENCRYPTION_KEY` (`openssl rand -base64 32`, keep a copy: losing it makes saved secrets unreadable), optionally `SNIPPETA_TIMEZONE` (defaults to `Australia/Sydney`).
 4. Optional: add a domain such as `snippets.talkk.com.au`.
 5. Log in, open **Connect**, create a token per agent and copy the setup command it shows.
 

@@ -33,3 +33,9 @@ export function formatSource(source: string): string {
   if (source.startsWith("mcp:")) return `${source.slice(4)} (MCP)`;
   return source;
 }
+
+/** The URL when it is a plain web link, so stored text can never become a javascript: link. */
+export function safeHref(url: string): string | null {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+}
