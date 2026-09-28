@@ -22,7 +22,7 @@ bun run test                 # bun test lib (in-memory PGlite, no DB needed)
 bun test lib/snippets.test.ts -t "slugify"   # a single test or describe block by name
 ```
 
-If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and stores data in `.data/pglite`. If it is set, the app uses Neon's HTTP driver. Other env vars: `ADMIN_PASSWORD`, `SESSION_SECRET` (falls back to `ADMIN_PASSWORD`), and `SNIPPETA_TIMEZONE` (default `Australia/Sydney`).
+If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and stores data in `.data/pglite`. If it is set, the app uses Neon's HTTP driver. Other env vars: `ADMIN_PASSWORD`, `SESSION_SECRET` (falls back to `ADMIN_PASSWORD`), `SNIPPETA_TIMEZONE` (default `Australia/Sydney`), and `SNIPPETA_ENCRYPTION_KEY` (32 bytes base64, needed only for credentials).
 
 ## Architecture
 
