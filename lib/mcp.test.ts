@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { pgliteDb, prepare, type Db } from "./db";
@@ -61,6 +61,20 @@ describe("credentials stay out of MCP", () => {
     expect([...tools.keys()].filter((name) => /credential|secret/i.test(name))).toEqual([]);
   });
 
+  // Follows `from "./x"`, `from "@/lib/x"`, `import "./x"`, dynamic `import("./x")`, and
+  // `./`-relative subpaths like `./sub/x`. Both `./x` and `@/lib/x` resolve to `lib/x.ts`.
+  const IMPORT_RE = /(?:from|import)\s*\(?\s*["'](?:\.\/|@\/lib\/)([\w.\/-]+)["']/g;
+
+  test("the import regex matches from, bare import, dynamic import and @/lib forms", () => {
+    const sample = [
+      `import { a } from "./notes";`,
+      `import "./init";`,
+      `const b = import("./lazy");`,
+      `import { c } from "@/lib/crypto";`,
+    ].join("\n");
+    expect([...sample.matchAll(IMPORT_RE)].map((m) => m[1])).toEqual(["notes", "init", "lazy", "crypto"]);
+  });
+
   test("mcp.ts does not import the credentials or crypto modules, even indirectly", () => {
     const seen = new Set<string>();
     const stack = ["mcp.ts"];
@@ -69,7 +83,10 @@ describe("credentials stay out of MCP", () => {
       if (seen.has(file)) continue;
       seen.add(file);
       const source = readFileSync(join(import.meta.dir, file), "utf8");
-      for (const match of source.matchAll(/from\s+["']\.\/([\w.-]+)["']/g)) stack.push(`${match[1]}.ts`);
+      for (const match of source.matchAll(IMPORT_RE)) {
+        const candidate = `${match[1]}.ts`;
+        if (existsSync(join(import.meta.dir, candidate))) stack.push(candidate);
+      }
     }
     expect(seen.has("notes.ts")).toBe(true);
     expect(seen.has("credentials.ts")).toBe(false);

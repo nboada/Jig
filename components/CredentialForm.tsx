@@ -77,8 +77,14 @@ export function CredentialForm({ credential }: { credential?: Credential }) {
             />
             <input
               aria-label={`Value of ${row.label}`}
-              type={row.secret ? "password" : "text"}
-              autoComplete={row.secret ? "new-password" : "off"}
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore
+              data-form-type="other"
+              style={row.secret ? ({ WebkitTextSecurity: "disc" } as React.CSSProperties) : undefined}
               className={`${field} min-w-0 flex-1 font-mono text-sm`}
               value={row.value}
               onChange={(e) => update(row.key, { value: e.target.value })}

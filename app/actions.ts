@@ -25,12 +25,12 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
   try {
     const db = await getDb();
+    await recordFailure(db, ip);
     const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
     if (blocked) {
       return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
     }
     if (!checkPassword(String(form.get("password") ?? ""))) {
-      await recordFailure(db, ip);
       return { error: "Wrong password." };
     }
     await clearFailures(db, ip);

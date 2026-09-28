@@ -20,8 +20,8 @@ async function fail(ip: string, times: number, when: Date) {
 }
 
 describe("login rate limiting", () => {
-  test("nine failures are allowed, the tenth blocks for the rest of the window", async () => {
-    await fail("1.1.1.1", 9, at(0));
+  test("ten recorded attempts are allowed, the eleventh blocks for the rest of the window", async () => {
+    await fail("1.1.1.1", 10, at(0));
     expect(await checkLogin(db, "1.1.1.1", at(0))).toEqual({ blocked: false, retryAfterMinutes: 0 });
     await fail("1.1.1.1", 1, at(0));
     expect(await checkLogin(db, "1.1.1.1", at(0))).toEqual({ blocked: true, retryAfterMinutes: 15 });

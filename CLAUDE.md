@@ -14,7 +14,7 @@ The package manager is Bun (`bun.lock`).
 
 ```bash
 bun install
-cp .env.example .env.local   # set ADMIN_PASSWORD and SESSION_SECRET
+cp .env.example .env.local   # set ADMIN_PASSWORD, SESSION_SECRET and SNIPPETA_ENCRYPTION_KEY
 bun run dev                  # next dev
 bun run build / bun run start
 bun run typecheck            # tsc --noEmit
@@ -39,12 +39,13 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 - `lib/diff.ts`: version-to-version diffs of metadata fields and per-file unified diffs. The dashboard's `DiffView` uses these, and so does the MCP `diff_snippet_versions` tool.
 - `lib/tokens.ts`: MCP API tokens (`snp_...`). Only the SHA-256 hash is stored, and `verifyToken` also updates `last_used_at`.
 - `lib/credentials.ts` + `lib/crypto.ts`: dashboard-only credentials. Secret field values are AES-256-GCM ciphertext bound to `<credential id>:<field id>`, and `revealField` is the only function that returns plaintext. **`lib/mcp.ts` must never import these, directly or indirectly**; `lib/mcp.test.ts` fails if it does. Notes (`lib/notes.ts`) mirror the snippet versioning pattern and are exposed over MCP.
+- `lib/ratelimit.ts`: failed logins counted per IP in `login_attempts`. The attempt is recorded before it is counted, so parallel requests can't bypass the limit. Login needs the DB and fails closed.
 
 **MCP (`lib/mcp.ts` + `app/api/mcp/route.ts`)**: `registerTools` registers the tools on `mcp-handler` / `@modelcontextprotocol/server`. `SERVER_INSTRUCTIONS` is the guidance agents receive. Tool output is formatted markdown text, not JSON. Every handler is wrapped in `run()`, which turns a `SnippetError` into an `isError` result. Each version records who saved it in its `source` field: `mcp:<token name>` for agents, `web` for the dashboard. Deleting a snippet is deliberately **not** exposed over MCP.
 
 **Auth has two layers**:
 - `proxy.ts` (the Next 16 replacement for middleware) does an optimistic redirect to `/login` using the HMAC-signed session cookie from `lib/session.ts`. The proxy runs without a database, so the session check is pure crypto. `/login` and `/api/mcp` are excluded from its matcher.
-- `requireAuth()` in `lib/auth.ts` is the real guard. Every server action in `app/actions.ts` and every protected page must call it.
+- `requireAuth()` in `lib/auth.ts` is the real guard. Every server action in `app/actions.ts` must call it; pages under `app/(app)/` are guarded by that route group's layout, which calls `requireAuth()`, plus the proxy redirect.
 - `/api/mcp` uses bearer tokens through `withMcpAuth` instead.
 
 **Dashboard (`app/`)**: pages under the `(app)` route group are server components that call `lib/` directly. Mutations go through the server actions in `app/actions.ts`. The snippet form sends all its fields as a single JSON `payload` form field so the file list stays structured.
