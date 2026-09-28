@@ -59,5 +59,26 @@ export const snippetPatchSchema = z.object({
   baseVersion: z.number().int().positive().optional(),
 });
 
+const noteBodySchema = z.string().max(200_000, "Notes are capped at 200,000 characters");
+
+export const noteInputSchema = z.object({
+  title: z.string().trim().min(1, "Give the note a title").max(120),
+  slug: slugSchema.optional(),
+  tags: tagsSchema.default([]),
+  body: noteBodySchema,
+  message: z.string().trim().max(500).default(""),
+});
+
+export const notePatchSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+  tags: tagsSchema.optional(),
+  body: noteBodySchema.optional(),
+  message: z.string().trim().max(500).default(""),
+  /** When set, the update is refused if someone saved a newer version in the meantime. */
+  baseVersion: z.number().int().positive().optional(),
+});
+
 export type SnippetInput = z.input<typeof snippetInputSchema>;
 export type SnippetPatch = z.input<typeof snippetPatchSchema>;
+export type NoteInput = z.input<typeof noteInputSchema>;
+export type NotePatch = z.input<typeof notePatchSchema>;

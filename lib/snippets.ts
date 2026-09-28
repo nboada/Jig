@@ -182,9 +182,14 @@ async function requireSnippet(db: Db, slug: string, version?: number): Promise<S
   );
 }
 
-async function availableSlug(db: Db, base: string): Promise<string> {
+/** The base slug, or base-2, base-3 and so on when it is taken in `table`. */
+export async function availableSlug(
+  db: Db,
+  base: string,
+  table: "snippets" | "notes" | "credentials" = "snippets",
+): Promise<string> {
   const rows = await db.query<{ slug: string }>(
-    `SELECT slug FROM snippets WHERE slug = $1 OR slug LIKE $2`,
+    `SELECT slug FROM ${table} WHERE slug = $1 OR slug LIKE $2`,
     [base, `${base}-%`],
   );
   const taken = new Set(rows.map((r) => r.slug));
@@ -194,7 +199,7 @@ async function availableSlug(db: Db, base: string): Promise<string> {
   return `${base}-${n}`;
 }
 
-function parse<S extends z.ZodType>(schema: S, value: unknown): z.output<S> {
+export function parse<S extends z.ZodType>(schema: S, value: unknown): z.output<S> {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   const detail = result.error.issues

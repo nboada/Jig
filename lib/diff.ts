@@ -1,4 +1,5 @@
 import { structuredPatch } from "diff";
+import type { NoteVersion } from "./notes";
 import type { SnippetVersion } from "./snippets";
 
 export type DiffLine = { kind: "hunk" | "add" | "del" | "ctx"; text: string };
@@ -20,7 +21,7 @@ export type VersionDiff = {
   files: FileDiff[];
 };
 
-function diffFile(name: string, before: string | undefined, after: string | undefined): FileDiff {
+export function diffFile(name: string, before: string | undefined, after: string | undefined): FileDiff {
   const status =
     before === undefined ? "added" : after === undefined ? "removed" : before === after ? "unchanged" : "modified";
   const patch = structuredPatch(name, name, before ?? "", after ?? "", "", "", { context: 3 });
@@ -76,4 +77,15 @@ export function formatDiff(diff: VersionDiff): string {
     }
   }
   return out.join("\n");
+}
+
+/** Compares two versions of a note. The body is shown as one file, note.md, so DiffView works unchanged. */
+export function compareNotes(a: NoteVersion, b: NoteVersion): VersionDiff {
+  const fields: FieldChange[] = [];
+  for (const field of ["title", "tags"] as const) {
+    if (JSON.stringify(a[field]) !== JSON.stringify(b[field])) {
+      fields.push({ field, from: show(a[field]), to: show(b[field]) });
+    }
+  }
+  return { from: a.version, to: b.version, fields, files: [diffFile("note.md", a.body, b.body)] };
 }

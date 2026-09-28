@@ -54,6 +54,27 @@ const SCHEMA = [
     attempted_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip, attempted_at)`,
+  `CREATE TABLE IF NOT EXISTS notes (
+    id text PRIMARY KEY,
+    slug text NOT NULL UNIQUE,
+    title text NOT NULL,
+    tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+    current_version integer NOT NULL DEFAULT 1,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS note_versions (
+    note_id text NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    version integer NOT NULL,
+    title text NOT NULL,
+    tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+    body text NOT NULL,
+    message text NOT NULL DEFAULT '',
+    source text NOT NULL DEFAULT 'web',
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (note_id, version)
+  )`,
+  `CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes (updated_at DESC)`,
 ];
 
 async function migrate(db: Db) {
