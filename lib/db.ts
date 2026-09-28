@@ -75,6 +75,17 @@ const SCHEMA = [
     PRIMARY KEY (note_id, version)
   )`,
   `CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes (updated_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS credentials (
+    id text PRIMARY KEY,
+    slug text NOT NULL UNIQUE,
+    title text NOT NULL,
+    url text NOT NULL DEFAULT '',
+    tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+    note text NOT NULL DEFAULT '',
+    fields jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ];
 
 async function migrate(db: Db) {

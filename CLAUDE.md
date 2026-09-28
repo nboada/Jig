@@ -38,6 +38,7 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 - `lib/languages.ts`: the allowed language ids. Each id doubles as its Shiki grammar name, and file extensions map to languages.
 - `lib/diff.ts`: version-to-version diffs of metadata fields and per-file unified diffs. The dashboard's `DiffView` uses these, and so does the MCP `diff_snippet_versions` tool.
 - `lib/tokens.ts`: MCP API tokens (`snp_...`). Only the SHA-256 hash is stored, and `verifyToken` also updates `last_used_at`.
+- `lib/credentials.ts` + `lib/crypto.ts`: dashboard-only credentials. Secret field values are AES-256-GCM ciphertext bound to `<credential id>:<field id>`, and `revealField` is the only function that returns plaintext. **`lib/mcp.ts` must never import these, directly or indirectly**; `lib/mcp.test.ts` fails if it does. Notes (`lib/notes.ts`) mirror the snippet versioning pattern and are exposed over MCP.
 
 **MCP (`lib/mcp.ts` + `app/api/mcp/route.ts`)**: `registerTools` registers the tools on `mcp-handler` / `@modelcontextprotocol/server`. `SERVER_INSTRUCTIONS` is the guidance agents receive. Tool output is formatted markdown text, not JSON. Every handler is wrapped in `run()`, which turns a `SnippetError` into an `isError` result. Each version records who saved it in its `source` field: `mcp:<token name>` for agents, `web` for the dashboard. Deleting a snippet is deliberately **not** exposed over MCP.
 

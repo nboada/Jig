@@ -78,7 +78,25 @@ export const notePatchSchema = z.object({
   baseVersion: z.number().int().positive().optional(),
 });
 
+const credentialFieldSchema = z.object({
+  /** Present for fields that already exist; new fields get an id when saved. */
+  id: z.string().trim().min(1).max(64).optional(),
+  label: z.string().trim().min(1, "Every field needs a label").max(80),
+  secret: z.boolean(),
+  value: z.string().max(10_000, "Values are capped at 10,000 characters"),
+});
+
+export const credentialInputSchema = z.object({
+  title: z.string().trim().min(1, "Give the credential a title").max(120),
+  slug: slugSchema.optional(),
+  url: z.string().trim().max(2000).default(""),
+  tags: tagsSchema.default([]),
+  note: z.string().trim().max(5000).default(""),
+  fields: z.array(credentialFieldSchema).min(1, "Add at least one field").max(30),
+});
+
 export type SnippetInput = z.input<typeof snippetInputSchema>;
 export type SnippetPatch = z.input<typeof snippetPatchSchema>;
 export type NoteInput = z.input<typeof noteInputSchema>;
 export type NotePatch = z.input<typeof notePatchSchema>;
+export type CredentialInput = z.input<typeof credentialInputSchema>;
