@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { createSnippet, deleteSnippet, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
+import { createNote, deleteNote, restoreNoteVersion, updateNote } from "@/lib/notes";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
@@ -100,4 +101,37 @@ export async function deleteToken(form: FormData) {
   await requireAuth();
   await revokeToken(await getDb(), String(form.get("id")));
   revalidatePath("/connect");
+}
+
+/** The note form posts its fields as one JSON blob, like the snippet form. */
+export async function saveNote(_: FormState, form: FormData): Promise<FormState> {
+  await requireAuth();
+  const slug = String(form.get("slug") ?? "");
+  let target: string;
+  try {
+    const data = JSON.parse(String(form.get("payload") ?? "{}"));
+    const db = await getDb();
+    target = slug ? (await updateNote(db, slug, data)).note.slug : (await createNote(db, data)).slug;
+  } catch (error) {
+    if (error instanceof SnippetError) return { error: error.message };
+    console.error("[snippeta] note save failed", error);
+    return { error: "Could not save the note. Try again." };
+  }
+  revalidatePath("/", "layout");
+  redirect(`/notes/${target}`);
+}
+
+export async function removeNote(form: FormData) {
+  await requireAuth();
+  await deleteNote(await getDb(), String(form.get("slug")));
+  revalidatePath("/", "layout");
+  redirect("/notes");
+}
+
+export async function restoreNote(form: FormData) {
+  await requireAuth();
+  const slug = String(form.get("slug"));
+  await restoreNoteVersion(await getDb(), slug, Number(form.get("version")));
+  revalidatePath("/", "layout");
+  redirect(`/notes/${slug}/history`);
 }

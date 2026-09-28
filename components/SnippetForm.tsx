@@ -6,8 +6,8 @@ import { saveSnippet } from "@/app/actions";
 import { defaultFileName, LANGUAGES } from "@/lib/languages";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
-const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
-const label = "mb-1.5 block text-sm text-muted";
+export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
+export const label = "mb-1.5 block text-sm text-muted";
 
 const splitList = (value: string) =>
   value
@@ -16,7 +16,7 @@ const splitList = (value: string) =>
     .filter(Boolean);
 
 /** Tab inserts two spaces instead of leaving the textarea. */
-function indentOnTab(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+export function indentOnTab(event: React.KeyboardEvent<HTMLTextAreaElement>) {
   if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey) return;
   event.preventDefault();
   const el = event.currentTarget;

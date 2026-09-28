@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { logout } from "@/app/actions";
 import { Logo } from "@/components/Logo";
+import { NewMenu } from "@/components/NewMenu";
 import { requireAuth } from "@/lib/auth";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -16,17 +17,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/" className="hidden hover:text-text sm:inline">
               Snippets
             </Link>
+            <Link href="/notes" className="hover:text-text">
+              Notes
+            </Link>
             <Link href="/connect" className="hover:text-text">
               Connect
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <Link
-              href="/snippets/new"
-              className="whitespace-nowrap rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink transition hover:brightness-110"
-            >
-              New<span className="hidden sm:inline"> snippet</span>
-            </Link>
+            <NewMenu
+              items={[
+                { href: "/snippets/new", label: "Snippet" },
+                { href: "/notes/new", label: "Note" },
+              ]}
+            />
             <form action={logout}>
               <button className="whitespace-nowrap text-sm text-muted hover:text-text">Log out</button>
             </form>
