@@ -14,7 +14,7 @@ import { getDb } from "@/lib/db";
 import { checkPassword, endAllSessions, passwordProblem, SESSION_COOKIE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { cloneSnippet, createSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
-import { cloneNote, createNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
+import { cloneNote, createNote, getNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
 import { isUnlocked, makeUnlock, noteCodec, UNLOCK_COOKIE, unlockedCodec } from "@/lib/locked-notes";
 import {
   authenticationOptions,
@@ -41,6 +41,7 @@ import { FLASH_COOKIE } from "@/lib/flash";
 import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
 import { approve, checkAuthorizeRequest, redirectError, revokeGrant } from "@/lib/oauth";
 import { resourceUrlFrom } from "@/lib/oauth-http";
+import { AiError, fixFile, review as reviewSnippet, rewrite, type Review, type RewriteMode } from "@/lib/ai";
 
 export type FormState = { error?: string };
 export type Result = { error?: string };
@@ -124,9 +125,9 @@ async function signIn() {
   await applyStoredPreferences().catch((error) => console.error("[jig] could not load preferences", error));
 }
 
-/** Leaves `message` for the page the action redirects to, shown there as a toast. Not exported: every export here is callable. */
+/** Leaves `message` for the page the action redirects to, shown there as a toast (Next encodes the cookie value itself). Not exported: every export here is callable. */
 async function flash(message: string) {
-  (await cookies()).set(FLASH_COOKIE, encodeURIComponent(message), { path: "/", maxAge: 60, sameSite: "lax" });
+  (await cookies()).set(FLASH_COOKIE, message, { path: "/", maxAge: 60, sameSite: "lax" });
 }
 
 const PREF_COOKIE = { path: "/", maxAge: 31_536_000, sameSite: "lax" as const };
@@ -715,4 +716,87 @@ export async function disconnectApp(form: FormData) {
   await requireAuth();
   await revokeGrant(await getDb(), parse(Id, String(form.get("id"))));
   revalidatePath("/connect");
+}
+
+/** Turns an AI failure into the message the dashboard shows; anything unexpected is logged. */
+function aiFailure(error: unknown): { error: string } {
+  if (error instanceof AiError) return { error: error.message };
+  return failure(error, "The AI couldn't answer just now. Try again.");
+}
+
+/**
+ * Rewrites some of a note's text (rephrase, shorten or fix). Nothing is saved: the editor shows the
+ * suggestion and the note's own Save keeps it. A locked note's text is never sent.
+ */
+export async function aiRewrite(mode: RewriteMode, text: string, slug?: string): Promise<{ text?: string; error?: string }> {
+  await requireAuth();
+  try {
+    const kind = parse(z.enum(["rephrase", "shorten", "fix"]), mode);
+    const body = parse(z.string().trim().min(1, "Select some text first."), text);
+    if (slug) {
+      const note = await getNote(await getDb(), parse(Slug, slug));
+      if (note?.locked) return { error: "Locked notes are never sent to the AI." };
+    }
+    return { text: await rewrite(kind, body) };
+  } catch (error) {
+    return aiFailure(error);
+  }
+}
+
+/** Checks a snippet for errors, as it stands in the editor (unsaved changes included). */
+export async function aiReview(snippet: {
+  title: string;
+  language: string;
+  instructions: string;
+  files: { name: string; content: string }[];
+}): Promise<{ review?: Review; error?: string }> {
+  await requireAuth();
+  try {
+    const input = parse(
+      z.object({
+        title: z.string().max(200),
+        language: z.string().max(40),
+        instructions: z.string().max(20_000),
+        files: z.array(z.object({ name: z.string().max(200), content: z.string() })).min(1).max(50),
+      }),
+      snippet,
+    );
+    if (!input.files.some((f) => f.content.trim())) return { error: "There's no code to check yet." };
+    return { review: await reviewSnippet(input) };
+  } catch (error) {
+    return aiFailure(error);
+  }
+}
+
+/** Rewrites one file with the chosen review issues fixed. Nothing is saved: the editor shows it first. */
+export async function aiFix(input: {
+  file: { name: string; content: string };
+  language: string;
+  issues: { file: string; line: number | null; severity: "error" | "warning" | "suggestion"; message: string; fix: string }[];
+}): Promise<{ content?: string; error?: string }> {
+  await requireAuth();
+  try {
+    const { file, language, issues } = parse(
+      z.object({
+        file: z.object({ name: z.string().max(200), content: z.string().min(1) }),
+        language: z.string().max(40),
+        issues: z
+          .array(
+            z.object({
+              file: z.string().max(200),
+              line: z.number().int().nullable(),
+              severity: z.enum(["error", "warning", "suggestion"]),
+              message: z.string().max(2000),
+              fix: z.string().max(2000),
+            }),
+          )
+          .min(1, "Pick at least one issue to fix.")
+          .max(50),
+      }),
+      input,
+    );
+    return { content: await fixFile(file, language, issues) };
+  } catch (error) {
+    return aiFailure(error);
+  }
 }

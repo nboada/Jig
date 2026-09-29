@@ -4,6 +4,7 @@ import { Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { useState } from "react";
 import { readProseClass } from "@/components/Markdown";
+import { NoteAi } from "@/components/NoteAi";
 import { noteExtensions } from "@/lib/note-editor";
 
 /**
@@ -15,10 +16,13 @@ export function MarkdownEditor({
   value,
   onChange,
   placeholder,
+  ai,
 }: {
   value: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
+  /** Offer the AI menu (rephrase, shorten, fix). `slug` is the note's, when it has been saved. */
+  ai?: { slug?: string };
 }) {
   const [source, setSource] = useState(false);
   const editor = useEditor({
@@ -43,6 +47,12 @@ export function MarkdownEditor({
       {/* The toolbar stays in reach under the header on a long note. */}
       <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-strip/95 p-1 backdrop-blur">
         {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-meta text-muted">Editing the markdown source</span>}
+        {editor && !source && ai && (
+          <>
+            <Divider />
+            <NoteAi editor={editor} slug={ai.slug} />
+          </>
+        )}
         <div className="ml-auto flex rounded-md border border-line bg-well p-0.5" role="group" aria-label="Editor">
           {(["Rich", "Markdown"] as const).map((mode) => {
             const on = (mode === "Markdown") === source;

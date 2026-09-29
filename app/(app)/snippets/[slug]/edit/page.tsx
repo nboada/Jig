@@ -4,6 +4,7 @@ import { SnippetForm } from "@/components/SnippetForm";
 import { getDb } from "@/lib/db";
 import { getSnippet } from "@/lib/snippets";
 import { requireAuth } from "@/lib/auth";
+import { aiEnabled } from "@/lib/ai";
 
 export const metadata: Metadata = { title: "Edit snippet" };
 
@@ -15,6 +16,7 @@ export default async function EditSnippetPage({ params }: { params: Promise<{ sl
   return (
     <div>
       <SnippetForm
+        ai={aiEnabled()}
         snippet={snippet}
         header={{ eyebrow: "Edit snippet" }}
       />

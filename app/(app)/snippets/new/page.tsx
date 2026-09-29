@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SnippetForm } from "@/components/SnippetForm";
 import { requireAuth } from "@/lib/auth";
+import { aiEnabled } from "@/lib/ai";
 
 export const metadata: Metadata = { title: "New snippet" };
 
@@ -9,6 +10,7 @@ export default async function NewSnippetPage() {
   return (
     <div>
       <SnippetForm
+        ai={aiEnabled()}
         header={{ eyebrow: "New snippet" }}
       />
     </div>

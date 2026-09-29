@@ -28,6 +28,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
     "@electric-sql/pglite": "^0.5.8",
+    "@google/genai": "^2.24.0",
     "@lezer/highlight": "^1.2.5",
     "@modelcontextprotocol/server": "^2",
     "@neondatabase/serverless": "^1.1.0",

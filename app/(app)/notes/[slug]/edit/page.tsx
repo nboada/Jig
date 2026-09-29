@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { unlockedCodec } from "@/lib/locked-notes";
 import { getNote } from "@/lib/notes";
 import { requireAuth } from "@/lib/auth";
+import { aiEnabled } from "@/lib/ai";
 
 export const metadata: Metadata = { title: "Edit note" };
 
@@ -18,6 +19,7 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
   return (
     <div>
       <NoteForm
+        ai={aiEnabled()}
         note={note}
         header={{ eyebrow: "Edit note" }}
       />

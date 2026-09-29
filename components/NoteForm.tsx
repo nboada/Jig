@@ -8,7 +8,7 @@ import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { field, label } from "@/components/SnippetForm";
 import type { Note } from "@/lib/notes";
 
-export function NoteForm({ note, header }: { note?: Note; header: FormHeader }) {
+export function NoteForm({ note, header, ai = false }: { note?: Note; header: FormHeader; /** Offer the AI menu (never on a locked note). */ ai?: boolean }) {
   const [state, action, pending] = useActionState(saveNote, {});
   const [title, setTitle] = useState(note?.title ?? "");
   const [tags, setTags] = useState(note?.tags.join(", ") ?? "");
@@ -47,6 +47,7 @@ export function NoteForm({ note, header }: { note?: Note; header: FormHeader }) 
         <MarkdownEditor
           value={body}
           onChange={setBody}
+          ai={ai && !note?.locked ? { slug: note?.slug } : undefined}
           placeholder="Steps, decisions, client details. Keep passwords and API keys in Credentials."
         />
       </div>

@@ -7,6 +7,7 @@ import { CodeEditor } from "@/components/CodeEditor";
 import { FormBar, type FormHeader } from "@/components/FormBar";
 import { button } from "@/components/Button";
 import { LanguageSelect } from "@/components/LanguageSelect";
+import { SnippetReview } from "@/components/SnippetReview";
 import { beautify, canBeautify, detectLanguage, findSplit, type Split } from "@/lib/beautify";
 import { defaultFileName, languageFamily, languageForFile, languageLabel, withExtension } from "@/lib/languages";
 import { renameForTitle } from "@/lib/slug";
@@ -22,7 +23,7 @@ const splitList = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: FormHeader }) {
+export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet; header: FormHeader; /** Offer "Check for errors". */ ai?: boolean }) {
   const [state, action, pending] = useActionState(saveSnippet, {});
   const [title, setTitle] = useState(snippet?.title ?? "");
   const [description, setDescription] = useState(snippet?.description ?? "");
@@ -76,6 +77,17 @@ export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: Fo
     } finally {
       setFormatting(null);
     }
+  }
+
+  /** Puts the cursor on a line of a file (from the AI review) and scrolls it into view. */
+  function goTo(name: string, line: number | null) {
+    const index = Math.max(0, files.findIndex((f) => f.name === name));
+    const view = editors.current[index];
+    if (!view) return;
+    const doc = view.state.doc;
+    const at = line && line >= 1 && line <= doc.lines ? doc.line(line).from : 0;
+    view.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+    view.focus();
   }
 
   /** Moves a stray block out of a file into a new file named for its language, e.g. snippet.css. */
@@ -160,6 +172,19 @@ export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: Fo
                   }}
                   required
                 />
+                {ai && (
+                  <SnippetReview
+                    disabled={!file.content.trim()}
+                    draft={() => ({ title, language, instructions, files: [files[index]] })}
+                    onGoTo={goTo}
+                    onApply={(content) => {
+                      // Through the editor, as Format does: it shows at once and Cmd+Z undoes it.
+                      const view = editors.current[index];
+                      if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
+                      else updateFile(index, { content });
+                    }}
+                  />
+                )}
                 <button
                   type="button"
                   disabled={!formattable || !file.content.trim() || formatting === index}
