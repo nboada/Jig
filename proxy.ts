@@ -10,9 +10,10 @@ import { SESSION_COOKIE, sessionLooksCurrent } from "./lib/session";
  *   is rendered per request already (they read cookies), so the nonce costs nothing extra.
  */
 
-// Open without a session: the login page, share links (their token and passcode guard them), and
-// the app manifest and icons (fetched without cookies).
-const PUBLIC = /^\/(login|s\/|manifest\.webmanifest|icon\.svg|apple-icon|app-icons\/|favicon\.ico)/;
+// Open without a session: the login page, share links (their token and passcode guard them), the
+// app manifest and icons (fetched without cookies), and the OAuth endpoints apps call directly
+// (discovery, registration, tokens). /oauth/authorize is not among them: approving needs a login.
+const PUBLIC = /^\/(login|s\/|manifest\.webmanifest|icon\.svg|apple-icon|app-icons\/|favicon\.ico|\.well-known\/|oauth\/(register|token|revoke)$)/;
 
 function contentSecurityPolicy(nonce: string) {
   const dev = process.env.NODE_ENV !== "production";

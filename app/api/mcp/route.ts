@@ -2,6 +2,7 @@ import { originValidationResponse } from "@modelcontextprotocol/server";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { getDb } from "@/lib/db";
 import { registerTools, SERVER_INSTRUCTIONS } from "@/lib/mcp";
+import { SCOPE, verifyAccessToken } from "@/lib/oauth";
 import { verifyToken } from "@/lib/tokens";
 
 export const runtime = "nodejs";
@@ -11,15 +12,23 @@ const handler = createMcpHandler((server) => registerTools(server, getDb), {
   instructions: SERVER_INSTRUCTIONS,
 });
 
-/** Agents authenticate with a token created on the Connect page: `Authorization: Bearer jig_...`. */
+/**
+ * Agents authenticate with a token created on the Connect page (`Authorization: Bearer jig_...`),
+ * or with an access token from signing in over OAuth (apps like Claude; see lib/oauth.ts). Either
+ * way the token's name becomes the saved versions' source. Without one, the 401 points the app at
+ * the OAuth discovery document.
+ */
 const authed = withMcpAuth(
   handler,
   async (_req, bearer) => {
     if (!bearer) return undefined;
-    const token = await verifyToken(await getDb(), bearer);
-    return token ? { token: bearer!, clientId: token.name, scopes: [] } : undefined;
+    const db = await getDb();
+    const token = await verifyToken(db, bearer);
+    if (token) return { token: bearer, clientId: token.name, scopes: [] };
+    const app = await verifyAccessToken(db, bearer);
+    return app ? { token: bearer, clientId: app.name, scopes: [SCOPE], expiresAt: app.expiresAt } : undefined;
   },
-  { required: true },
+  { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp", resourceUrl: process.env.JIG_ORIGIN?.replace(/\/+$/, "") || undefined },
 );
 
 /**

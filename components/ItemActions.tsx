@@ -221,7 +221,7 @@ export function useItemActions({
         message={
           lockError ||
           (locking === "lock"
-            ? `The text of "${title}" and every earlier version is encrypted. Agents can no longer find or read it, it can't be shared, and you unlock it with Touch ID or your password.`
+            ? `The text of "${title}" and every earlier version is encrypted. Agents can no longer find or read it, it can't be shared, and you unlock it with your passkey or password.`
             : `"${title}" and its history go back to plain text, and agents can find and read it again.`)
         }
         action={

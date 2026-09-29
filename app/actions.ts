@@ -39,6 +39,8 @@ import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealSha
 import { createToken, revokeToken } from "@/lib/tokens";
 import { FLASH_COOKIE } from "@/lib/flash";
 import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
+import { approve, checkAuthorizeRequest, redirectError, revokeGrant } from "@/lib/oauth";
+import { resourceUrlFrom } from "@/lib/oauth-http";
 
 export type FormState = { error?: string };
 export type Result = { error?: string };
@@ -296,7 +298,7 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
 }
 
 /** What a secret-revealing action says while this browser hasn't unlocked. */
-const LOCKED = "Unlock first: secrets need Touch ID or your password.";
+const LOCKED = "Unlock first: secrets need your passkey or password.";
 
 /**
  * Decrypts one secret for the Reveal and Copy buttons. Like a locked note, it needs a recent
@@ -679,4 +681,38 @@ export async function setNoteLock(slug: string, locked: boolean): Promise<{ erro
   }
   revalidatePath("/", "layout");
   return {};
+}
+
+/**
+ * The consent screen's answer. Both re-check the request (the form's fields came from the page, so
+ * they're only as trusted as any other input) and send the browser back to the app: with a code
+ * when allowed, with access_denied when not.
+ */
+async function authorizeRequestFrom(form: FormData) {
+  let params: Record<string, string>;
+  try {
+    params = z.record(z.string(), z.string()).parse(JSON.parse(String(form.get("params") ?? "{}")));
+  } catch {
+    redirect("/connect");
+  }
+  return checkAuthorizeRequest(await getDb(), params, resourceUrlFrom(await headers()));
+}
+
+export async function allowApp(form: FormData) {
+  await requireAuth();
+  const request = await authorizeRequestFrom(form);
+  redirect("redirect" in request ? request.redirect : await approve(await getDb(), request));
+}
+
+export async function denyApp(form: FormData) {
+  await requireAuth();
+  const request = await authorizeRequestFrom(form);
+  redirect("redirect" in request ? request.redirect : redirectError(request.redirectUri, "access_denied", "The owner declined.", request.state));
+}
+
+/** Ends an approved app's access (Connect page). */
+export async function disconnectApp(form: FormData) {
+  await requireAuth();
+  await revokeGrant(await getDb(), parse(Id, String(form.get("id"))));
+  revalidatePath("/connect");
 }

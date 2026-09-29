@@ -1,7 +1,7 @@
 "use client";
 
 import { browserSupportsWebAuthn, startAuthentication, startRegistration } from "@simplewebauthn/browser";
-import { useRouter } from "next/navigation";
+import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import {
   addPasskey,
@@ -56,7 +56,9 @@ export function PasskeyLogin({ next }: { next: string }) {
               if (!response) return;
               const result = await loginWithPasskey(response, next);
               if (result?.error) setError(result.error);
-            } catch {
+            } catch (error) {
+              // Success arrives as a redirect, which the action throws; let Next carry it out.
+              unstable_rethrow(error);
               setError("That passkey didn't work. Try again, or use your password.");
             }
           })
@@ -131,7 +133,7 @@ export function UnlockPanel({
           className={button({ variant: "primary" })}
         >
           <FingerprintIcon className="size-4" />
-          Unlock with Touch ID
+          Unlock with passkey
         </button>
       ) : (
         <form
@@ -174,10 +176,10 @@ export function UnlockPanel({
       {error && <p className="text-ui text-danger">{error}</p>}
       {canUsePasskey ? (
         <button type="button" onClick={() => setUsePassword(!usePassword)} className="text-meta text-muted hover:text-text">
-          {usePassword ? "Use Touch ID instead" : "Use your password instead"}
+          {usePassword ? "Use your passkey instead" : "Use your password instead"}
         </button>
       ) : (
-        supported && <p className="text-meta text-muted">Add a passkey from the ⋯ menu in the header to unlock with Touch ID.</p>
+        supported && <p className="text-meta text-muted">Add a passkey from the ⋯ menu in the header to unlock with it.</p>
       )}
     </div>
   );

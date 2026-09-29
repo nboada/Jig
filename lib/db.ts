@@ -140,6 +140,32 @@ const SCHEMA = [
     deleted_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS trash_deleted_at_idx ON trash (deleted_at)`,
+  // OAuth for the MCP endpoint (lib/oauth.ts): registered apps, one-use codes, and approved apps'
+  // tokens. Codes and tokens are stored as SHA-256 hashes only.
+  `CREATE TABLE IF NOT EXISTS oauth_clients (
+    id text PRIMARY KEY,
+    name text NOT NULL,
+    redirect_uris jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS oauth_codes (
+    code_hash text PRIMARY KEY,
+    client_id text NOT NULL,
+    redirect_uri text NOT NULL,
+    code_challenge text NOT NULL,
+    resource text,
+    expires_at timestamptz NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS oauth_grants (
+    id text PRIMARY KEY,
+    client_id text NOT NULL,
+    name text NOT NULL,
+    access_hash text NOT NULL UNIQUE,
+    access_expires_at timestamptz NOT NULL,
+    refresh_hash text NOT NULL UNIQUE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz
+  )`,
   // Secrets the app makes for itself: the random part of the signing key, and when sessions were
   // last ended everywhere. Never shown anywhere.
   `CREATE TABLE IF NOT EXISTS app_secrets (
@@ -194,17 +220,20 @@ export async function prepare(db: Db): Promise<Db> {
   return db;
 }
 
-let instance: Promise<Db> | undefined;
+// Kept on globalThis, not in this module: `next dev` can load this module more than once (route
+// handlers and pages are bundled apart), and two PGlite copies over one folder drift apart, so
+// what one writes the other never sees.
+const shared = globalThis as { jigDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
-  instance ??= (async () => {
+  shared.jigDb ??= (async () => {
     const url = process.env.DATABASE_URL;
     // JIG_PGLITE_DIR points a second local copy at its own data, e.g. the demo seeded for screenshots.
     const db = url ? await neonDb(url) : await pgliteDb(process.env.JIG_PGLITE_DIR || ".data/pglite");
     return prepare(db);
   })().catch((error) => {
-    instance = undefined;
+    shared.jigDb = undefined;
     throw error;
   });
-  return instance;
+  return shared.jigDb;
 }
