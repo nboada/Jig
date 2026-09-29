@@ -20,7 +20,7 @@ const CONNECT = { href: "/connect", label: "Connect", Icon: ConnectIcon, key: un
 export function TopNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   return (
-    <nav className={`items-center gap-1 rounded-full bg-ink p-1 text-ui font-medium ${className}`}>
+    <nav className={`items-center gap-2 rounded-full bg-ink p-1 text-ui font-medium ${className}`}>
       {SECTIONS.map(({ href, label, Icon, key }) => {
         const active = pathname.startsWith(href);
         return (
