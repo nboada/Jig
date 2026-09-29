@@ -6,7 +6,7 @@ import { useActionState, useRef, useState } from "react";
 import { saveSnippet } from "@/app/actions";
 import { CodeEditor } from "@/components/CodeEditor";
 import { LanguageSelect } from "@/components/LanguageSelect";
-import { beautify, canBeautify } from "@/lib/beautify";
+import { beautify, canBeautify, findSplit, type Split } from "@/lib/beautify";
 import { defaultFileName, languageForFile, languageLabel } from "@/lib/languages";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
@@ -51,7 +51,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
 
   const editors = useRef<(EditorView | undefined)[]>([]);
   const [formatting, setFormatting] = useState<number | null>(null);
-  const [formatError, setFormatError] = useState<{ index: number; message: string } | null>(null);
+  const [formatError, setFormatError] = useState<{ index: number; message: string; split?: Split } | null>(null);
   async function format(index: number, fileLanguage: string) {
     setFormatting(index);
     setFormatError(null);
@@ -65,13 +65,32 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
       // Parser messages read like "Unexpected token (15:16)" followed by a code frame; keep the line number.
       const where = error instanceof Error ? error.message.match(/\((\d+):\d+\)/) : null;
       const kind = languageLabel(fileLanguage);
+      const split = (await findSplit(files[index].content, fileLanguage)) ?? undefined;
       setFormatError({
         index,
-        message: `${where ? `Line ${where[1]} isn't valid ${kind}` : `This isn't valid ${kind}`}, so nothing was changed. If the file mixes languages, move each part into its own file.`,
+        message: split
+          ? `Lines ${split.line}–${split.line + split.tail.trimEnd().split("\n").length - 1} look like ${languageLabel(split.tailLanguage)}, which can't be formatted as ${kind}.`
+          : `${where ? `Line ${where[1]} isn't valid ${kind}` : `This isn't valid ${kind}`}, so nothing was changed.`,
+        split,
       });
     } finally {
       setFormatting(null);
     }
+  }
+
+  /** Moves a stray block out of a file into a new file named for its language, e.g. snippet.css. */
+  function moveSplit(index: number, split: Split) {
+    const base = files[index].name.replace(/\.[^.]+$/, "");
+    const ext = defaultFileName(split.tailLanguage).split(".").pop();
+    const taken = new Set(files.map((f) => f.name));
+    let name = `${base}.${ext}`;
+    for (let n = 2; taken.has(name); n++) name = `${base}-${n}.${ext}`;
+    // Trim the original through its editor, as Format does; its onChange updates the file.
+    const view = editors.current[index];
+    if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: split.head } });
+    else updateFile(index, { content: split.head });
+    setFiles((list) => [...list, { name, content: split.tail }]);
+    setFormatError(null);
   }
 
   const payload = JSON.stringify({
@@ -144,8 +163,9 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                   disabled={!formattable || !file.content.trim() || formatting === index}
                   title={formattable ? `Format as ${languageLabel(fileLanguage)}` : `No formatter for ${languageLabel(fileLanguage)}`}
                   onClick={() => format(index, fileLanguage)}
-                  className="rounded px-2 py-1 text-xs text-muted hover:text-text disabled:cursor-default disabled:opacity-40 disabled:hover:text-muted"
+                  className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-text/85 transition hover:border-muted hover:text-text disabled:cursor-default disabled:opacity-40 disabled:hover:border-line"
                 >
+                  <FormatIcon />
                   {formatting === index ? "Formatting" : "Format"}
                 </button>
                 {files.length > 1 && (
@@ -159,7 +179,18 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                 )}
               </div>
               {formatError?.index === index && (
-                <p className="border-b border-line bg-danger/10 px-4 py-2 text-xs text-danger">{formatError.message}</p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-danger/10 px-4 py-2 text-xs text-danger">
+                  <p className="flex-1">{formatError.message}</p>
+                  {formatError.split && (
+                    <button
+                      type="button"
+                      onClick={() => moveSplit(index, formatError.split!)}
+                      className="shrink-0 rounded-md bg-accent px-2.5 py-1 font-medium text-accent-ink hover:brightness-110"
+                    >
+                      {`Move them to their own ${languageLabel(formatError.split.tailLanguage)} file`}
+                    </button>
+                  )}
+                </div>
               )}
               <CodeEditor
                 label={`Contents of ${file.name}`}
@@ -264,5 +295,13 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
       </div>
       {state.error && <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>}
     </form>
+  );
+}
+
+function FormatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden>
+      <path d="M21 6H3M17 12H7M19 18H5" />
+    </svg>
   );
 }

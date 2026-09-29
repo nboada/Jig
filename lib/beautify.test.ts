@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { beautify, canBeautify } from "./beautify";
+import { beautify, canBeautify, findSplit } from "./beautify";
 
 describe("beautify", () => {
   const cases: [string, string, string][] = [
@@ -34,5 +34,26 @@ describe("beautify", () => {
     expect(canBeautify("bash")).toBe(false);
     expect(canBeautify("text")).toBe(false);
     await expect(beautify("ls", "bash")).rejects.toThrow("No formatter for bash");
+  });
+});
+
+describe("findSplit", () => {
+  const js = "function setVh() {\n  const vh = 1;\n}\n\nsetVh()";
+  const css = ".hero {\n  height: calc(var(--vh) * 100);\n}";
+
+  test("finds CSS pasted under JavaScript", async () => {
+    const split = await findSplit(`${js}\n\n\n${css}\n`, "javascript");
+    expect(split).toEqual({ line: 8, head: `${js}\n`, tail: `${css}\n`, tailLanguage: "css" });
+  });
+
+  test("finds JavaScript pasted under CSS", async () => {
+    const split = await findSplit(`${css}\n\n${js}`, "css");
+    expect(split?.tailLanguage).toBe("javascript");
+    expect(split?.head).toBe(`${css}\n`);
+  });
+
+  test("nothing to split when the file is just broken", async () => {
+    expect(await findSplit("const = ;\n\nconst b = 2;", "javascript")).toBeNull();
+    expect(await findSplit("echo hi", "bash")).toBeNull();
   });
 });

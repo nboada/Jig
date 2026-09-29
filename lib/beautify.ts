@@ -55,3 +55,37 @@ export async function beautify(code: string, language: string): Promise<string> 
   if (!formatter) throw new Error(`No formatter for ${language}`);
   return formatter(code);
 }
+
+export type Split = { line: number; head: string; tail: string; tailLanguage: string };
+
+// What a stray block usually is, by the file's language: CSS pasted under JS, or the reverse.
+const STRAYS: Record<string, string> = {
+  javascript: "css",
+  typescript: "css",
+  jsx: "css",
+  tsx: "css",
+  css: "javascript",
+  scss: "javascript",
+};
+
+/**
+ * For a file that does not format, finds where a block in another language starts: the latest
+ * paragraph break after which the rest formats as that language and everything before it
+ * formats as the file's own. Null when no such break exists.
+ */
+export async function findSplit(code: string, language: string): Promise<Split | null> {
+  const tailLanguage = STRAYS[language];
+  if (!tailLanguage) return null;
+  const lines = code.split("\n");
+  for (let i = lines.length - 1; i > 0; i--) {
+    // Only consider a block that starts on a non-empty line right after an empty one.
+    if (!lines[i].trim() || lines[i - 1].trim()) continue;
+    const head = lines.slice(0, i).join("\n").trimEnd();
+    const tail = lines.slice(i).join("\n").trim();
+    const parses = (text: string, as: string) => beautify(text, as).then(() => true, () => false);
+    if ((await parses(tail, tailLanguage)) && (await parses(head, language))) {
+      return { line: i + 1, head: `${head}\n`, tail: `${tail}\n`, tailLanguage };
+    }
+  }
+  return null;
+}
