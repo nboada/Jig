@@ -79,7 +79,7 @@ export function formatDiff(diff: VersionDiff): string {
   return out.join("\n");
 }
 
-/** Compares two versions of a note. The body is shown as one file, note.md, so DiffView works unchanged. */
+/** Compares two versions of a note. The body is shown as one file, "Body", so DiffView works unchanged. */
 export function compareNotes(a: NoteVersion, b: NoteVersion): VersionDiff {
   const fields: FieldChange[] = [];
   for (const field of ["title", "tags"] as const) {
@@ -87,5 +87,5 @@ export function compareNotes(a: NoteVersion, b: NoteVersion): VersionDiff {
       fields.push({ field, from: show(a[field]), to: show(b[field]) });
     }
   }
-  return { from: a.version, to: b.version, fields, files: [diffFile("note.md", a.body, b.body)] };
+  return { from: a.version, to: b.version, fields, files: [diffFile("Body", a.body, b.body)] };
 }

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeNote, restoreNote } from "@/app/actions";
-import { CodeBlock } from "@/components/CodeBlock";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
+import { Markdown } from "@/components/Markdown";
 import { getDb } from "@/lib/db";
 import { formatDate, formatSource } from "@/lib/format";
 import { getNote } from "@/lib/notes";
@@ -65,7 +65,12 @@ export default async function NotePage({ params, searchParams }: Props) {
         </header>
 
         {note.body ? (
-          <CodeBlock name="note.md" content={note.body} fallback="markdown" />
+          <article className="relative rounded-lg border border-line bg-panel p-6 pr-20">
+            <div className="absolute top-4 right-4">
+              <CopyButton value={note.body} />
+            </div>
+            <Markdown>{note.body}</Markdown>
+          </article>
         ) : (
           <p className="rounded-lg border border-line bg-panel p-6 text-sm text-muted">This note is empty.</p>
         )}

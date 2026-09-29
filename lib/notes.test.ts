@@ -136,6 +136,6 @@ describe("notes", () => {
     });
     const diff = compareNotes(...(await getNoteVersionPair(db, slug, 1)));
     expect(diff.fields).toEqual([{ field: "title", from: "Shopify theme deploys", to: "Theme deploys" }]);
-    expect(diff.files.map((f) => [f.name, f.status, f.additions, f.deletions])).toEqual([["note.md", "modified", 1, 0]]);
+    expect(diff.files.map((f) => [f.name, f.status, f.additions, f.deletions])).toEqual([["Body", "modified", 1, 0]]);
   });
 });
