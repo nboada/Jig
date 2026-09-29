@@ -8,3 +8,6 @@ next-env.d.ts
 .vercel
 .DS_Store
 .playwright-mcp/
+
+# Local-only helpers, e.g. the demo seed for screenshots
+scripts/

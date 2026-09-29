@@ -274,14 +274,6 @@ bun run dev
 
 Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`, so there is nothing else to install. To turn on credentials locally, open **Credentials** and click **Create encryption key**: it is written to `.env.local` for you.
 
-To try it with sample content, or to retake the screenshots, seed a separate demo database and point a copy of the app at it. Your own local data is left alone:
-
-```bash
-export JIG_ENCRYPTION_KEY=$(openssl rand -base64 32)
-bun scripts/seed-demo.ts                      # writes .data/demo
-JIG_PGLITE_DIR=.data/demo bun run dev
-```
-
 Other scripts: `bun run build`, `bun run start`, `bun run typecheck`, and `bun run test` (data layer, encryption, sharing, rate limiting and MCP tools against an in-memory PGlite).
 
 <br/>
