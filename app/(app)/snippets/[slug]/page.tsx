@@ -25,7 +25,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
   if (!snippet) notFound();
 
   const isLatest = snippet.version === snippet.currentVersion;
-  const prompt = `Add the "${snippet.slug}" snippet from Snippeta to this project.`;
+  const prompt = `Add the "${snippet.slug}" snippet from Jig to this project.`;
 
   return (
     <article className="grid gap-8 lg:grid-cols-[1fr_280px]">

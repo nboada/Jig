@@ -7,7 +7,9 @@ import type { Db } from "./db";
 
 export type ApiToken = { id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null };
 
-const TOKEN_PREFIX = "snp_";
+const TOKEN_PREFIX = "jig_";
+/** Tokens created before the rename to Jig keep working. */
+const LEGACY_PREFIX = "snp_";
 
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -36,7 +38,7 @@ export async function createToken(db: Db, name: string): Promise<{ token: string
 
 /** Returns the token's record when it is valid, and notes when it was last used. */
 export async function verifyToken(db: Db, token: string | undefined): Promise<ApiToken | null> {
-  if (!token?.startsWith(TOKEN_PREFIX)) return null;
+  if (!token?.startsWith(TOKEN_PREFIX) && !token?.startsWith(LEGACY_PREFIX)) return null;
   const rows = await db.query(
     `UPDATE api_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING *`,
     [await sha256(token)],

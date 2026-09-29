@@ -24,7 +24,7 @@ export default async function NotePage({ params, searchParams }: Props) {
   if (!note) notFound();
 
   const isLatest = note.version === note.currentVersion;
-  const prompt = `Use my "${note.slug}" note from Snippeta.`;
+  const prompt = `Use my "${note.slug}" note from Jig.`;
 
   return (
     <article className="grid gap-8 lg:grid-cols-[1fr_280px]">

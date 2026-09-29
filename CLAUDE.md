@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Snippeta is a single-user cloud library of code snippets. It has two front doors onto the same data layer:
+Jig is a single-user cloud library of code snippets. It has two front doors onto the same data layer:
 - A Next.js 16 dashboard (App Router, React 19, Tailwind 4) behind a password login.
 - An MCP endpoint at `/api/mcp` (Streamable HTTP, bearer-token auth) that coding agents call to search, fetch, create, update and restore snippets.
 
@@ -14,7 +14,7 @@ The package manager is Bun (`bun.lock`).
 
 ```bash
 bun install
-cp .env.example .env.local   # set ADMIN_PASSWORD, SESSION_SECRET and SNIPPETA_ENCRYPTION_KEY
+cp .env.example .env.local   # set ADMIN_PASSWORD, SESSION_SECRET and JIG_ENCRYPTION_KEY
 bun run dev                  # next dev
 bun run build / bun run start
 bun run typecheck            # tsc --noEmit
@@ -22,7 +22,7 @@ bun run test                 # bun test lib (in-memory PGlite, no DB needed)
 bun test lib/snippets.test.ts -t "slugify"   # a single test or describe block by name
 ```
 
-If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and stores data in `.data/pglite`. If it is set, the app uses Neon's HTTP driver. Other env vars: `ADMIN_PASSWORD`, `SESSION_SECRET` (falls back to `ADMIN_PASSWORD`), `SNIPPETA_TIMEZONE` (default `Australia/Sydney`), and `SNIPPETA_ENCRYPTION_KEY` (32 bytes base64, needed only for credentials).
+If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and stores data in `.data/pglite`. If it is set, the app uses Neon's HTTP driver. Other env vars: `ADMIN_PASSWORD`, `SESSION_SECRET` (falls back to `ADMIN_PASSWORD`), `JIG_TIMEZONE` (default `Australia/Sydney`), and `JIG_ENCRYPTION_KEY` (32 bytes base64, needed only for credentials).
 
 ## Architecture
 
@@ -37,7 +37,7 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 - `lib/validation.ts`: Zod schemas (Zod 4) shared by the dashboard and MCP. They cover slug format, size caps and the dedupe of tags and dependencies.
 - `lib/languages.ts`: the allowed language ids. Each id doubles as its Shiki grammar name, and file extensions map to languages.
 - `lib/diff.ts`: version-to-version diffs of metadata fields and per-file unified diffs. The dashboard's `DiffView` uses these, and so does the MCP `diff_snippet_versions` tool.
-- `lib/tokens.ts`: MCP API tokens (`snp_...`). Only the SHA-256 hash is stored, and `verifyToken` also updates `last_used_at`.
+- `lib/tokens.ts`: MCP API tokens (`jig_...`). Only the SHA-256 hash is stored, and `verifyToken` also updates `last_used_at`.
 - `lib/credentials.ts` + `lib/crypto.ts`: dashboard-only credentials. Secret field values are AES-256-GCM ciphertext bound to `<credential id>:<field id>`, and `revealField` is the only function that returns plaintext. **`lib/mcp.ts` must never import these, directly or indirectly**; `lib/mcp.test.ts` fails if it does. Notes (`lib/notes.ts`) mirror the snippet versioning pattern and are exposed over MCP.
 - `lib/ratelimit.ts`: failed logins counted per IP in `login_attempts`. The attempt is recorded before it is counted, so parallel requests can't bypass the limit. Login needs the DB and fails closed.
 
@@ -52,4 +52,4 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 
 **Build config** (`next.config.ts`): PGlite must remain in `serverExternalPackages`, because bundling it breaks its WASM file lookups. `outputFileTracingRoot` and the Turbopack root are pinned to this directory so a lockfile in a parent folder is never picked up.
 
-**Distribution**: each user deploys their own copy with the README's Deploy with Vercel button, which also provisions a Neon database (`stores` param) and asks only for `ADMIN_PASSWORD` and `SNIPPETA_TIMEZONE`. Keep new required configuration optional or self-provisioning, and never add schema changes that aren't idempotent, since existing copies apply them on their next request.
+**Distribution**: each user deploys their own copy with the README's Deploy with Vercel button, which also provisions a Neon database (`stores` param) and asks only for `ADMIN_PASSWORD` and `JIG_TIMEZONE`. Keep new required configuration optional or self-provisioning, and never add schema changes that aren't idempotent, since existing copies apply them on their next request.

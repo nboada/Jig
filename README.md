@@ -1,20 +1,20 @@
-# Snippeta
+# Jig
 
-Your own cloud library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) that your AI agents can reach over MCP. Ask Claude Code, Codex or Kimi to "add the GSAP snippet from Snippeta" and they fetch it, install its dependencies and wire it into the project.
+Your own cloud library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) that your AI agents can reach over MCP. Ask Claude Code, Codex or Kimi to "add the GSAP snippet from Jig" and they fetch it, install its dependencies and wire it into the project.
 
-Every edit is saved as a new version, so when a snippet stops working you can see exactly what changed and roll it back, from the dashboard or from an agent. Snippeta also keeps versioned notes, and a private list of logins and API keys that agents can never read.
+Every edit is saved as a new version, so when a snippet stops working you can see exactly what changed and roll it back, from the dashboard or from an agent. Jig also keeps versioned notes, and a private list of logins and API keys that agents can never read.
 
 Each person runs their own copy, with their own database. Nothing is shared with anyone else.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnboada%2Fsnippeta&project-name=snippeta&repository-name=snippeta&env=ADMIN_PASSWORD%2CSNIPPETA_TIMEZONE&envDefaults=%7B%22SNIPPETA_TIMEZONE%22%3A%22UTC%22%7D&envDescription=ADMIN_PASSWORD+is+the+password+for+your+dashboard%3B+use+a+long+one.+SNIPPETA_TIMEZONE+is+an+IANA+time+zone+for+dates%2C+e.g.+Europe%2FLondon.&envLink=https%3A%2F%2Fgithub.com%2Fnboada%2Fsnippeta%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnboada%2Fjig&project-name=jig&repository-name=jig&env=ADMIN_PASSWORD%2CJIG_TIMEZONE&envDefaults=%7B%22JIG_TIMEZONE%22%3A%22UTC%22%7D&envDescription=ADMIN_PASSWORD+is+the+password+for+your+dashboard%3B+use+a+long+one.+JIG_TIMEZONE+is+an+IANA+time+zone+for+dates%2C+e.g.+Europe%2FLondon.&envLink=https%3A%2F%2Fgithub.com%2Fnboada%2Fjig%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 ## Get started
 
 1. **Click Deploy with Vercel.** Vercel copies this repository into your GitHub account and creates a free [Neon](https://neon.tech) Postgres database for it. You don't need to set up a database yourself: the tables are created the first time the app runs.
-2. **Choose a password** when Vercel asks for `ADMIN_PASSWORD`. Use a long one, since it protects everything in your library. Set `SNIPPETA_TIMEZONE` to your time zone, such as `Europe/London` or `America/New_York`.
+2. **Choose a password** when Vercel asks for `ADMIN_PASSWORD`. Use a long one, since it protects everything in your library. Set `JIG_TIMEZONE` to your time zone, such as `Europe/London` or `America/New_York`.
 3. **Open your new site and log in.**
 4. **Connect your agents.** Open **Connect**, create a token for each agent and run the setup command it shows.
-5. **Optional: turn on credentials.** The first time you open **Credentials**, click **Generate a key**, add it to Vercel as `SNIPPETA_ENCRYPTION_KEY` and redeploy. Keep a copy in your password manager.
+5. **Optional: turn on credentials.** The first time you open **Credentials**, click **Generate a key**, add it to Vercel as `JIG_ENCRYPTION_KEY` and redeploy. Keep a copy in your password manager.
 
 ## What you get
 
@@ -45,19 +45,19 @@ The Connect page shows these commands with your URL and token filled in.
 
 ```bash
 # Claude Code (available in every project)
-claude mcp add --transport http --scope user snippeta https://YOUR_DOMAIN/api/mcp \
-  --header "Authorization: Bearer snp_..."
+claude mcp add --transport http --scope user jig https://YOUR_DOMAIN/api/mcp \
+  --header "Authorization: Bearer jig_..."
 
 # Kimi Code CLI
-kimi mcp add --transport http snippeta https://YOUR_DOMAIN/api/mcp \
-  --header "Authorization: Bearer snp_..."
+kimi mcp add --transport http jig https://YOUR_DOMAIN/api/mcp \
+  --header "Authorization: Bearer jig_..."
 ```
 
 ```toml
-# Codex: ~/.codex/config.toml, plus export SNIPPETA_TOKEN=snp_... in your shell profile
-[mcp_servers.snippeta]
+# Codex: ~/.codex/config.toml, plus export JIG_TOKEN=jig_... in your shell profile
+[mcp_servers.jig]
 url = "https://YOUR_DOMAIN/api/mcp"
-bearer_token_env_var = "SNIPPETA_TOKEN"
+bearer_token_env_var = "JIG_TOKEN"
 ```
 
 Tokens are stored as SHA-256 hashes, shown once, and can be revoked on the Connect page. Each version records which token saved it.
@@ -68,9 +68,9 @@ Tokens are stored as SHA-256 hashes, shown once, and can be revoked on the Conne
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | Yes | The password for your dashboard. After 10 wrong attempts from one address, logins from it are paused for 15 minutes. |
 | `DATABASE_URL` | Set for you | Postgres connection string. The Deploy button's Neon database sets it. Leave it empty locally to use a built-in database stored in `.data/`. |
-| `SNIPPETA_ENCRYPTION_KEY` | For credentials | Encrypts saved secrets: 32 random bytes in base64. The Credentials page generates one for you. If it is lost, saved secrets cannot be recovered. |
+| `JIG_ENCRYPTION_KEY` | For credentials | Encrypts saved secrets: 32 random bytes in base64. The Credentials page generates one for you. If it is lost, saved secrets cannot be recovered. |
 | `SESSION_SECRET` | No | Signs the login cookie. Defaults to `ADMIN_PASSWORD`. Set a random value (`openssl rand -hex 32`) if you want changing the password to be independent of sessions. |
-| `SNIPPETA_TIMEZONE` | No | Time zone for dates in the dashboard, e.g. `Europe/London`. Defaults to `Australia/Sydney`. |
+| `JIG_TIMEZONE` | No | Time zone for dates in the dashboard, e.g. `Europe/London`. Defaults to `Australia/Sydney`. |
 
 Changing a variable in Vercel only takes effect after a redeploy.
 
@@ -79,7 +79,7 @@ Changing a variable in Vercel only takes effect after a redeploy.
 The Deploy button makes an independent copy, not a fork, so it doesn't update itself. To pull in new versions:
 
 ```bash
-git remote add upstream https://github.com/nboada/snippeta.git   # once
+git remote add upstream https://github.com/nboada/jig.git   # once
 git pull upstream master
 git push
 ```

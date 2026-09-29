@@ -1,6 +1,6 @@
 import { KeySetup } from "./KeySetup";
 
-/** Shown on credentials pages when SNIPPETA_ENCRYPTION_KEY is missing or invalid. */
+/** Shown on credentials pages when JIG_ENCRYPTION_KEY is missing or invalid. */
 export function KeyMissing() {
   const local = process.env.NODE_ENV !== "production";
   return (

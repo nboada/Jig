@@ -3,7 +3,7 @@
  * signed with HMAC-SHA256, so checking it needs no database and runs in the proxy.
  */
 
-export const SESSION_COOKIE = "snippeta_session";
+export const SESSION_COOKIE = "jig_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 function secret(): string {

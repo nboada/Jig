@@ -39,7 +39,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     await clearFailures(db, ip);
   } catch (error) {
     // Refuse rather than allow unlimited guesses when the check itself fails.
-    console.error("[snippeta] login check failed", error);
+    console.error("[jig] login check failed", error);
     return { error: "Could not check the login right now. Try again." };
   }
   (await cookies()).set(SESSION_COOKIE, await createSessionValue(), {
@@ -73,7 +73,7 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
     }
   } catch (error) {
     if (error instanceof SnippetError) return { error: error.message };
-    console.error("[snippeta] save failed", error);
+    console.error("[jig] save failed", error);
     return { error: "Could not save the snippet. Try again." };
   }
   revalidatePath("/", "layout");
@@ -119,7 +119,7 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
     target = slug ? (await updateNote(db, slug, data)).note.slug : (await createNote(db, data)).slug;
   } catch (error) {
     if (error instanceof SnippetError) return { error: error.message };
-    console.error("[snippeta] note save failed", error);
+    console.error("[jig] note save failed", error);
     return { error: "Could not save the note. Try again." };
   }
   revalidatePath("/", "layout");
@@ -151,7 +151,7 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
     target = (slug ? await updateCredential(db, slug, data) : await createCredential(db, data)).slug;
   } catch (error) {
     if (error instanceof SnippetError || error instanceof CredentialsUnavailable) return { error: error.message };
-    console.error("[snippeta] credential save failed", error);
+    console.error("[jig] credential save failed", error);
     return { error: "Could not save the credential. Try again." };
   }
   revalidatePath("/", "layout");
@@ -174,7 +174,7 @@ export async function revealSecret(slug: string, fieldId: string): Promise<{ val
     if (error instanceof SnippetError || error instanceof DecryptError || error instanceof CredentialsUnavailable) {
       return { error: error.message };
     }
-    console.error("[snippeta] reveal failed", error);
+    console.error("[jig] reveal failed", error);
     return { error: "Could not reveal this value. Try again." };
   }
 }
@@ -202,15 +202,15 @@ export async function createEncryptionKey(): Promise<{ error?: string }> {
     const next = withEncryptionKey(current, key);
     if (next === null) {
       return {
-        error: ".env.local already sets SNIPPETA_ENCRYPTION_KEY, but it isn't a valid key. Fix or remove that line, then restart the server.",
+        error: ".env.local already sets JIG_ENCRYPTION_KEY, but it isn't a valid key. Fix or remove that line, then restart the server.",
       };
     }
     await writeFile(file, next, { mode: 0o600 });
   } catch (error) {
-    console.error("[snippeta] could not write .env.local", error);
+    console.error("[jig] could not write .env.local", error);
     return { error: "Could not write .env.local. Add the key to it yourself, then restart the server." };
   }
-  process.env.SNIPPETA_ENCRYPTION_KEY = key;
+  process.env.JIG_ENCRYPTION_KEY = key;
   revalidatePath("/", "layout");
   return {};
 }

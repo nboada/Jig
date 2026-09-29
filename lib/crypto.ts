@@ -1,6 +1,6 @@
 /**
  * Encrypts credential secrets at rest with AES-256-GCM. The key comes from
- * SNIPPETA_ENCRYPTION_KEY (32 bytes, base64). Each value is bound to its
+ * JIG_ENCRYPTION_KEY (32 bytes, base64). Each value is bound to its
  * credential and field through the additional data, so ciphertext copied to
  * another place in the database does not decrypt.
  */
@@ -9,7 +9,7 @@ const PREFIX = "v1";
 
 export class CredentialsUnavailable extends Error {
   constructor() {
-    super("Credentials need SNIPPETA_ENCRYPTION_KEY: 32 random bytes in base64. Generate one with: openssl rand -base64 32");
+    super("Credentials need JIG_ENCRYPTION_KEY: 32 random bytes in base64. Generate one with: openssl rand -base64 32");
   }
 }
 
@@ -30,7 +30,7 @@ const toBase64Url = (bytes: ArrayLike<number>): string => Buffer.from(bytes).toS
 const KEY_SHAPE = /^[A-Za-z0-9+/]{43}=$/;
 
 function keyBytes(): Uint8Array<ArrayBuffer> | null {
-  const value = process.env.SNIPPETA_ENCRYPTION_KEY?.trim();
+  const value = process.env.JIG_ENCRYPTION_KEY?.trim();
   if (!value || !KEY_SHAPE.test(value)) return null;
   const bytes = fromBase64(value, "base64");
   return bytes.length === 32 ? bytes : null;
@@ -47,7 +47,7 @@ export function assertEncryptionReady(): void {
 let cached: { raw: string; key: Promise<CryptoKey> } | undefined;
 
 function key(): Promise<CryptoKey> {
-  const raw = process.env.SNIPPETA_ENCRYPTION_KEY?.trim() ?? "";
+  const raw = process.env.JIG_ENCRYPTION_KEY?.trim() ?? "";
   if (cached?.raw !== raw) {
     const bytes = keyBytes();
     if (!bytes) return Promise.reject(new CredentialsUnavailable());

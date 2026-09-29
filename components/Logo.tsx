@@ -12,7 +12,7 @@ export function Logo({ className = "" }: { className?: string }) {
           strokeLinejoin="round"
         />
       </svg>
-      Snippeta
+      Jig
     </span>
   );
 }

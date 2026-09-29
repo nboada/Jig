@@ -3,15 +3,15 @@ import { CredentialsUnavailable, DecryptError, decryptSecret, encryptionReady, e
 
 const KEY_A = Buffer.alloc(32, 1).toString("base64");
 const KEY_B = Buffer.alloc(32, 2).toString("base64");
-const saved = process.env.SNIPPETA_ENCRYPTION_KEY;
+const saved = process.env.JIG_ENCRYPTION_KEY;
 
 beforeEach(() => {
-  process.env.SNIPPETA_ENCRYPTION_KEY = KEY_A;
+  process.env.JIG_ENCRYPTION_KEY = KEY_A;
 });
 
 afterAll(() => {
-  if (saved === undefined) delete process.env.SNIPPETA_ENCRYPTION_KEY;
-  else process.env.SNIPPETA_ENCRYPTION_KEY = saved;
+  if (saved === undefined) delete process.env.JIG_ENCRYPTION_KEY;
+  else process.env.JIG_ENCRYPTION_KEY = saved;
 });
 
 describe("crypto", () => {
@@ -44,17 +44,17 @@ describe("crypto", () => {
 
   test("the wrong key fails", async () => {
     const stored = await encryptSecret("hunter2", "c:f");
-    process.env.SNIPPETA_ENCRYPTION_KEY = KEY_B;
+    process.env.JIG_ENCRYPTION_KEY = KEY_B;
     await expect(decryptSecret(stored, "c:f")).rejects.toThrow("Can't decrypt");
   });
 
   test("a missing or short key is reported", async () => {
-    delete process.env.SNIPPETA_ENCRYPTION_KEY;
+    delete process.env.JIG_ENCRYPTION_KEY;
     expect(encryptionReady()).toBe(false);
     await expect(encryptSecret("x", "c:f")).rejects.toBeInstanceOf(CredentialsUnavailable);
-    process.env.SNIPPETA_ENCRYPTION_KEY = Buffer.alloc(16, 1).toString("base64");
+    process.env.JIG_ENCRYPTION_KEY = Buffer.alloc(16, 1).toString("base64");
     expect(encryptionReady()).toBe(false);
-    process.env.SNIPPETA_ENCRYPTION_KEY = KEY_A;
+    process.env.JIG_ENCRYPTION_KEY = KEY_A;
     expect(encryptionReady()).toBe(true);
   });
 
@@ -62,7 +62,7 @@ describe("crypto", () => {
     // Same length as a real 32-byte key (44 chars), but with an invalid character substituted in.
     const malformed = "!" + KEY_A.slice(1);
     expect(malformed).toHaveLength(44);
-    process.env.SNIPPETA_ENCRYPTION_KEY = malformed;
+    process.env.JIG_ENCRYPTION_KEY = malformed;
     expect(encryptionReady()).toBe(false);
   });
 });

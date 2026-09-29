@@ -53,27 +53,27 @@ export function ConnectPanel({ endpoint }: { endpoint: string }) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">2. Add Snippeta to your agent</h2>
+        <h2 className="text-lg font-medium">2. Add Jig to your agent</h2>
         <Config
           title="Claude Code"
           hint="Run once in your terminal. --scope user makes it available in every project."
-          code={`claude mcp add --transport http --scope user snippeta ${endpoint} \\\n  --header "Authorization: Bearer ${token}"`}
+          code={`claude mcp add --transport http --scope user jig ${endpoint} \\\n  --header "Authorization: Bearer ${token}"`}
         />
         <Config
           title="Codex"
-          hint="Add to ~/.codex/config.toml, then export SNIPPETA_TOKEN in your shell profile."
-          code={`[mcp_servers.snippeta]\nurl = "${endpoint}"\nbearer_token_env_var = "SNIPPETA_TOKEN"\n\n# ~/.zshrc\nexport SNIPPETA_TOKEN="${token}"`}
+          hint="Add to ~/.codex/config.toml, then export JIG_TOKEN in your shell profile."
+          code={`[mcp_servers.jig]\nurl = "${endpoint}"\nbearer_token_env_var = "JIG_TOKEN"\n\n# ~/.zshrc\nexport JIG_TOKEN="${token}"`}
         />
         <Config
           title="Kimi Code CLI"
           hint="Run once in your terminal. Saved to ~/.kimi/mcp.json."
-          code={`kimi mcp add --transport http snippeta ${endpoint} \\\n  --header "Authorization: Bearer ${token}"`}
+          code={`kimi mcp add --transport http jig ${endpoint} \\\n  --header "Authorization: Bearer ${token}"`}
         />
         <Config
           title="Cursor and other JSON configs"
           hint="Add to the client's MCP config file, e.g. ~/.cursor/mcp.json."
           code={JSON.stringify(
-            { mcpServers: { snippeta: { url: endpoint, headers: { Authorization: `Bearer ${token}` } } } },
+            { mcpServers: { jig: { url: endpoint, headers: { Authorization: `Bearer ${token}` } } } },
             null,
             2,
           )}
@@ -83,10 +83,10 @@ export function ConnectPanel({ endpoint }: { endpoint: string }) {
       <section className="space-y-2">
         <h2 className="text-lg font-medium">3. Ask for snippets</h2>
         <ul className="list-inside list-disc space-y-1 text-sm text-text/80">
-          <li>Add the GSAP snippet from Snippeta to this project.</li>
-          <li>Set up Lenis using my config from Snippeta.</li>
-          <li>Save this hook to Snippeta as a new snippet, tagged react.</li>
-          <li>The Lenis snippet broke. Show me what changed in Snippeta and roll it back.</li>
+          <li>Add the GSAP snippet from Jig to this project.</li>
+          <li>Set up Lenis using my config from Jig.</li>
+          <li>Save this hook to Jig as a new snippet, tagged react.</li>
+          <li>The Lenis snippet broke. Show me what changed in Jig and roll it back.</li>
         </ul>
       </section>
     </>

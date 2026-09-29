@@ -21,7 +21,7 @@ export default async function ConnectPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Connect an agent</h1>
         <p className="mt-2 text-muted">
-          Snippeta is an MCP server. Any agent that speaks MCP over HTTP (Claude Code, Codex, Kimi, Cursor) can search,
+          Jig is an MCP server. Any agent that speaks MCP over HTTP (Claude Code, Codex, Kimi, Cursor) can search,
           fetch, save and roll back snippets once it has a token.
         </p>
         <p className="mt-4 rounded-md border border-line bg-panel px-3 py-2 font-mono text-sm break-all">{endpoint}</p>

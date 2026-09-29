@@ -6,11 +6,11 @@ import { verifyToken } from "@/lib/tokens";
 export const runtime = "nodejs";
 
 const handler = createMcpHandler((server) => registerTools(server, getDb), {
-  serverInfo: { name: "snippeta", version: "1.0.0" },
+  serverInfo: { name: "jig", version: "1.0.0" },
   instructions: SERVER_INSTRUCTIONS,
 });
 
-/** Agents authenticate with a token created on the Connect page: `Authorization: Bearer snp_...`. */
+/** Agents authenticate with a token created on the Connect page: `Authorization: Bearer jig_...`. */
 const authed = withMcpAuth(
   handler,
   async (_req, bearer) => {

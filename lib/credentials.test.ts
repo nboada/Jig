@@ -14,7 +14,7 @@ import { SnippetError } from "./snippets";
 
 const KEY = Buffer.alloc(32, 7).toString("base64");
 const OTHER_KEY = Buffer.alloc(32, 8).toString("base64");
-const saved = process.env.SNIPPETA_ENCRYPTION_KEY;
+const saved = process.env.JIG_ENCRYPTION_KEY;
 let db: Db;
 
 beforeAll(async () => {
@@ -22,20 +22,20 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  process.env.SNIPPETA_ENCRYPTION_KEY = KEY;
+  process.env.JIG_ENCRYPTION_KEY = KEY;
   await db.query(`TRUNCATE credentials`);
 });
 
 afterAll(() => {
-  if (saved === undefined) delete process.env.SNIPPETA_ENCRYPTION_KEY;
-  else process.env.SNIPPETA_ENCRYPTION_KEY = saved;
+  if (saved === undefined) delete process.env.JIG_ENCRYPTION_KEY;
+  else process.env.JIG_ENCRYPTION_KEY = saved;
 });
 
 const shopify = {
   title: "Acme Shopify",
   url: "https://acme.myshopify.com/admin",
   tags: ["acme"],
-  note: "Custom app: Snippeta sync",
+  note: "Custom app: Jig sync",
   fields: [
     { label: "Store", secret: false, value: "store-01.example" },
     { label: "API key", secret: true, value: "shpat_live_123" },
@@ -126,10 +126,10 @@ describe("credentials", () => {
 
   test("a changed key gives a decrypt error, a missing key blocks everything but the list", async () => {
     const c = await createCredential(db, shopify);
-    process.env.SNIPPETA_ENCRYPTION_KEY = OTHER_KEY;
+    process.env.JIG_ENCRYPTION_KEY = OTHER_KEY;
     await expect(revealField(db, slug, c.fields[1].id)).rejects.toThrow("Can't decrypt");
 
-    delete process.env.SNIPPETA_ENCRYPTION_KEY;
+    delete process.env.JIG_ENCRYPTION_KEY;
     await expect(getCredential(db, slug)).rejects.toBeInstanceOf(CredentialsUnavailable);
     await expect(createCredential(db, shopify)).rejects.toBeInstanceOf(CredentialsUnavailable);
     expect((await listCredentials(db)).length).toBe(1);
@@ -151,7 +151,7 @@ describe("credentials", () => {
 
   test("deleteCredential and listCredentialTags reject when the key is missing", async () => {
     await createCredential(db, shopify);
-    delete process.env.SNIPPETA_ENCRYPTION_KEY;
+    delete process.env.JIG_ENCRYPTION_KEY;
     await expect(deleteCredential(db, slug)).rejects.toBeInstanceOf(CredentialsUnavailable);
     await expect(listCredentialTags(db)).rejects.toBeInstanceOf(CredentialsUnavailable);
   });

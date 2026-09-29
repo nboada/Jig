@@ -29,18 +29,18 @@ import {
 } from "./notes";
 import { fileSchema, languageSchema } from "./validation";
 
-export const SERVER_INSTRUCTIONS = `Snippeta is the user's personal library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) shared across their projects.
+export const SERVER_INSTRUCTIONS = `Jig is the user's personal library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) shared across their projects.
 
-When the user asks for a snippet "from Snippeta" (e.g. "add the GSAP snippet", "grab my Lenis config"):
+When the user asks for a snippet "from Jig" (e.g. "add the GSAP snippet", "grab my Lenis config"):
 1. Call search_snippets with a short query to find it, unless you already know the exact slug.
 2. Call get_snippet with the slug to fetch the files, dependencies and integration instructions.
 3. Install any listed dependencies with the project's package manager, then adapt the files to the project's structure and conventions. Follow the snippet's instructions.
 
 When the user asks to save or update a snippet, use create_snippet or update_snippet. Every update is saved as a new version, so nothing is ever lost. Always pass a short message describing the change. Use list_snippet_versions, diff_snippet_versions and restore_snippet_version to inspect history or roll back when a snippet stopped working.
 
-Snippeta also holds the user's notes: free-form markdown such as setup steps, client details or decisions. Use search_notes and get_note when the user refers to one of their notes, and create_note or update_note to save one. Notes are versioned like snippets, so always pass a short message on update.
+Jig also holds the user's notes: free-form markdown such as setup steps, client details or decisions. Use search_notes and get_note when the user refers to one of their notes, and create_note or update_note to save one. Notes are versioned like snippets, so always pass a short message on update.
 
-Snippeta also stores the user's credentials, but they are never available to agents. When a task needs a password, API key or other secret, ask the user for it.`;
+Jig also stores the user's credentials, but they are never available to agents. When a task needs a password, API key or other secret, ask the user for it.`;
 
 type Text = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -103,8 +103,8 @@ async function run(fn: () => Promise<Text>): Promise<Text> {
     return await fn();
   } catch (error) {
     if (error instanceof SnippetError) return { ...text(error.message), isError: true };
-    console.error("[snippeta] tool failed", error);
-    return { ...text("Something went wrong on the Snippeta server. Try again."), isError: true };
+    console.error("[jig] tool failed", error);
+    return { ...text("Something went wrong on the Jig server. Try again."), isError: true };
   }
 }
 

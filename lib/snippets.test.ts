@@ -176,9 +176,9 @@ describe("diff", () => {
 describe("tokens", () => {
   test("a token verifies until revoked and is stored hashed", async () => {
     const { token, record } = await createToken(db, "Claude Code");
-    expect(token.startsWith("snp_")).toBe(true);
+    expect(token.startsWith("jig_")).toBe(true);
     expect((await verifyToken(db, token))?.name).toBe("Claude Code");
-    expect(await verifyToken(db, "snp_wrong")).toBeNull();
+    expect(await verifyToken(db, "jig_wrong")).toBeNull();
     expect(await verifyToken(db, undefined)).toBeNull();
 
     const [listed] = await listTokens(db);
@@ -188,5 +188,13 @@ describe("tokens", () => {
 
     await revokeToken(db, record.id);
     expect(await verifyToken(db, token)).toBeNull();
+  });
+
+  test("tokens from before the rename to Jig still verify", async () => {
+    const legacy = "snp_legacy-token";
+    const hash = Buffer.from(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(legacy))).toString("hex");
+    await db.query(`INSERT INTO api_tokens (id, name, token_hash, prefix) VALUES ('t1', 'Old agent', $1, 'snp_legac')`, [hash]);
+    expect((await verifyToken(db, legacy))?.name).toBe("Old agent");
+    expect(await verifyToken(db, "abc_legacy-token")).toBeNull();
   });
 });

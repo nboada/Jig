@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Snippeta", template: "%s · Snippeta" },
+  title: { default: "Jig", template: "%s · Jig" },
   description: "Versioned code snippets your agents can reach over MCP.",
   robots: { index: false, follow: false },
 };

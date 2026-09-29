@@ -20,7 +20,7 @@ export function timeAgo(iso: string, now = Date.now()): string {
 const dateTime = new Intl.DateTimeFormat("en-AU", {
   dateStyle: "medium",
   timeStyle: "short",
-  timeZone: process.env.SNIPPETA_TIMEZONE || "Australia/Sydney",
+  timeZone: process.env.JIG_TIMEZONE || "Australia/Sydney",
 });
 
 export function formatDate(iso: string): string {
