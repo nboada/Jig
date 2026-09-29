@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { AppShortcuts } from "@/components/AppShortcuts";
 import { HeaderActions } from "@/components/HeaderActions";
@@ -5,9 +6,11 @@ import { TooltipProvider } from "@/components/Tooltip";
 import { Logo } from "@/components/Logo";
 import { BottomNav, TopNav } from "@/components/TopNav";
 import { requireAuth } from "@/lib/auth";
+import { NAV_ORDER_COOKIE, parseNavOrder } from "@/lib/prefs";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   await requireAuth();
+  const order = parseNavOrder((await cookies()).get(NAV_ORDER_COOKIE)?.value);
   return (
     <TooltipProvider>
       <div className="min-h-dvh pb-20 md:pb-0">
@@ -18,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/" aria-label="Home" className="flex items-center justify-self-start">
               <Logo />
             </Link>
-            <TopNav className="hidden md:flex" />
+            <TopNav order={order} className="hidden md:flex" />
             <div className="col-start-3 justify-self-end">
               <HeaderActions />
             </div>
@@ -26,8 +29,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="mx-auto w-full min-w-0 max-w-[90rem] px-4 pt-6 pb-8 md:px-6">{children}</main>
-        <BottomNav />
-        <AppShortcuts />
+        <BottomNav order={order} />
+        <AppShortcuts order={order} />
       </div>
     </TooltipProvider>
   );

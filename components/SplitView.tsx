@@ -16,7 +16,7 @@ export function SplitView({ base, column, children }: { base: string; column: Re
   const inPane = rest.length === 1 || (rest.length === 2 && rest[1] === "edit");
   if (!atIndex && !inPane) return <div className="@container">{children}</div>;
   return (
-    <div className="md:grid md:grid-cols-[300px_minmax(0,1fr)] md:items-start md:gap-8">
+    <div className="md:grid md:grid-cols-[340px_minmax(0,1fr)] md:items-start md:gap-8">
       <div className={atIndex ? "" : "hidden md:block"}>{column}</div>
       <div className={`@container min-w-0 md:pt-1.5 ${atIndex ? "hidden md:block" : ""}`}>{children}</div>
     </div>

@@ -41,7 +41,7 @@ export function CredentialColumn() {
       newLabel="New credential"
       renderRow={(c) => (
         <>
-          <span className="block truncate text-ui font-medium text-text group-aria-[current=page]:text-accent">{c.title}</span>
+          <span className="block truncate text-body font-medium text-text group-aria-[current=page]:text-accent">{c.title}</span>
           <span className="mt-0.5 flex items-center gap-1.5 font-mono text-meta text-muted">
             {/* Relative times can tick over between the server render and the browser's. */}
             <span className="shrink-0" suppressHydrationWarning>

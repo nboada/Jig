@@ -27,7 +27,7 @@ export function NoteColumn() {
       newLabel="New note"
       renderRow={(n) => (
         <>
-          <span className="flex items-center gap-1.5 text-ui font-medium text-text group-aria-[current=page]:text-accent">
+          <span className="flex items-center gap-1.5 text-body font-medium text-text group-aria-[current=page]:text-accent">
             <span className="truncate">{n.title}</span>
             {n.locked && <LockIcon className="size-3 shrink-0 text-muted" />}
           </span>

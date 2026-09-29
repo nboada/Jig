@@ -19,3 +19,19 @@ export function isPlainKey(event: KeyboardEvent, key: string): boolean {
   const target = event.target as HTMLElement | null;
   return !target?.closest("input, textarea, select, [contenteditable], [role=listbox], [role=dialog]");
 }
+
+/** The order of the section tabs, which the user can drag to change. The 1–3 keys follow it. */
+export const SECTION_ORDER: Section[] = ["snippets", "notes", "credentials"];
+export const NAV_ORDER_COOKIE = "jig-nav-order";
+
+/** The saved tab order, or the default when there's none or it's not a full set of the three. */
+export function parseNavOrder(value: string | undefined): Section[] {
+  const parts = (value ?? "").split(",");
+  const valid = parts.length === 3 && new Set(parts).size === 3 && parts.every((p) => SECTION_ORDER.includes(p as Section));
+  return valid ? (parts as Section[]) : [...SECTION_ORDER];
+}
+
+/** Saves the tab order for a year. Browser only. */
+export function saveNavOrder(order: Section[]) {
+  document.cookie = `${NAV_ORDER_COOKIE}=${order.join(",")}; path=/; max-age=31536000; samesite=lax`;
+}

@@ -124,7 +124,6 @@ export default async function NotePage({ params, searchParams }: Props) {
                 title={note.title}
                 pinned={note.pinned}
                 locked={note.locked}
-                readable={readable}
                 latest={isLatest}
                 versions={note.currentVersion}
                 details={

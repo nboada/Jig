@@ -40,7 +40,6 @@ export function useItemActions({
   url,
   pinned = false,
   locked = false,
-  readable = false,
   latest = true,
   versions,
   newTab = true,
@@ -51,9 +50,8 @@ export function useItemActions({
   title: string;
   url?: string;
   pinned?: boolean;
-  /** A locked note, and whether it's unlocked right now (only known on its own page). */
+  /** A locked note: no clone, share or copy for agent, and its lock can be removed. */
   locked?: boolean;
-  readable?: boolean;
   /** False on an older version: only Details is offered. */
   latest?: boolean;
   /** How many versions a delete removes, for its warning. */
@@ -108,7 +106,10 @@ export function useItemActions({
         onSelect: () => startAction(async () => router.push(`${base}/${await cloneItem(kind, slug)}`)),
       });
     }
-    actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => navigator.clipboard.writeText(agentPrompt(kind, slug)) });
+    // Agents can't see a locked note, so there's nothing to hand them.
+    if (!locked) {
+      actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => navigator.clipboard.writeText(agentPrompt(kind, slug)) });
+    }
   }
   if (latest && !versioned && url) {
     actions.push({ key: "url", label: "Copy URL", icon: LinkIcon, onSelect: () => navigator.clipboard.writeText(url) });
@@ -117,7 +118,9 @@ export function useItemActions({
   if (latest && kind === "notes") {
     // Locking also has a button beside the pin; the right-click menu in the list needs it here.
     if (!locked) actions.push({ key: "lock", label: "Lock note…", icon: LockIcon, onSelect: () => setLocking("lock") });
-    else if (readable) actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
+    // Offered even where the list can't tell whether the notes are unlocked; the server refuses
+    // (and the dialog says why) until they are.
+    else actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
   }
   if (newTab) actions.push({ key: "tab", label: "Open in new tab", icon: ExternalIcon, onSelect: () => window.open(`${base}/${slug}`, "_blank", "noopener") });
   if (onDetails) actions.push({ key: "details", label: "Details…", icon: InfoIcon, onSelect: onDetails });
