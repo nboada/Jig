@@ -112,24 +112,18 @@ export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: Fo
         pending={pending}
         label={snippet ? "Save" : "Create"}
         {...header}
+        title={{
+          value: title,
+          onChange: (next) => {
+            setFiles((list) => renameForTitle(list, title, next));
+            setTitle(next);
+          },
+          placeholder: "Snippet title",
+          autoFocus: !snippet,
+        }}
       />
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
-        <label>
-          <span className={label}>Title</span>
-          <input
-            className={field}
-            value={title}
-            onChange={(e) => {
-              const next = e.target.value;
-              setFiles((list) => renameForTitle(list, title, next));
-              setTitle(next);
-            }}
-            placeholder="GSAP ScrollTrigger setup"
-            required
-            autoFocus={!snippet}
-          />
-        </label>
+      <div className="grid gap-4 sm:grid-cols-[220px]">
         <div>
           <span className={label}>Language</span>
           <LanguageSelect
@@ -152,7 +146,7 @@ export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: Fo
           const formattable = canBeautify(fileLanguage);
           return (
             <div key={index} className="overflow-hidden rounded-xl border border-line bg-well transition focus-within:border-line-strong">
-              <div className="flex h-11 items-center gap-1.5 border-b border-raised bg-[#0e0f11] pr-2 pl-1.5">
+              <div className="flex h-11 items-center gap-1.5 border-b border-raised bg-strip pr-2 pl-1.5">
                 <input
                   aria-label="File name"
                   className="h-8 min-w-0 flex-1 rounded-md bg-transparent px-2 font-mono text-[12.5px] text-text outline-none transition hover:bg-raised/60 focus:bg-raised"

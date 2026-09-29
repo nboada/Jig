@@ -109,6 +109,7 @@ export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
               try {
                 const response = await promptPasskey();
                 if (response) done(await unlockWithPasskey(response));
+                else setError("No passkey on this device? Add one from ⋯ → Passkeys in the header, or use your password.");
               } catch {
                 setError("That passkey didn't work. Try again, or use your password.");
               }
@@ -185,7 +186,9 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       } catch (e) {
         if (e instanceof Error && e.name === "NotAllowedError") return;
         if (e instanceof Error && e.name === "InvalidStateError") setError("This device already has a passkey for Jig.");
-        else setError("The passkey couldn't be added. Try again.");
+        else if (e instanceof Error && e.name === "NotSupportedError") {
+          setError("This browser can't save a passkey on this device. Try Safari or Chrome.");
+        } else setError("The passkey couldn't be added. Try again.");
       }
     });
   }

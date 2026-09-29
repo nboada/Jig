@@ -2,18 +2,24 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  /* Surfaces, darkest to lightest. Code and fields sit in the well, below the page. */
-  --color-well: #08090a;
-  --color-ink: #0c0d0f;
+  /*
+   * Surfaces: neutral greys after VS Code's Dark Modern. The page is the window (#181818), panels
+   * and code are the editor (#1f1f1f), and a file's header strip matches the tab bar.
+   */
+  --color-ink: #181818;
+  /* Code and fields. */
+  --color-well: #1f1f1f;
   /* Panels (cards, the list column) and the floating header share one colour. */
-  --color-panel: #141518;
+  --color-panel: #1f1f1f;
+  /* The strip above a file or the note editor: the name, tabs and tools. */
+  --color-strip: #181818;
   /* A step lighter than panels, for hovers and selected states on them. */
-  --color-raised: #1b1d21;
+  --color-raised: #2a2d2e;
   /* Menus and dialogs, a step above panels so they visibly lift. */
-  --color-overlay: #202328;
-  --color-line: #2a2d33;
+  --color-overlay: #252526;
+  --color-line: #2b2b2b;
   /* Borders on hover, and the edge of a field being typed in. */
-  --color-line-strong: #3a3e46;
+  --color-line-strong: #3c3c3c;
   --color-text: #e8e9ec;
   /* Secondary text: descriptions, values beside labels. Solid, never an opacity of text. */
   --color-text-2: #b6bac2;

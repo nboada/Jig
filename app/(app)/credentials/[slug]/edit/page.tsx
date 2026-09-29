@@ -19,7 +19,6 @@ export default async function EditCredentialPage({ params }: { params: Promise<{
         credential={credential}
         header={{
           eyebrow: "Edit credential",
-          title: credential.title,
         }}
       />
     </div>

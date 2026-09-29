@@ -8,7 +8,7 @@ import { CopyButton } from "@/components/CopyButton";
 function Config({ title, hint, code }: { title: string; hint: string; code: string }) {
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-well">
-      <div className="flex items-start justify-between gap-3 border-b border-raised bg-[#0e0f11] px-4 py-2.5">
+      <div className="flex items-start justify-between gap-3 border-b border-raised bg-strip px-4 py-2.5">
         <div>
           <h3 className="text-body font-medium">{title}</h3>
           <p className="text-meta text-muted">{hint}</p>

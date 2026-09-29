@@ -72,7 +72,7 @@ const frame = Prec.highest(EditorView.theme({
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
     backgroundColor: "color-mix(in srgb, #cefd53 22%, transparent) !important",
   },
-  ".cm-matchingBracket": { backgroundColor: "#2a2d33", outline: "none" },
+  ".cm-matchingBracket": { backgroundColor: "var(--color-line)", outline: "none" },
   // Stretch the typing area over the whole box, so a click anywhere in it starts typing.
   ".cm-content, .cm-gutter": { minHeight: "18rem" },
   ".cm-content": { padding: "12px 0" },

@@ -7,7 +7,7 @@ export default function NewSnippetPage() {
   return (
     <div>
       <SnippetForm
-        header={{ eyebrow: "Snippets", title: "New snippet" }}
+        header={{ eyebrow: "New snippet" }}
       />
     </div>
   );

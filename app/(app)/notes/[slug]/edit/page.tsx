@@ -17,11 +17,7 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
     <div>
       <NoteForm
         note={note}
-        header={{
-          eyebrow: "Edit note",
-          title: note.title,
-          description: `Saving creates version ${note.currentVersion + 1}. Every earlier version stays in the history.`,
-        }}
+        header={{ eyebrow: "Edit note" }}
       />
     </div>
   );

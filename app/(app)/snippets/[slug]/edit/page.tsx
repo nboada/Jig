@@ -14,11 +14,7 @@ export default async function EditSnippetPage({ params }: { params: Promise<{ sl
     <div>
       <SnippetForm
         snippet={snippet}
-        header={{
-          eyebrow: "Edit snippet",
-          title: snippet.title,
-          description: `Saving creates version ${snippet.currentVersion + 1}. Every earlier version stays in the history.`,
-        }}
+        header={{ eyebrow: "Edit snippet" }}
       />
     </div>
   );

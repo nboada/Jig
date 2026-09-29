@@ -145,7 +145,6 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         meta={
           <Meta>
             {[
-              <span key="v" className="text-text-2">{`v${snippet.version}`}</span>,
               // Who saved it, only worth a mention when it was an agent rather than you.
               snippet.source !== "web" && formatSource(snippet.source),
               <span key="t" suppressHydrationWarning>

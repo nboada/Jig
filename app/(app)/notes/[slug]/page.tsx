@@ -148,7 +148,6 @@ export default async function NotePage({ params, searchParams }: Props) {
         meta={
           <Meta>
             {[
-              <span key="v" className="text-text-2">{`v${note.version}`}</span>,
               // Who saved it, only worth a mention when it was an agent rather than you.
               note.source !== "web" && formatSource(note.source),
               <span key="t" suppressHydrationWarning>

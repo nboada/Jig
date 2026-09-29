@@ -52,23 +52,19 @@ export function CredentialForm({ credential, header }: { credential?: Credential
         pending={pending}
         label={credential ? "Save" : "Create"}
         {...header}
+        title={{ value: title, onChange: setTitle, placeholder: "Credential title", autoFocus: !credential }}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label>
-          <span className={label}>Title</span>
-          <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Acme Shopify" required autoFocus={!credential} />
-        </label>
-        <label>
           <span className={label}>URL (optional)</span>
           <input className={field} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://acme.myshopify.com/admin" />
         </label>
+        <label>
+          <span className={label}>Tags (comma separated)</span>
+          <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="acme, shopify" />
+        </label>
       </div>
-
-      <label className="block">
-        <span className={label}>Tags (comma separated)</span>
-        <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="acme, shopify" />
-      </label>
 
       <div className="space-y-2">
         <span className={label}>Fields</span>

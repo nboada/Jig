@@ -5,13 +5,18 @@ import { useEffect, useRef } from "react";
 import { button } from "@/components/Button";
 import { Kbd } from "@/components/Kbd";
 
+/** What the page puts at the top of its form. */
+export type FormHeader = { eyebrow: string; description?: string };
+
+/** The title, edited where it's shown: the page heading is the field. */
+export type TitleField = { value: string; onChange: (value: string) => void; placeholder: string; autoFocus?: boolean };
+
 /**
  * The top of a new or edit form, laid out like the item page's header: a small line where the item
  * page has its badges, then the title with Cancel and Save on the right, exactly where Edit was.
- * Cancel goes back, so there's no separate back link. Rendered inside the form, so Save submits it; ⌘S does the same.
+ * The title is typed straight into the heading, so there's no second Title field below. Cancel goes
+ * back, so there's no separate back link. Rendered inside the form, so Save submits it; ⌘S does too.
  */
-/** What the page puts at the top of its form. */
-export type FormHeader = { eyebrow: string; title: string; description?: string };
 
 export function FormBar({
   eyebrow,
@@ -21,6 +26,7 @@ export function FormBar({
   pending,
   label,
 }: FormHeader & {
+  title: TitleField;
   cancelHref: string;
   pending: boolean;
   label: string;
@@ -41,7 +47,18 @@ export function FormBar({
     <header className="space-y-2">
       <p className="engraved flex h-5 items-center">{eyebrow}</p>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="min-w-0 truncate text-title font-semibold">{title}</h1>
+        <h1 className="min-w-0 flex-1">
+          <input
+            aria-label="Title"
+            required
+            maxLength={120}
+            value={title.value}
+            onChange={(e) => title.onChange(e.target.value)}
+            placeholder={title.placeholder}
+            autoFocus={title.autoFocus}
+            className="-my-1 -ml-3 w-[calc(100%+0.75rem)] truncate rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-title font-semibold text-text outline-none transition placeholder:text-faint hover:border-line focus:border-line-strong focus:bg-well"
+          />
+        </h1>
         <div className="form-actions flex shrink-0 items-center gap-1.5">
           <Link href={cancelHref} className={button({ variant: "ghost" })}>
             Cancel

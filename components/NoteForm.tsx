@@ -27,21 +27,16 @@ export function NoteForm({ note, header }: { note?: Note; header: FormHeader }) 
     <form action={action} className="form-enter space-y-6">
       <input type="hidden" name="slug" value={note?.slug ?? ""} />
       <input type="hidden" name="payload" value={payload} />
-      <FormBar cancelHref={note ? `/notes/${note.slug}` : "/notes"} pending={pending} label={note ? "Save" : "Create"} {...header} />
+      <FormBar
+        cancelHref={note ? `/notes/${note.slug}` : "/notes"}
+        pending={pending}
+        label={note ? "Save" : "Create"}
+        {...header}
+        title={{ value: title, onChange: setTitle, placeholder: "Note title", autoFocus: !note }}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label>
-          <span className={label}>Title</span>
-          <input
-            className={field}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Acme hosting setup"
-            required
-            autoFocus={!note}
-          />
-        </label>
-        <label>
+      <div>
+        <label className="block">
           <span className={label}>Tags (comma separated)</span>
           <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="acme, hosting" />
         </label>

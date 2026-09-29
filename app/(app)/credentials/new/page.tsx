@@ -10,7 +10,7 @@ export default function NewCredentialPage() {
   return (
     <div>
       <CredentialForm
-        header={{ eyebrow: "Credentials", title: "New credential" }}
+        header={{ eyebrow: "New credential" }}
       />
     </div>
   );

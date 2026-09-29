@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 // The installed app's title bar and the browser's UI take the page's darkest colour.
-export const viewport: Viewport = { themeColor: "#0c0d0f" };
+export const viewport: Viewport = { themeColor: "#181818" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

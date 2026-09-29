@@ -59,6 +59,9 @@ export async function registrationOptions(db: Db, site: Site) {
     excludeCredentials: existing.map((p) => ({ id: p.id, transports: p.transports as never })),
     // Discoverable, so signing in needs no username; verified, so it always asks for Touch ID.
     authenticatorSelection: { residentKey: "required", userVerification: "required" },
+    // Ask for this device's own authenticator (Touch ID, Windows Hello) rather than letting the
+    // browser default to "use a phone" with a QR code, which Brave does.
+    preferredAuthenticatorType: "localDevice",
   });
 }
 

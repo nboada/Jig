@@ -7,7 +7,7 @@ export default function NewNotePage() {
   return (
     <div>
       <NoteForm
-        header={{ eyebrow: "Notes", title: "New note" }}
+        header={{ eyebrow: "New note" }}
       />
     </div>
   );

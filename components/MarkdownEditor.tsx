@@ -41,7 +41,7 @@ export function MarkdownEditor({
     // Framed like a snippet's file: the toolbar is the frame's header, the note its body.
     <div className="rounded-xl border border-line bg-well">
       {/* The toolbar stays in reach under the header on a long note. */}
-      <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-[#0e0f11]/95 p-1 backdrop-blur">
+      <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-strip/95 p-1 backdrop-blur">
         {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-meta text-muted">Editing the markdown source</span>}
         <div className="ml-auto flex rounded-md border border-line bg-well p-0.5" role="group" aria-label="Editor">
           {(["Rich", "Markdown"] as const).map((mode) => {

@@ -17,7 +17,7 @@ export function CodeTabs({ files }: { files: RenderedFile[] }) {
   if (!file) return null;
   return (
     <figure className="overflow-hidden rounded-xl border border-line bg-well">
-      <div className="flex items-stretch gap-1 border-b border-raised bg-[#0e0f11] pr-2 pl-1">
+      <div className="flex items-stretch gap-1 border-b border-raised bg-strip pr-2 pl-1">
         <div role={files.length > 1 ? "tablist" : undefined} className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
           {files.map((f, i) => {
             const active = f === file;
