@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { saveSnippet } from "@/app/actions";
-import { defaultFileName, LANGUAGES } from "@/lib/languages";
+import { defaultFileName, languageForFile, LANGUAGES } from "@/lib/languages";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
 export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
@@ -36,6 +36,10 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<SnippetFile[]>(
     snippet?.files ?? [{ name: defaultFileName("javascript"), content: "" }],
+  );
+  // The optional fields start folded away unless the snippet already uses them.
+  const hasDetails = Boolean(
+    snippet && (snippet.description || snippet.tags.length || snippet.dependencies.length || snippet.instructions),
   );
 
   const updateFile = (index: number, change: Partial<SnippetFile>) =>
@@ -93,43 +97,6 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
         </label>
       </div>
 
-      <label className="block">
-        <span className={label}>Description</span>
-        <textarea
-          className={`${field} min-h-20`}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="What it does and when to reach for it."
-        />
-      </label>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label>
-          <span className={label}>Tags (comma separated)</span>
-          <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="gsap, animation" />
-        </label>
-        <label>
-          <span className={label}>Dependencies (one per line)</span>
-          <textarea
-            className={`${field} min-h-[42px] font-mono text-sm`}
-            rows={Math.max(1, dependencies.split("\n").length)}
-            value={dependencies}
-            onChange={(e) => setDependencies(e.target.value)}
-            placeholder="gsap@^3.13"
-          />
-        </label>
-      </div>
-
-      <label className="block">
-        <span className={label}>Instructions for agents</span>
-        <textarea
-          className={`${field} min-h-24 text-sm`}
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Where the files go, how to wire them up, anything to watch out for."
-        />
-      </label>
-
       <div className="space-y-4">
         {files.map((file, index) => (
           <div key={index} className="overflow-hidden rounded-lg border border-line bg-panel focus-within:border-muted">
@@ -138,7 +105,13 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                 aria-label="File name"
                 className="min-w-0 flex-1 rounded bg-transparent px-2 py-1 font-mono text-[13px] outline-none focus:bg-raised"
                 value={file.name}
-                onChange={(e) => updateFile(index, { name: e.target.value })}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  updateFile(index, { name });
+                  // On a new single-file snippet, the extension picks the language.
+                  const detected = languageForFile(name, "");
+                  if (!snippet && files.length === 1 && detected) setLanguage(detected);
+                }}
                 required
               />
               {files.length > 1 && (
@@ -166,22 +139,73 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
         <button
           type="button"
           onClick={() => setFiles((list) => [...list, { name: `file-${list.length + 1}.${defaultFileName(language).split(".").pop()}`, content: "" }])}
-          className="w-full rounded-lg border border-dashed border-line py-2.5 text-sm text-muted hover:border-muted hover:text-text"
+          className="text-sm text-muted hover:text-text"
         >
-          Add another file
+          + Add another file
         </button>
       </div>
 
+      <details open={hasDetails} className="group rounded-lg border border-line">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-muted hover:text-text [&::-webkit-details-marker]:hidden">
+          <span>More details: description, tags, dependencies, agent instructions</span>
+          <span className="transition group-open:rotate-90" aria-hidden>
+            ›
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-line p-4">
+          <label className="block">
+            <span className={label}>Description</span>
+            <textarea
+              className={`${field} min-h-20`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What it does and when to reach for it."
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className={label}>Tags (comma separated)</span>
+              <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="gsap, animation" />
+            </label>
+            <label>
+              <span className={label}>Dependencies (one per line)</span>
+              <textarea
+                className={`${field} min-h-[42px] font-mono text-sm`}
+                rows={Math.max(1, dependencies.split("\n").length)}
+                value={dependencies}
+                onChange={(e) => setDependencies(e.target.value)}
+                placeholder="gsap@^3.13"
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className={label}>Instructions for agents</span>
+            <textarea
+              className={`${field} min-h-24 text-sm`}
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="Where the files go, how to wire them up, anything to watch out for."
+            />
+          </label>
+        </div>
+      </details>
+
       <div className="flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-end">
-        <label className="flex-1">
-          <span className={label}>{snippet ? "What changed?" : "Note (optional)"}</span>
-          <input
-            className={field}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={snippet ? "Bumped to GSAP 3.13" : "Created"}
-          />
-        </label>
+        {snippet ? (
+          <label className="flex-1">
+            <span className={label}>What changed?</span>
+            <input
+              className={field}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Bumped to GSAP 3.13"
+            />
+          </label>
+        ) : (
+          <div className="flex-1" />
+        )}
         <div className="flex gap-3">
           <Link
             href={snippet ? `/snippets/${snippet.slug}` : "/"}
