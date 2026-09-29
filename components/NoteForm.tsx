@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { saveNote } from "@/app/actions";
-import { field, indentOnTab, label } from "@/components/SnippetForm";
+import { MarkdownEditor } from "@/components/MarkdownEditor";
+import { field, label } from "@/components/SnippetForm";
 import type { Note } from "@/lib/notes";
 
 export function NoteForm({ note }: { note?: Note }) {
@@ -44,17 +45,14 @@ export function NoteForm({ note }: { note?: Note }) {
         </label>
       </div>
 
-      <label className="block">
-        <span className={label}>Note (markdown)</span>
-        <textarea
-          className={`${field} block min-h-96 resize-y font-mono text-[13px] leading-relaxed`}
-          style={{ tabSize: 2 }}
+      <div>
+        <span className={label}>Note</span>
+        <MarkdownEditor
           value={body}
-          onKeyDown={indentOnTab}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={setBody}
           placeholder="Steps, decisions, client details. Keep passwords and API keys in Credentials."
         />
-      </label>
+      </div>
 
       <div className="flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-end">
         <label className="flex-1">

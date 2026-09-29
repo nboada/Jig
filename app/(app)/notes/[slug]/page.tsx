@@ -9,6 +9,7 @@ import { Markdown } from "@/components/Markdown";
 import { getDb } from "@/lib/db";
 import { formatDate, formatSource } from "@/lib/format";
 import { getNote } from "@/lib/notes";
+import { getListPrefs } from "@/lib/view";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
@@ -25,12 +26,16 @@ export default async function NotePage({ params, searchParams }: Props) {
   if (!note) notFound();
 
   const isLatest = note.version === note.currentVersion;
+  const { view } = await getListPrefs("notes");
   const prompt = `Use my "${note.slug}" note from Jig.`;
 
   return (
-    <article className="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <article className="grid gap-8 @5xl:grid-cols-[minmax(0,1fr)_220px]">
       <div className="min-w-0 space-y-6">
-        <BackLink href="/notes">Notes</BackLink>
+        {/* In the split view the list is right there; keep the link for phones and the grid view. */}
+        <BackLink href="/notes" className={view === "list" ? "md:hidden" : ""}>
+          Notes
+        </BackLink>
         {!isLatest && (
           <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
             <p className="flex-1">
@@ -63,7 +68,22 @@ export default async function NotePage({ params, searchParams }: Props) {
               </Link>
             ))}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{note.title}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{note.title}</h1>
+            {isLatest && (
+              <div className="flex shrink-0 gap-2 text-sm">
+                <Link href={`/notes/${slug}/history`} className="rounded-md border border-line px-3 py-1.5 hover:border-muted">
+                  History
+                </Link>
+                <Link
+                  href={`/notes/${slug}/edit`}
+                  className="rounded-md bg-accent px-3 py-1.5 font-medium text-accent-ink hover:brightness-110"
+                >
+                  Edit
+                </Link>
+              </div>
+            )}
+          </div>
         </header>
 
         {note.body ? (
@@ -78,35 +98,18 @@ export default async function NotePage({ params, searchParams }: Props) {
         )}
       </div>
 
-      <aside className="space-y-6 text-sm lg:sticky lg:top-20 lg:self-start">
-        {isLatest && (
-          <div className="flex gap-2">
-            <Link
-              href={`/notes/${slug}/edit`}
-              className="flex-1 rounded-md bg-accent px-3 py-2 text-center font-medium text-accent-ink hover:brightness-110"
-            >
-              Edit
-            </Link>
-            <Link
-              href={`/notes/${slug}/history`}
-              className="flex-1 rounded-md border border-line px-3 py-2 text-center hover:border-muted"
-            >
-              History
-            </Link>
-          </div>
-        )}
-
+      <aside className="space-y-5 text-xs @5xl:sticky @5xl:top-22 @5xl:self-start">
         <div className="space-y-2">
           <h2 className="text-muted">Ask your agent</h2>
-          <div className="flex items-start gap-2 rounded-md border border-line bg-panel p-3">
-            <p className="flex-1 font-mono text-xs leading-relaxed">{prompt}</p>
+          <div className="flex items-start gap-2 rounded-md border border-line bg-panel p-2.5">
+            <p className="flex-1 font-mono text-[11px] leading-relaxed">{prompt}</p>
             <CopyButton value={prompt} />
           </div>
         </div>
 
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
           <dt className="text-muted">Slug</dt>
-          <dd className="truncate font-mono text-xs leading-5">{note.slug}</dd>
+          <dd className="truncate font-mono text-[11px] leading-4">{note.slug}</dd>
           <dt className="text-muted">Saved</dt>
           <dd>{formatDate(note.versionCreatedAt)}</dd>
           <dt className="text-muted">By</dt>
@@ -126,7 +129,8 @@ export default async function NotePage({ params, searchParams }: Props) {
             <input type="hidden" name="slug" value={slug} />
             <ConfirmButton
               message={`Delete "${note.title}" and all ${note.currentVersion} version(s)? This cannot be undone.`}
-              className="text-danger hover:underline"
+              tone="danger"
+              className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10"
             >
               Delete note
             </ConfirmButton>

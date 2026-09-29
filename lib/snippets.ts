@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { Db, Row } from "./db";
+import { orderBy, parseSort, type Sort } from "./sort";
 import { familyMembers } from "./languages";
 import { slugify } from "./slug";
 import {
@@ -94,7 +95,7 @@ function toVersion(row: Row): SnippetVersion {
   };
 }
 
-export type ListOptions = { query?: string; language?: string; tag?: string; limit?: number };
+export type ListOptions = { query?: string; language?: string; tag?: string; limit?: number; sort?: Sort };
 
 /**
  * Lists snippets, newest first. Every word of `query` must appear somewhere in
@@ -121,7 +122,6 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   if (options.tag) where.push(`s.tags @> jsonb_build_array(${param(options.tag.toLowerCase())}::text)`);
 
   const order = termParams.map((p) => `(s.title ILIKE ${p} OR s.slug ILIKE ${p})::int`);
-  order.push("s.updated_at");
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
@@ -129,7 +129,7 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
      FROM snippets s
      JOIN snippet_versions v ON v.snippet_id = s.id AND v.version = s.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY ${order.map((o) => `${o} DESC`).join(", ")}
+     ORDER BY ${orderBy("s", parseSort(options.sort), order)}
      LIMIT ${limit}`,
     params,
   );

@@ -39,3 +39,9 @@ export function safeHref(url: string): string | null {
   const trimmed = url.trim();
   return /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
+
+/** "1 snippet", "4 snippets"; lists stop at 100 items, so a full list reads "100+ snippets". */
+export function countLabel(count: number, noun: string, cap = 100): string {
+  if (count >= cap) return `${cap}+ ${noun}s`;
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}

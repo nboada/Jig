@@ -10,9 +10,9 @@ import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
-import { createSnippet, deleteSnippet, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
-import { createNote, deleteNote, restoreNoteVersion, updateNote } from "@/lib/notes";
-import { createCredential, deleteCredential, revealField, updateCredential } from "@/lib/credentials";
+import { createSnippet, deleteSnippet, listSnippets, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
+import { createNote, deleteNote, listNotes, restoreNoteVersion, updateNote } from "@/lib/notes";
+import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
 import { createToken, revokeToken } from "@/lib/tokens";
@@ -218,4 +218,28 @@ export async function createEncryptionKey(): Promise<{ error?: string }> {
   process.env.JIG_ENCRYPTION_KEY = key;
   revalidatePath("/", "layout");
   return {};
+}
+
+/** Slugs of the snippets matching a search, code included, for the snippet list's search box. */
+export async function searchSnippetSlugs(query: string): Promise<string[]> {
+  await requireAuth();
+  const found = await listSnippets(await getDb(), { query, limit: 500 });
+  return found.map((s) => s.slug);
+}
+
+/** Slugs of the notes matching a search, full text included, for the note list's search box. */
+export async function searchNoteSlugs(query: string): Promise<string[]> {
+  await requireAuth();
+  const found = await listNotes(await getDb(), { query, limit: 500 });
+  return found.map((n) => n.slug);
+}
+
+/**
+ * Slugs of the credentials matching a search, for the credential list's search box. Like the
+ * list itself it matches titles, URLs, tags, labels, notes and non-secret values, never secrets.
+ */
+export async function searchCredentialSlugs(query: string): Promise<string[]> {
+  await requireAuth();
+  const found = await listCredentials(await getDb(), { query, limit: 500 });
+  return found.map((c) => c.slug);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { safeHref } from "./format";
+import { countLabel, safeHref } from "./format";
 
 describe("safeHref", () => {
   test("links only http and https URLs", () => {
@@ -11,4 +11,10 @@ describe("safeHref", () => {
     expect(safeHref("acme.myshopify.com")).toBeNull();
     expect(safeHref("")).toBeNull();
   });
+});
+
+test("countLabel", () => {
+  expect(countLabel(1, "note")).toBe("1 note");
+  expect(countLabel(4, "snippet")).toBe("4 snippets");
+  expect(countLabel(100, "credential")).toBe("100+ credentials");
 });

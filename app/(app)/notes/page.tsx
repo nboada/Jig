@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchInput } from "@/components/SearchInput";
+import { PickPane } from "@/components/PickPane";
+import { SortSelect } from "@/components/SortSelect";
+import { countLabel } from "@/lib/format";
 import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
 import { listNotes, listNoteTags } from "@/lib/notes";
-import { getView } from "@/lib/view";
+import { getListPrefs } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Notes" };
 
-type Search = { q?: string; tag?: string };
+type Search = { q?: string; tag?: string; sort?: string };
 
 function href(current: Search, change: Search) {
   const params = new URLSearchParams();
@@ -20,11 +23,13 @@ function href(current: Search, change: Search) {
 
 export default async function NotesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
+  const { view, sort } = await getListPrefs("notes", search.sort);
+  // In list view the layout shows the notes in a column; this pane waits for a pick.
+  if (view === "list") return <PickPane noun="note" />;
   const db = await getDb();
-  const [notes, tags, view] = await Promise.all([
-    listNotes(db, { query: search.q, tag: search.tag }),
+  const [notes, tags] = await Promise.all([
+    listNotes(db, { query: search.q, tag: search.tag, sort }),
     listNoteTags(db),
-    getView(),
   ]);
   const filtered = Boolean(search.q || search.tag);
 
@@ -33,7 +38,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
       <form className="flex gap-3" action="/notes">
         <SearchInput placeholder="Search notes" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <ViewToggle view={view} />
+        <ViewToggle view={view} section="notes" />
         <Link href="/notes/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
           New note
           <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
@@ -60,6 +65,13 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         </div>
       )}
 
+      {notes.length > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">{countLabel(notes.length, "note")}</p>
+          <SortSelect sort={sort} section="notes" />
+        </div>
+      )}
+
       {notes.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-6 py-16 text-center">
           {filtered ? (
@@ -82,23 +94,6 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
             </>
           )}
         </div>
-      ) : view === "list" ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
-          {notes.map((n) => (
-            <li key={n.slug}>
-              <Link href={`/notes/${n.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-medium">{n.title}</h2>
-                  {n.excerpt && <p className="mt-0.5 truncate text-[13px] text-text/70">{n.excerpt}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
-                  <span className="hidden sm:inline">{timeAgo(n.updatedAt)}</span>
-                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">{`v${n.version}`}</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {notes.map((n) => (

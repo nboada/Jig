@@ -1,5 +1,6 @@
 import { assertEncryptionReady, decryptSecret, encryptSecret } from "./crypto";
 import type { Db, Row } from "./db";
+import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, parse, slugify, SnippetError } from "./snippets";
 import { credentialInputSchema, slugSchema, type CredentialInput } from "./validation";
 
@@ -38,7 +39,7 @@ const iso = (value: unknown) => new Date(value as string).toISOString();
 
 const secretContext = (credentialId: string, fieldId: string) => `${credentialId}:${fieldId}`;
 
-export type CredentialListOptions = { query?: string; tag?: string; limit?: number };
+export type CredentialListOptions = { query?: string; tag?: string; limit?: number; sort?: Sort };
 
 /**
  * Lists credentials, newest first. Searches titles, slugs, URLs, tags, notes,
@@ -64,13 +65,12 @@ export async function listCredentials(db: Db, options: CredentialListOptions = {
   if (options.tag) where.push(`c.tags @> jsonb_build_array(${param(options.tag.toLowerCase())}::text)`);
 
   const order = termParams.map((p) => `(c.title ILIKE ${p} OR c.slug ILIKE ${p})::int`);
-  order.push("c.updated_at");
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
     `SELECT c.slug, c.title, c.url, c.tags, c.fields, c.updated_at FROM credentials c
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY ${order.map((o) => `${o} DESC`).join(", ")}
+     ORDER BY ${orderBy("c", parseSort(options.sort), order)}
      LIMIT ${limit}`,
     params,
   );

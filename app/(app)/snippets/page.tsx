@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LanguageIcon } from "@/components/LanguageIcon";
+import { PickPane } from "@/components/PickPane";
 import { LanguageFilter, SearchInput } from "@/components/SearchInput";
+import { SortSelect } from "@/components/SortSelect";
+import { countLabel } from "@/lib/format";
 import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
 import { languageLabel } from "@/lib/languages";
 import { listSnippets, listTags } from "@/lib/snippets";
 import { timeAgo } from "@/lib/format";
-import { getView } from "@/lib/view";
+import { getListPrefs } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Snippets" };
 
-type Search = { q?: string; lang?: string; tag?: string };
+type Search = { q?: string; lang?: string; tag?: string; sort?: string };
 
 function href(current: Search, change: Search) {
   const params = new URLSearchParams();
@@ -22,11 +25,13 @@ function href(current: Search, change: Search) {
 
 export default async function SnippetsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
+  const { view, sort } = await getListPrefs("snippets", search.sort);
+  // In list view the layout shows the snippets in a column; this pane waits for a pick.
+  if (view === "list") return <PickPane noun="snippet" />;
   const db = await getDb();
-  const [snippets, tags, view] = await Promise.all([
-    listSnippets(db, { query: search.q, language: search.lang, tag: search.tag }),
+  const [snippets, tags] = await Promise.all([
+    listSnippets(db, { query: search.q, language: search.lang, tag: search.tag, sort }),
     listTags(db),
-    getView(),
   ]);
   const filtered = Boolean(search.q || search.lang || search.tag);
 
@@ -37,11 +42,10 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
         <div className="flex gap-3">
           <LanguageFilter className="min-w-0 flex-1 sm:w-48 sm:flex-none" />
           {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-          <ViewToggle view={view} />
+          <ViewToggle view={view} section="snippets" />
           <Link href="/snippets/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
             New snippet
             <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
-             
           </Link>
         </div>
       </form>
@@ -62,6 +66,13 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
               </Link>
             );
           })}
+        </div>
+      )}
+
+      {snippets.length > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">{countLabel(snippets.length, "snippet")}</p>
+          <SortSelect sort={sort} section="snippets" />
         </div>
       )}
 
@@ -91,30 +102,6 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
             </>
           )}
         </div>
-      ) : view === "list" ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
-          {snippets.map((s) => (
-            <li key={s.slug}>
-              <Link href={`/snippets/${s.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-medium">{s.title}</h2>
-                  {s.description && <p className="mt-0.5 truncate text-[13px] text-text/70">{s.description}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
-                  <span className="flex items-center gap-1.5 text-text/85">
-                    <LanguageIcon language={s.language} className="size-3.5" />
-                    {languageLabel(s.language)}
-                  </span>
-                  <span className="hidden sm:inline">
-                    {`${s.fileNames.length} file${s.fileNames.length === 1 ? "" : "s"}`}
-                  </span>
-                  <span className="hidden md:inline">{timeAgo(s.updatedAt)}</span>
-                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">{`v${s.version}`}</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {snippets.map((s) => (

@@ -40,7 +40,7 @@ export default async function HistoryPage({ params, searchParams }: Props) {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-        <ol className="space-y-2 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto">
+        <ol className="space-y-2 lg:sticky lg:top-22 lg:max-h-[calc(100dvh-7.5rem)] lg:self-start lg:overflow-y-auto">
           {versions.map((v) => {
             const selected = v.version === to;
             const latest = v.version === snippet.currentVersion;

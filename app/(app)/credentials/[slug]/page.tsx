@@ -10,6 +10,7 @@ import { SecretValue } from "@/components/SecretValue";
 import { getCredential } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
+import { getListPrefs } from "@/lib/view";
 import { formatDate, safeHref } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -22,11 +23,15 @@ export default async function CredentialPage({ params }: Props) {
   const credential = await getCredential(await getDb(), slug);
   if (!credential) notFound();
   const link = safeHref(credential.url);
+  const { view } = await getListPrefs("credentials");
 
   return (
-    <article className="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <article className="grid gap-8 @5xl:grid-cols-[minmax(0,1fr)_220px]">
       <div className="min-w-0 space-y-6">
-        <BackLink href="/credentials">Credentials</BackLink>
+        {/* In the split view the list is right there; keep the link for phones and the grid view. */}
+        <BackLink href="/credentials" className={view === "list" ? "md:hidden" : ""}>
+          Credentials
+        </BackLink>
         <header className="space-y-3">
           {credential.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -37,7 +42,15 @@ export default async function CredentialPage({ params }: Props) {
               ))}
             </div>
           )}
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{credential.title}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{credential.title}</h1>
+            <Link
+              href={`/credentials/${slug}/edit`}
+              className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110"
+            >
+              Edit
+            </Link>
+          </div>
           {credential.url &&
             (link ? (
               <a href={link} target="_blank" rel="noreferrer" className="block break-all font-mono text-sm text-accent hover:underline">
@@ -76,14 +89,8 @@ export default async function CredentialPage({ params }: Props) {
         )}
       </div>
 
-      <aside className="space-y-6 text-sm lg:sticky lg:top-20 lg:self-start">
-        <Link
-          href={`/credentials/${slug}/edit`}
-          className="block rounded-md bg-accent px-3 py-2 text-center font-medium text-accent-ink hover:brightness-110"
-        >
-          Edit
-        </Link>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+      <aside className="space-y-5 text-xs @5xl:sticky @5xl:top-22 @5xl:self-start">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
           <dt className="text-muted">Updated</dt>
           <dd>{formatDate(credential.updatedAt)}</dd>
           <dt className="text-muted">Created</dt>
@@ -91,7 +98,8 @@ export default async function CredentialPage({ params }: Props) {
         </dl>
         <form action={removeCredential} className="border-t border-line pt-4">
           <input type="hidden" name="slug" value={slug} />
-          <ConfirmButton message={`Delete "${credential.title}"? This cannot be undone.`} className="text-danger hover:underline">
+          <ConfirmButton message={`Delete "${credential.title}"? This cannot be undone.`} tone="danger"
+              className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10">
             Delete credential
           </ConfirmButton>
         </form>

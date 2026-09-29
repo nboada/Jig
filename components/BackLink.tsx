@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 /** The link above a page title back to where it came from: an arrow and the destination's name. */
-export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function BackLink({ href, children, className = "" }: { href: string; children: React.ReactNode; className?: string }) {
   return (
     <Link
       href={href}
-      className="group -ml-2 inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition hover:bg-raised hover:text-text"
+      className={`group -ml-2 inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition hover:bg-raised hover:text-text ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

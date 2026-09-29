@@ -48,7 +48,8 @@ export default async function ConnectPage() {
                   <input type="hidden" name="id" value={t.id} />
                   <ConfirmButton
                     message={`Revoke "${t.name}"? Agents using it lose access straight away.`}
-                    className="text-danger hover:underline"
+                    tone="danger"
+                    className="rounded-md border border-danger/40 px-2.5 py-1 text-xs text-danger transition hover:bg-danger/10"
                   >
                     Revoke
                   </ConfirmButton>

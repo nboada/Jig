@@ -209,3 +209,23 @@ describe("tokens", () => {
     expect(await verifyToken(db, "abc_legacy-token")).toBeNull();
   });
 });
+
+describe("sorting", () => {
+  test("recently edited, newest and title order", async () => {
+    const file = [{ name: "a.css", content: "a{}" }];
+    await createSnippet(db, { title: "Bravo", language: "css", files: file });
+    await createSnippet(db, { title: "alpha", language: "css", files: file });
+    await createSnippet(db, { title: "Charlie", language: "css", files: file });
+    // Pin the times: created Bravo, alpha, Charlie in that order, then Bravo edited last.
+    await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["bravo", "2026-01-01", "2026-01-04"]);
+    await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["alpha", "2026-01-02", "2026-01-02"]);
+    await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["charlie", "2026-01-03", "2026-01-03"]);
+
+    const order = async (sort: "updated" | "created" | "title") =>
+      (await listSnippets(db, { sort })).map((s) => s.slug);
+    expect(await order("updated")).toEqual(["bravo", "charlie", "alpha"]);
+    expect(await order("created")).toEqual(["charlie", "alpha", "bravo"]);
+    // Case-insensitive: "alpha" sorts before "Bravo".
+    expect(await order("title")).toEqual(["alpha", "bravo", "charlie"]);
+  });
+});

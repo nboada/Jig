@@ -1,4 +1,5 @@
 import type { Db, Row } from "./db";
+import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, parse, slugify, SnippetError } from "./snippets";
 import { noteInputSchema, notePatchSchema, slugSchema, type NoteInput, type NotePatch } from "./validation";
 
@@ -48,7 +49,7 @@ function toVersion(row: Row): NoteVersion {
   };
 }
 
-export type NoteListOptions = { query?: string; tag?: string; limit?: number };
+export type NoteListOptions = { query?: string; tag?: string; limit?: number; sort?: Sort };
 
 /**
  * Lists notes, newest first. Every word of `query` must appear somewhere in
@@ -70,7 +71,6 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
   if (options.tag) where.push(`n.tags @> jsonb_build_array(${param(options.tag.toLowerCase())}::text)`);
 
   const order = termParams.map((p) => `(n.title ILIKE ${p} OR n.slug ILIKE ${p})::int`);
-  order.push("n.updated_at");
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
@@ -78,7 +78,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
      FROM notes n
      JOIN note_versions v ON v.note_id = n.id AND v.version = n.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY ${order.map((o) => `${o} DESC`).join(", ")}
+     ORDER BY ${orderBy("n", parseSort(options.sort), order)}
      LIMIT ${limit}`,
     params,
   );

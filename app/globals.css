@@ -21,7 +21,18 @@
 
 html {
   color-scheme: dark;
+  /* Always reserve the scrollbar's space, so pages don't shift as they grow past the fold. */
   scrollbar-gutter: stable;
+}
+
+/*
+ * Radix locks scrolling while a menu or modal is open and pads the body by the scrollbar's width
+ * to make up for it. The gutter above already holds that space, so the padding would push the
+ * page sideways; turn it off.
+ */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 body {
@@ -29,6 +40,17 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* No browser focus rings on buttons and links (a design choice); text fields show focus with their border. */
+@layer base {
+  button:focus,
+  a:focus,
+  summary:focus,
+  [role="button"]:focus,
+  [role="option"]:focus {
+    outline: none;
+  }
 }
 
 /* Tailwind 4 dropped the pointer cursor on buttons; restore it app-wide. */
@@ -57,4 +79,43 @@ body {
 
 .prose-lite p + p {
   margin-top: 0.75em;
+}
+
+/* Notes editor: the placeholder on an empty note. */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+/* Checklists, in the editor (Tiptap's task list) and on the rendered note (GFM task list). */
+.tiptap ul[data-type="taskList"],
+.prose ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.tiptap ul[data-type="taskList"] li > label {
+  margin-top: 0.3em;
+  user-select: none;
+}
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.tiptap ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+.tiptap ul[data-type="taskList"] input[type="checkbox"],
+.prose ul.contains-task-list input[type="checkbox"] {
+  accent-color: var(--color-accent);
+  margin-right: 0.5rem;
+}
+.prose ul.contains-task-list li {
+  padding-left: 0;
 }

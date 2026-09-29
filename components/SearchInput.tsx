@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LanguageSelect } from "@/components/LanguageSelect";
 
 /** Replaces one search param in the current URL without a full page load, keeping the others. */
-function useSetParam() {
+export function useSetParam() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();

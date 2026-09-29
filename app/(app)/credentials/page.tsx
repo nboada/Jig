@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyMissing } from "@/components/KeyMissing";
 import { SearchInput } from "@/components/SearchInput";
+import { PickPane } from "@/components/PickPane";
+import { SortSelect } from "@/components/SortSelect";
+import { countLabel } from "@/lib/format";
 import { ViewToggle } from "@/components/ViewToggle";
 import { listCredentials, listCredentialTags } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
-import { getView } from "@/lib/view";
+import { getListPrefs } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Credentials" };
 
-type Search = { q?: string; tag?: string };
+type Search = { q?: string; tag?: string; sort?: string };
 
 function href(current: Search, change: Search) {
   const params = new URLSearchParams();
@@ -23,11 +26,13 @@ function href(current: Search, change: Search) {
 export default async function CredentialsPage({ searchParams }: { searchParams: Promise<Search> }) {
   if (!encryptionReady()) return <KeyMissing />;
   const search = await searchParams;
+  const { view, sort } = await getListPrefs("credentials", search.sort);
+  // In list view the layout shows the credentials in a column; this pane waits for a pick.
+  if (view === "list") return <PickPane noun="credential" />;
   const db = await getDb();
-  const [credentials, tags, view] = await Promise.all([
-    listCredentials(db, { query: search.q, tag: search.tag }),
+  const [credentials, tags] = await Promise.all([
+    listCredentials(db, { query: search.q, tag: search.tag, sort }),
     listCredentialTags(db),
-    getView(),
   ]);
   const filtered = Boolean(search.q || search.tag);
 
@@ -41,7 +46,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
       <form className="flex gap-3" action="/credentials">
         <SearchInput placeholder="Search titles, URLs and labels" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <ViewToggle view={view} />
+        <ViewToggle view={view} section="credentials" />
         <Link href="/credentials/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
           New credential
           <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
@@ -68,6 +73,13 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
         </div>
       )}
 
+      {credentials.length > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">{countLabel(credentials.length, "credential")}</p>
+          <SortSelect sort={sort} section="credentials" />
+        </div>
+      )}
+
       {credentials.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line px-6 py-16 text-center">
           {filtered ? (
@@ -89,23 +101,6 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
             </>
           )}
         </div>
-      ) : view === "list" ? (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
-          {credentials.map((c) => (
-            <li key={c.slug}>
-              <Link href={`/credentials/${c.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-medium">{c.title}</h2>
-                  {c.url && <p className="mt-0.5 truncate font-mono text-xs text-muted">{c.url}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
-                  <span className="hidden max-w-60 truncate text-sm text-text/75 sm:inline">{c.labels.join(" · ")}</span>
-                  <span className="hidden md:inline">{timeAgo(c.updatedAt)}</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {credentials.map((c) => (

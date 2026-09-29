@@ -5,11 +5,13 @@ import { removeSnippet, restore } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
 import { CodeBlock } from "@/components/CodeBlock";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { Markdown } from "@/components/Markdown";
 import { CopyButton } from "@/components/CopyButton";
 import { getDb } from "@/lib/db";
 import { formatDate, formatSource } from "@/lib/format";
 import { languageLabel } from "@/lib/languages";
 import { getSnippet } from "@/lib/snippets";
+import { getListPrefs } from "@/lib/view";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
@@ -26,12 +28,16 @@ export default async function SnippetPage({ params, searchParams }: Props) {
   if (!snippet) notFound();
 
   const isLatest = snippet.version === snippet.currentVersion;
+  const { view } = await getListPrefs("snippets");
   const prompt = `Add the "${snippet.slug}" snippet from Jig to this project.`;
 
   return (
-    <article className="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <article className="grid gap-8 @5xl:grid-cols-[minmax(0,1fr)_220px]">
       <div className="min-w-0 space-y-6">
-        <BackLink href="/snippets">Snippets</BackLink>
+        {/* In the split view the list is right there; keep the link for phones and the grid view. */}
+        <BackLink href="/snippets" className={view === "list" ? "md:hidden" : ""}>
+          Snippets
+        </BackLink>
         {!isLatest && (
           <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
             <p className="flex-1">
@@ -62,19 +68,37 @@ export default async function SnippetPage({ params, searchParams }: Props) {
             </span>
             <span className="rounded bg-raised px-2 py-0.5 font-mono text-muted">{`v${snippet.version}`}</span>
             {snippet.tags.map((tag) => (
-              <Link key={tag} href={`/?tag=${encodeURIComponent(tag)}`} className="text-muted hover:text-text">
+              <Link key={tag} href={`/snippets?tag=${encodeURIComponent(tag)}`} className="text-muted hover:text-text">
                 {`#${tag}`}
               </Link>
             ))}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{snippet.title}</h1>
-          {snippet.description && <p className="max-w-2xl text-text/75">{snippet.description}</p>}
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{snippet.title}</h1>
+            {isLatest && (
+              <div className="flex shrink-0 gap-2 text-sm">
+                <Link
+                  href={`/snippets/${slug}/history`}
+                  className="rounded-md border border-line px-3 py-1.5 hover:border-muted"
+                >
+                  History
+                </Link>
+                <Link
+                  href={`/snippets/${slug}/edit`}
+                  className="rounded-md bg-accent px-3 py-1.5 font-medium text-accent-ink hover:brightness-110"
+                >
+                  Edit
+                </Link>
+              </div>
+            )}
+          </div>
+          {snippet.description && <p className="max-w-2xl text-sm leading-6 text-text/75">{snippet.description}</p>}
         </header>
 
         {snippet.instructions && (
           <section className="rounded-lg border border-line bg-panel p-4">
             <h2 className="mb-2 text-sm font-medium text-muted">Instructions for agents</h2>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{snippet.instructions}</p>
+            <Markdown>{snippet.instructions}</Markdown>
           </section>
         )}
 
@@ -85,28 +109,11 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         </section>
       </div>
 
-      <aside className="space-y-6 text-sm lg:sticky lg:top-20 lg:self-start">
-        {isLatest && (
-          <div className="flex gap-2">
-            <Link
-              href={`/snippets/${slug}/edit`}
-              className="flex-1 rounded-md bg-accent px-3 py-2 text-center font-medium text-accent-ink hover:brightness-110"
-            >
-              Edit
-            </Link>
-            <Link
-              href={`/snippets/${slug}/history`}
-              className="flex-1 rounded-md border border-line px-3 py-2 text-center hover:border-muted"
-            >
-              History
-            </Link>
-          </div>
-        )}
-
+      <aside className="space-y-5 text-xs @5xl:sticky @5xl:top-22 @5xl:self-start">
         <div className="space-y-2">
           <h2 className="text-muted">Ask your agent</h2>
-          <div className="flex items-start gap-2 rounded-md border border-line bg-panel p-3">
-            <p className="flex-1 font-mono text-xs leading-relaxed">{prompt}</p>
+          <div className="flex items-start gap-2 rounded-md border border-line bg-panel p-2.5">
+            <p className="flex-1 font-mono text-[11px] leading-relaxed">{prompt}</p>
             <CopyButton value={prompt} />
           </div>
         </div>
@@ -114,7 +121,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         {snippet.dependencies.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-muted">Dependencies</h2>
-            <ul className="space-y-1 font-mono text-xs">
+            <ul className="space-y-1 font-mono text-[11px]">
               {snippet.dependencies.map((d) => (
                 <li key={d}>{d}</li>
               ))}
@@ -122,9 +129,9 @@ export default async function SnippetPage({ params, searchParams }: Props) {
           </div>
         )}
 
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
           <dt className="text-muted">Slug</dt>
-          <dd className="truncate font-mono text-xs leading-5">{snippet.slug}</dd>
+          <dd className="truncate font-mono text-[11px] leading-4">{snippet.slug}</dd>
           <dt className="text-muted">Saved</dt>
           <dd>{formatDate(snippet.versionCreatedAt)}</dd>
           <dt className="text-muted">By</dt>
@@ -144,7 +151,8 @@ export default async function SnippetPage({ params, searchParams }: Props) {
             <input type="hidden" name="slug" value={slug} />
             <ConfirmButton
               message={`Delete "${snippet.title}" and all ${snippet.currentVersion} version(s)? This cannot be undone.`}
-              className="text-danger hover:underline"
+              tone="danger"
+              className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10"
             >
               Delete snippet
             </ConfirmButton>

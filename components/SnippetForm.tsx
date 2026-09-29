@@ -20,16 +20,6 @@ const splitList = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-/** Tab inserts two spaces instead of leaving the textarea. */
-export function indentOnTab(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-  if (event.key !== "Tab" || event.shiftKey || event.metaKey || event.ctrlKey) return;
-  event.preventDefault();
-  const el = event.currentTarget;
-  const { selectionStart: start, selectionEnd: end } = el;
-  el.setRangeText("  ", start, end, "end");
-  el.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
 export function SnippetForm({ snippet }: { snippet?: Snippet }) {
   const [state, action, pending] = useActionState(saveSnippet, {});
   const [title, setTitle] = useState(snippet?.title ?? "");
