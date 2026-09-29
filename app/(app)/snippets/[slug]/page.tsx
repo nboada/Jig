@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeSnippet, restore } from "@/app/actions";
@@ -15,16 +16,22 @@ import { getListPrefs } from "@/lib/view";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const snippet = await getSnippet(await getDb(), (await params).slug);
+/** A `?v=` version number, or undefined for the latest. */
+const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) : undefined);
+
+// The page title and the page both need the snippet; cache() makes that one query per request.
+// Both pass the same arguments, version included, so they share the cached result.
+const loadSnippet = cache(async (slug: string, version: number | undefined) => getSnippet(await getDb(), slug, version));
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const snippet = await loadSnippet((await params).slug, toVersion((await searchParams).v));
   return { title: snippet?.title ?? "Not found" };
 }
 
 export default async function SnippetPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { v } = await searchParams;
-  const version = v ? Number(v) : undefined;
-  const snippet = await getSnippet(await getDb(), slug, Number.isInteger(version) ? version : undefined);
+  const snippet = await loadSnippet(slug, toVersion(v));
   if (!snippet) notFound();
 
   const isLatest = snippet.version === snippet.currentVersion;

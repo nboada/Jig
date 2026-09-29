@@ -135,7 +135,8 @@ export function ListToolbar({
 
 /**
  * The list column. It stays mounted while you move between items, and ↑/↓ step through what
- * is visible. `renderRow` draws an item's content inside its link.
+ * is visible. `renderRow` draws an item's content inside its link; the link is a `group` with
+ * aria-current="page" when selected, so rows can style their title with group-aria-[current=page].
  */
 export function ListColumn<T extends Item>({
   noun,
@@ -192,7 +193,7 @@ export function ListColumn<T extends Item>({
               <Link
                 href={`${base}/${item.slug}`}
                 aria-current={active ? "page" : undefined}
-                className={`block rounded-md px-3 py-2 transition ${active ? "bg-raised" : "hover:bg-raised/60"}`}
+                className={`group block rounded-md px-3 py-2 transition ${active ? "bg-accent/10" : "hover:bg-raised/60"}`}
               >
                 {renderRow(item as T)}
               </Link>

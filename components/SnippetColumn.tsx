@@ -28,7 +28,7 @@ export function SnippetColumn() {
       noun="snippet"
       renderRow={(s) => (
         <>
-          <span className="block truncate text-sm font-medium">{s.title}</span>
+          <span className="block truncate text-sm font-medium group-aria-[current=page]:text-accent">{s.title}</span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             <LanguageIcon language={s.language} className="size-3" />
             {/* Relative times can tick over between the server render and the browser's. */}

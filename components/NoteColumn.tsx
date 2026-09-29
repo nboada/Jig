@@ -27,7 +27,7 @@ export function NoteColumn() {
       noun="note"
       renderRow={(n) => (
         <>
-          <span className="block truncate text-sm font-medium">{n.title}</span>
+          <span className="block truncate text-sm font-medium group-aria-[current=page]:text-accent">{n.title}</span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             {/* Relative times can tick over between the server render and the browser's. */}
             <span className="shrink-0" suppressHydrationWarning>

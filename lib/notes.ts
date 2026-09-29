@@ -1,4 +1,5 @@
 import type { Db, Row } from "./db";
+import { plainText } from "./format";
 import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, parse, slugify, SnippetError } from "./snippets";
 import { noteInputSchema, notePatchSchema, slugSchema, type NoteInput, type NotePatch } from "./validation";
@@ -87,7 +88,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
     title: r.title as string,
     tags: r.tags as string[],
     version: r.current_version as number,
-    excerpt: (r.excerpt as string).replace(/\s+/g, " ").trim(),
+    excerpt: plainText(r.excerpt as string),
     updatedAt: iso(r.updated_at),
   }));
 }

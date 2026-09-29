@@ -11,6 +11,8 @@ export type Row = Record<string, unknown>;
 
 export interface Db {
   query<T extends Row = Row>(text: string, params?: unknown[]): Promise<T[]>;
+  /** Runs parameterless statements in order, in one round trip where the driver can. */
+  batch?(statements: string[]): Promise<void>;
 }
 
 const SCHEMA = [
@@ -89,6 +91,15 @@ const SCHEMA = [
 ];
 
 async function migrate(db: Db) {
+  // One round trip instead of one per statement: this runs on every cold start.
+  if (db.batch) {
+    try {
+      return await db.batch(SCHEMA);
+    } catch (error) {
+      // Every statement is idempotent, so running them one by one after a failed batch is safe.
+      console.error("[jig] batched schema setup failed; running it statement by statement", error);
+    }
+  }
   for (const statement of SCHEMA) await db.query(statement);
 }
 
@@ -98,6 +109,10 @@ async function neonDb(url: string): Promise<Db> {
   return {
     query: async <T extends Row>(text: string, params: unknown[] = []) =>
       (await sql.query(text, params)) as T[],
+    // A non-interactive transaction goes over HTTP as a single request.
+    batch: async (statements: string[]) => {
+      await sql.transaction(statements.map((statement) => sql.query(statement)));
+    },
   };
 }
 
@@ -108,6 +123,9 @@ export async function pgliteDb(dataDir?: string): Promise<Db> {
   return {
     query: async <T extends Row>(text: string, params: unknown[] = []) =>
       (await pg.query<T>(text, params)).rows,
+    batch: async (statements: string[]) => {
+      await pg.exec(statements.join(";\n"));
+    },
   };
 }
 

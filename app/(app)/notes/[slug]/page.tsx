@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeNote, restoreNote } from "@/app/actions";
@@ -13,16 +14,22 @@ import { getListPrefs } from "@/lib/view";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const note = await getNote(await getDb(), (await params).slug);
+/** A `?v=` version number, or undefined for the latest. */
+const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) : undefined);
+
+// The page title and the page both need the note; cache() makes that one query per request.
+// Both pass the same arguments, version included, so they share the cached result.
+const loadNote = cache(async (slug: string, version: number | undefined) => getNote(await getDb(), slug, version));
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const note = await loadNote((await params).slug, toVersion((await searchParams).v));
   return { title: note?.title ?? "Not found" };
 }
 
 export default async function NotePage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { v } = await searchParams;
-  const version = v ? Number(v) : undefined;
-  const note = await getNote(await getDb(), slug, Number.isInteger(version) ? version : undefined);
+  const note = await loadNote(slug, toVersion(v));
   if (!note) notFound();
 
   const isLatest = note.version === note.currentVersion;

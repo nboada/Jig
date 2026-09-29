@@ -112,7 +112,7 @@ describe("notes", () => {
     expect((await listNotes(db, { tag: "Client" })).map((n) => n.slug)).toEqual(["client-acme"]);
     expect((await listNotes(db, { query: "100%" })).length).toBe(0);
     expect((await listNotes(db, { query: "publish" }))[0].excerpt).toBe(
-      "Run `shopify theme push --unpublished` first. Then publish from the admin.",
+      "Run shopify theme push --unpublished first. Then publish from the admin.",
     );
     expect(await listNoteTags(db)).toEqual([
       { tag: "client", count: 1 },

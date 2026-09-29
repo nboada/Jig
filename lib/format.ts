@@ -45,3 +45,21 @@ export function countLabel(count: number, noun: string, cap = 100): string {
   if (count >= cap) return `${cap}+ ${noun}s`;
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
+
+/**
+ * Markdown as one line of plain text, for previews: drops heading, list, checkbox and quote
+ * markers, emphasis and code ticks, keeps link text, and collapses whitespace.
+ */
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/^```.*$/gm, "")
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+[.)]\s+)/gm, "")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")
+    .replace(/(^|[^\w*])[*_]([^*_\s][^*_]*?)[*_](?=[^\w*]|$)/g, "$1$2")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/^\s*([-*_])(\s*\1){2,}\s*$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
