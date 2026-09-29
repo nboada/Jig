@@ -50,4 +50,6 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 
 **Dashboard (`app/`)**: pages under the `(app)` route group are server components that call `lib/` directly. Mutations go through the server actions in `app/actions.ts`. The snippet form sends all its fields as a single JSON `payload` form field so the file list stays structured.
 
-**Build config** (`next.config.ts`): PGlite must remain in `serverExternalPackages`, because bundling it breaks its WASM file lookups. `outputFileTracingRoot` and the Turbopack root are pinned to this directory because a parent directory has its own lockfile. On Vercel, the project's Root Directory is `snippeta`.
+**Build config** (`next.config.ts`): PGlite must remain in `serverExternalPackages`, because bundling it breaks its WASM file lookups. `outputFileTracingRoot` and the Turbopack root are pinned to this directory so a lockfile in a parent folder is never picked up.
+
+**Distribution**: each user deploys their own copy with the README's Deploy with Vercel button, which also provisions a Neon database (`stores` param) and asks only for `ADMIN_PASSWORD` and `SNIPPETA_TIMEZONE`. Keep new required configuration optional or self-provisioning, and never add schema changes that aren't idempotent, since existing copies apply them on their next request.
