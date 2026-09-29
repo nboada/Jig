@@ -8,6 +8,23 @@ Each person runs their own copy, with their own database. Nothing is shared with
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnboada%2Fjig&project-name=jig&repository-name=jig&env=ADMIN_PASSWORD%2CJIG_TIMEZONE&envDefaults=%7B%22JIG_TIMEZONE%22%3A%22UTC%22%7D&envDescription=ADMIN_PASSWORD+is+the+password+for+your+dashboard%3B+use+a+long+one.+JIG_TIMEZONE+is+an+IANA+time+zone+for+dates%2C+e.g.+Europe%2FLondon.&envLink=https%3A%2F%2Fgithub.com%2Fnboada%2Fjig%23environment-variables&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
+![Jig: a snippet open beside the list](docs/screenshots/snippet.png)
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/home.png" alt="Home: every section at a glance"></td>
+    <td><img src="docs/screenshots/snippets-grid.png" alt="Snippets as a grid of cards, with tag filters"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/history.png" alt="Version history with a diff between two versions"></td>
+    <td><img src="docs/screenshots/edit-snippet.png" alt="Editing a snippet in the code editor"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/note.png" alt="A note with headings, a checklist and a quote"></td>
+    <td><img src="docs/screenshots/credential.png" alt="A credential with its password hidden"></td>
+  </tr>
+</table>
+
 ## Get started
 
 1. **Click Deploy with Vercel.** Vercel copies this repository into your GitHub account and creates a free [Neon](https://neon.tech) Postgres database for it. You don't need to set up a database yourself: the tables are created the first time the app runs.
@@ -121,6 +138,14 @@ bun run dev
 ```
 
 Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`, so there is nothing else to install. To turn on credentials locally, open **Credentials** and click **Create encryption key**: it is written to `.env.local` for you.
+
+To try it with sample content, or to retake the screenshots above, seed a separate demo database and point a copy of the app at it. Your own local data is left alone:
+
+```bash
+export JIG_ENCRYPTION_KEY=$(openssl rand -base64 32)
+bun scripts/seed-demo.ts                      # writes .data/demo
+JIG_PGLITE_DIR=.data/demo bun run dev
+```
 
 ## Scripts
 

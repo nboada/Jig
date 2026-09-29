@@ -159,7 +159,8 @@ let instance: Promise<Db> | undefined;
 export function getDb(): Promise<Db> {
   instance ??= (async () => {
     const url = process.env.DATABASE_URL;
-    const db = url ? await neonDb(url) : await pgliteDb(".data/pglite");
+    // JIG_PGLITE_DIR points a second local copy at its own data, e.g. the demo seeded for screenshots.
+    const db = url ? await neonDb(url) : await pgliteDb(process.env.JIG_PGLITE_DIR || ".data/pglite");
     return prepare(db);
   })().catch((error) => {
     instance = undefined;
