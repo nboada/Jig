@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/BackLink";
 import { SnippetForm } from "@/components/SnippetForm";
 import { getDb } from "@/lib/db";
 import { getSnippet } from "@/lib/snippets";
@@ -14,9 +14,7 @@ export default async function EditSnippetPage({ params }: { params: Promise<{ sl
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <Link href={`/snippets/${slug}`} className="text-sm text-muted hover:text-text">
-          {`Back to ${snippet.title}`}
-        </Link>
+        <BackLink href={`/snippets/${slug}`}>{snippet.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit snippet</h1>
         <p className="mt-1 text-sm text-muted">
           {`Saving creates version ${snippet.currentVersion + 1}. Every earlier version stays in the history.`}

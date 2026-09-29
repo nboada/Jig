@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeNote, restoreNote } from "@/app/actions";
+import { BackLink } from "@/components/BackLink";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
 import { Markdown } from "@/components/Markdown";
@@ -29,6 +30,7 @@ export default async function NotePage({ params, searchParams }: Props) {
   return (
     <article className="grid gap-8 lg:grid-cols-[1fr_280px]">
       <div className="min-w-0 space-y-6">
+        <BackLink href="/notes">Notes</BackLink>
         {!isLatest && (
           <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
             <p className="flex-1">

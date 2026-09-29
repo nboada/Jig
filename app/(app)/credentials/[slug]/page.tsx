@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeCredential } from "@/app/actions";
+import { BackLink } from "@/components/BackLink";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
 import { KeyMissing } from "@/components/KeyMissing";
@@ -25,6 +26,7 @@ export default async function CredentialPage({ params }: Props) {
   return (
     <article className="grid gap-8 lg:grid-cols-[1fr_280px]">
       <div className="min-w-0 space-y-6">
+        <BackLink href="/credentials">Credentials</BackLink>
         <header className="space-y-3">
           {credential.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-xs">

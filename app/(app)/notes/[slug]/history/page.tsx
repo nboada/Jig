@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { restoreNote } from "@/app/actions";
+import { BackLink } from "@/components/BackLink";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { DiffView } from "@/components/DiffView";
 import { getDb } from "@/lib/db";
@@ -30,9 +31,7 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <Link href={`/notes/${slug}`} className="text-sm text-muted hover:text-text">
-          {`Back to ${note.title}`}
-        </Link>
+        <BackLink href={`/notes/${slug}`}>{note.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">History</h1>
         <p className="mt-1 text-sm text-muted">
           {`${versions.length} version${versions.length === 1 ? "" : "s"}. Restoring saves the old content as a new version, so a rollback can be undone too.`}

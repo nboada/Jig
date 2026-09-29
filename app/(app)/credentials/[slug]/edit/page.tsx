@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/BackLink";
 import { CredentialForm } from "@/components/CredentialForm";
 import { KeyMissing } from "@/components/KeyMissing";
 import { getCredential } from "@/lib/credentials";
@@ -17,9 +17,7 @@ export default async function EditCredentialPage({ params }: { params: Promise<{
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <Link href={`/credentials/${slug}`} className="text-sm text-muted hover:text-text">
-          {`Back to ${credential.title}`}
-        </Link>
+        <BackLink href={`/credentials/${slug}`}>{credential.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit credential</h1>
       </div>
       <CredentialForm credential={credential} />
