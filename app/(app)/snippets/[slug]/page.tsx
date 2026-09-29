@@ -15,6 +15,7 @@ import { Meta } from "@/components/Meta";
 import { MoreMenu } from "@/components/MoreMenu";
 import { ClockIcon } from "@/components/NavIcons";
 import { PinButton } from "@/components/PinButton";
+import { Tip } from "@/components/Tooltip";
 import { ShareButton } from "@/components/ShareButton";
 import { getDb } from "@/lib/db";
 import { agentPrompt } from "@/lib/prompts";
@@ -87,9 +88,11 @@ export default async function SnippetPage({ params, searchParams }: Props) {
             {isLatest && (
               <>
                 <PinButton kind="snippets" slug={slug} pinned={snippet.pinned} />
-                <Link href={`/snippets/${slug}/history`} aria-label="History" title="History" className={iconButton()}>
-                  <ClockIcon className="size-4" />
-                </Link>
+                <Tip label="History">
+                  <Link href={`/snippets/${slug}/history`} aria-label="History" className={iconButton()}>
+                    <ClockIcon className="size-4" />
+                  </Link>
+                </Tip>
                 <ShareButton kind="snippets" slug={slug} title={snippet.title} />
                 <ActionDivider />
                 <EditLink href={`/snippets/${slug}/edit`} />

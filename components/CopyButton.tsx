@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { button, iconButton } from "@/components/Button";
 import { CheckIcon, CopyIcon } from "@/components/NavIcons";
+import { Tip } from "@/components/Tooltip";
 
 /**
  * Copies `value`. With a label it's a small ghost button that reads "Copied" for a moment, at a
@@ -18,9 +19,11 @@ export function CopyButton({ value, label = "Copy", iconOnly = false }: { value:
   const Icon = copied ? CheckIcon : CopyIcon;
   if (iconOnly) {
     return (
-      <button type="button" onClick={copy} aria-label={copied ? "Copied" : label} title={label} className={iconButton({ className: copied ? "text-accent" : "" })}>
-        <Icon className="size-4" />
-      </button>
+      <Tip label={copied ? "Copied" : label}>
+        <button type="button" onClick={copy} aria-label={copied ? "Copied" : label} className={iconButton({ className: copied ? "text-accent" : "" })}>
+          <Icon className="size-4" />
+        </button>
+      </Tip>
     );
   }
   return (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { iconButton } from "@/components/Button";
 import { ShareIcon } from "@/components/NavIcons";
 import { ShareDialog } from "@/components/ShareDialog";
+import { Tip } from "@/components/Tooltip";
 import type { ShareKind } from "@/lib/shares";
 
 /** The item page's Share button. */
@@ -11,9 +12,11 @@ export function ShareButton({ kind, slug, title }: { kind: ShareKind; slug: stri
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label="Share" title="Share" className={iconButton()}>
-        <ShareIcon className="size-4" />
-      </button>
+      <Tip label="Share">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Share" className={iconButton()}>
+          <ShareIcon className="size-4" />
+        </button>
+      </Tip>
       <ShareDialog kind={kind} slug={slug} title={title} open={open} onOpenChange={setOpen} />
     </>
   );

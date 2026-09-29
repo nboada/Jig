@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { cloneItem, deleteItem, relockNotes, setNoteLock, setPinned } from "@/app/actions";
+import { cloneItem, deleteItem, setNoteLock, setPinned } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { useOptionalList } from "@/components/ListContext";
 import { AgentIcon, CloneIcon, ExternalIcon, InfoIcon, LinkIcon, LockIcon, PinIcon, PinOffIcon, ShareIcon, TrashIcon, UnlockIcon } from "@/components/NavIcons";
@@ -115,11 +115,9 @@ export function useItemActions({
   }
   if (latest && !locked) actions.push({ key: "share", label: "Share…", icon: ShareIcon, onSelect: () => setSharing(true) });
   if (latest && kind === "notes") {
+    // Locking also has a button beside the pin; the right-click menu in the list needs it here.
     if (!locked) actions.push({ key: "lock", label: "Lock note…", icon: LockIcon, onSelect: () => setLocking("lock") });
-    else if (readable) {
-      actions.push({ key: "relock", label: "Lock again now", icon: LockIcon, onSelect: () => startAction(() => relockNotes()) });
-      actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
-    }
+    else if (readable) actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
   }
   if (newTab) actions.push({ key: "tab", label: "Open in new tab", icon: ExternalIcon, onSelect: () => window.open(`${base}/${slug}`, "_blank", "noopener") });
   if (onDetails) actions.push({ key: "details", label: "Details…", icon: InfoIcon, onSelect: onDetails });

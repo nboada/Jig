@@ -15,7 +15,7 @@ import {
 } from "@/app/actions";
 import { button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
-import { FingerprintIcon, LockIcon, TrashIcon } from "@/components/NavIcons";
+import { EyeIcon, EyeOffIcon, FingerprintIcon, LockIcon, TrashIcon } from "@/components/NavIcons";
 import { formatDateShort } from "@/lib/format";
 import type { Passkey } from "@/lib/passkeys";
 
@@ -81,6 +81,7 @@ export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
   const canUsePasskey = hasPasskey && supported;
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -131,16 +132,27 @@ export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
             });
           }}
         >
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Dashboard password"
-            aria-label="Dashboard password"
-            autoComplete="current-password"
-            autoFocus={usePassword}
-            className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-panel px-3 text-ui outline-none focus:border-line-strong"
-          />
+          <span className="relative min-w-0 flex-1">
+            <input
+              type={visible ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Dashboard password"
+              aria-label="Dashboard password"
+              autoComplete="current-password"
+              autoFocus={usePassword}
+              className="h-8 w-full rounded-lg border border-line bg-panel pr-9 pl-3 text-ui outline-none focus:border-line-strong"
+            />
+            <button
+              type="button"
+              onClick={() => setVisible(!visible)}
+              aria-label={visible ? "Hide password" : "Show password"}
+              title={visible ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 grid w-9 place-items-center text-muted transition hover:text-text"
+            >
+              {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+            </button>
+          </span>
           <button disabled={pending || !password} className={button({ variant: "primary" })}>
             Unlock
           </button>

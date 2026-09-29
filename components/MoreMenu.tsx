@@ -6,6 +6,7 @@ import { iconButton } from "@/components/Button";
 import { menuContentClass, menuItemClass, useItemActions } from "@/components/ItemActions";
 import { Modal } from "@/components/Modal";
 import { MoreIcon } from "@/components/NavIcons";
+import { Tip } from "@/components/Tooltip";
 import type { Section } from "@/lib/prefs";
 
 /**
@@ -54,9 +55,11 @@ export function MoreMenu({
   return (
     <>
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger aria-label="More actions" title="More" className={iconButton()}>
-          <MoreIcon className="size-4" />
-        </DropdownMenu.Trigger>
+        <Tip label="More">
+          <DropdownMenu.Trigger aria-label="More actions" className={iconButton()}>
+            <MoreIcon className="size-4" />
+          </DropdownMenu.Trigger>
+        </Tip>
         <DropdownMenu.Portal>
           <DropdownMenu.Content align="end" sideOffset={8} className={menuContentClass}>
             {actions.map(({ key, label, icon: Icon, onSelect }) => (

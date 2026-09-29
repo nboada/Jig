@@ -127,6 +127,16 @@ body {
   }
 }
 
+/* Browser autofill paints fields bright yellow; keep them in the app's colours instead. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-well) inset;
+  caret-color: var(--color-text);
+  transition: background-color 9999s;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }

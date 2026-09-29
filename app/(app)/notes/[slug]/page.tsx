@@ -12,7 +12,9 @@ import { Markdown } from "@/components/Markdown";
 import { Meta } from "@/components/Meta";
 import { MoreMenu } from "@/components/MoreMenu";
 import { ClockIcon } from "@/components/NavIcons";
+import { LockButton } from "@/components/LockButton";
 import { PinButton } from "@/components/PinButton";
+import { Tip } from "@/components/Tooltip";
 import { ShareButton } from "@/components/ShareButton";
 import { getDb } from "@/lib/db";
 import { agentPrompt } from "@/lib/prompts";
@@ -97,11 +99,14 @@ export default async function NotePage({ params, searchParams }: Props) {
             {isLatest && (
               <>
                 <PinButton kind="notes" slug={slug} pinned={note.pinned} />
+                <LockButton slug={slug} locked={note.locked} readable={readable} />
                 {readable && note.body && <CopyButton value={note.body} label="Copy markdown" iconOnly />}
                 {readable && (
-                  <Link href={`/notes/${slug}/history`} aria-label="History" title="History" className={iconButton()}>
-                    <ClockIcon className="size-4" />
-                  </Link>
+                  <Tip label="History">
+                    <Link href={`/notes/${slug}/history`} aria-label="History" className={iconButton()}>
+                      <ClockIcon className="size-4" />
+                    </Link>
+                  </Tip>
                 )}
                 {!note.locked && <ShareButton kind="notes" slug={slug} title={note.title} />}
                 {readable && (
