@@ -1,9 +1,10 @@
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomInt, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { getCredential, revealField, type Credential } from "./credentials";
 import { decryptSecret, encryptionReady, encryptSecret } from "./crypto";
 import type { Db, Row } from "./db";
 import { getNote, type Note } from "./notes";
+import { sha256 } from "./signing";
 import { getSnippet, SnippetError, type Snippet } from "./snippets";
 
 /**
@@ -17,7 +18,12 @@ import { getSnippet, SnippetError, type Snippet } from "./snippets";
  * lib/mcp.ts must never import this module: it reads credentials.
  */
 
-const scrypt = promisify(scryptCallback) as (password: string, salt: Buffer, keylen: number) => Promise<Buffer>;
+type ScryptOptions = { N: number; r: number; p: number; maxmem: number };
+const scrypt = promisify(scryptCallback) as (password: string, salt: Buffer, keylen: number, options?: ScryptOptions) => Promise<Buffer>;
+
+// OWASP's minimum for scrypt (N=2^17, r=8, p=1: 128 MiB). Hashes from before this carry no
+// parameters and were made with Node's defaults (N=2^14).
+const SCRYPT = { N: 2 ** 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
 
 export type ShareKind = "snippets" | "notes" | "credentials";
 
@@ -55,11 +61,6 @@ export type SharedItem =
 
 const TABLES: Record<ShareKind, string> = { snippets: "snippets", notes: "notes", credentials: "credentials" };
 
-async function sha256(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Buffer.from(digest).toString("hex");
-}
-
 function toShare(row: Row): Share {
   return {
     id: row.id as string,
@@ -96,8 +97,8 @@ async function itemId(db: Db, kind: ShareKind, slug: string): Promise<string> {
 const PASSCODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function makePasscode(): string {
-  const bytes = randomBytes(8);
-  const chars = [...bytes].map((b) => PASSCODE_ALPHABET[b % PASSCODE_ALPHABET.length]);
+  // randomInt, not a byte modulo the alphabet's length, so every character is equally likely.
+  const chars = Array.from({ length: 8 }, () => PASSCODE_ALPHABET[randomInt(PASSCODE_ALPHABET.length)]);
   return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
 }
 
@@ -106,14 +107,18 @@ const normalizePasscode = (value: string) => value.toUpperCase().replace(/[^A-Z0
 
 async function hashPasscode(passcode: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = await scrypt(normalizePasscode(passcode), salt, 32);
-  return `${salt.toString("hex")}:${hash.toString("hex")}`;
+  const hash = await scrypt(normalizePasscode(passcode), salt, 32, SCRYPT);
+  return `scrypt:${Math.log2(SCRYPT.N)}:${SCRYPT.r}:${SCRYPT.p}:${salt.toString("hex")}:${hash.toString("hex")}`;
 }
 
 async function passcodeMatches(passcode: string, stored: string): Promise<boolean> {
-  const [salt, hash] = stored.split(":");
+  const parts = stored.split(":");
+  // "scrypt:<log2 N>:<r>:<p>:<salt>:<hash>", or the older "<salt>:<hash>" made with the defaults.
+  const [salt, hash] = parts.length === 6 ? parts.slice(4) : parts;
+  const options =
+    parts.length === 6 ? { N: 2 ** Number(parts[1]), r: Number(parts[2]), p: Number(parts[3]), maxmem: SCRYPT.maxmem } : undefined;
   const expected = Buffer.from(hash, "hex");
-  const actual = await scrypt(normalizePasscode(passcode), Buffer.from(salt, "hex"), expected.length);
+  const actual = await scrypt(normalizePasscode(passcode), Buffer.from(salt, "hex"), expected.length, options);
   return timingSafeEqual(actual, expected);
 }
 
@@ -172,11 +177,12 @@ export async function listShares(db: Db, kind: ShareKind, slug: string): Promise
 }
 
 /** A link's token (and passcode) again, for its owner. Throws when no copy was kept. */
-export async function revealShare(db: Db, id: string): Promise<{ token: string; passcode?: string }> {
-  const rows = await db.query(`SELECT id, token_enc, passcode_enc FROM shares WHERE id = $1`, [id]);
+export async function revealShare(db: Db, id: string): Promise<{ kind: ShareKind; token: string; passcode?: string }> {
+  const rows = await db.query(`SELECT id, kind, token_enc, passcode_enc FROM shares WHERE id = $1`, [id]);
   const row = rows[0];
   if (!row?.token_enc) throw new SnippetError("This link was only shown when it was made.", "not_found");
   return {
+    kind: row.kind as ShareKind,
     token: await decryptSecret(row.token_enc as string, `share:${id}:token`),
     ...(row.passcode_enc ? { passcode: await decryptSecret(row.passcode_enc as string, `share:${id}:passcode`) } : {}),
   };
@@ -202,14 +208,25 @@ export async function findShare(db: Db, token: string): Promise<Share | null> {
   return rows[0] ? toShare(rows[0]) : null;
 }
 
-/** Checks a credential link's passcode; a wrong one counts towards locking the link. */
-export async function checkPasscode(db: Db, share: Share, passcode: string): Promise<boolean> {
-  const rows = await db.query(`SELECT passcode_hash FROM shares WHERE id = $1`, [share.id]);
-  const stored = rows[0]?.passcode_hash as string | null | undefined;
-  if (!stored) return true;
-  if (await passcodeMatches(passcode, stored)) return true;
-  await db.query(`UPDATE shares SET failed_attempts = failed_attempts + 1 WHERE id = $1`, [share.id]);
-  return false;
+/**
+ * Checks a credential link's passcode. The try is taken before checking, in one statement, so a
+ * burst of guesses sent at once can't all be checked before the count catches up; a right
+ * passcode gives its try back. `left` is how many tries remain (0 once the link has locked).
+ */
+export async function checkPasscode(db: Db, share: Share, passcode: string): Promise<{ ok: boolean; left: number }> {
+  if (!share.protected) return { ok: true, left: MAX_FAILED };
+  const rows = await db.query(
+    `UPDATE shares SET failed_attempts = failed_attempts + 1
+     WHERE id = $1 AND failed_attempts < $2 AND passcode_hash IS NOT NULL
+     RETURNING passcode_hash, failed_attempts`,
+    [share.id, MAX_FAILED],
+  );
+  if (!rows[0]) return { ok: false, left: 0 };
+  if (await passcodeMatches(passcode, rows[0].passcode_hash as string)) {
+    await db.query(`UPDATE shares SET failed_attempts = failed_attempts - 1 WHERE id = $1 AND failed_attempts > 0`, [share.id]);
+    return { ok: true, left: MAX_FAILED - Number(rows[0].failed_attempts) + 1 };
+  }
+  return { ok: false, left: MAX_FAILED - Number(rows[0].failed_attempts) };
 }
 
 /**

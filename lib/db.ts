@@ -129,6 +129,13 @@ const SCHEMA = [
     value text NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  // Secrets the app makes for itself: the random part of the signing key, and when sessions were
+  // last ended everywhere. Never shown anywhere.
+  `CREATE TABLE IF NOT EXISTS app_secrets (
+    name text PRIMARY KEY,
+    value text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ];
 
 async function migrate(db: Db) {

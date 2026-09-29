@@ -12,12 +12,14 @@ import { compareNotes } from "@/lib/diff";
 import { formatDate, formatSource } from "@/lib/format";
 import { unlockedCodec } from "@/lib/locked-notes";
 import { getNote, getNoteVersionPair, listNoteVersions } from "@/lib/notes";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Note history" };
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ from?: string; to?: string }> };
 
 export default async function NoteHistoryPage({ params, searchParams }: Props) {
+  await requireAuth();
   const { slug } = await params;
   const search = await searchParams;
   const db = await getDb();

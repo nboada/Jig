@@ -6,10 +6,12 @@ import { getDb } from "@/lib/db";
 import { formatDate, timeAgo } from "@/lib/format";
 import { listTokens } from "@/lib/tokens";
 import { ConnectPanel } from "./ConnectPanel";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Connect" };
 
 export default async function ConnectPage() {
+  await requireAuth();
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");

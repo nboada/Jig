@@ -68,6 +68,8 @@ export function useItemActions({
   const [sharing, setSharing] = useState(false);
   const [locking, setLocking] = useState<"lock" | "unlock" | null>(null);
   const [lockError, setLockError] = useState("");
+  // Why the last pin, clone or delete didn't go through, shown in a small dialog.
+  const [problem, setProblem] = useState("");
   const [changingLock, startLock] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [, startAction] = useTransition();
@@ -77,11 +79,18 @@ export function useItemActions({
 
   function remove() {
     // Out of the list at once, and off the item's own page straight away if that's where we are;
-    // the server catches up behind it.
+    // the server catches up behind it. If it can't, the item comes back and the menu says why.
     list?.hide(slug);
     setConfirming(false);
-    if (pathname.startsWith(`${base}/${slug}`)) router.push(base);
-    startDelete(() => deleteItem(kind, slug));
+    const leaving = pathname.startsWith(`${base}/${slug}`);
+    if (leaving) router.push(base);
+    startDelete(async () => {
+      const result = await deleteItem(kind, slug);
+      if (!result.error) return;
+      list?.unhide(slug);
+      if (leaving) router.push(`${base}/${slug}`);
+      setProblem(result.error);
+    });
   }
 
   const actions: ItemAction[] = [];
@@ -93,7 +102,13 @@ export function useItemActions({
       // Moves in the list at once; the action's revalidation refreshes everything else.
       onSelect: () => {
         list?.pin(slug, !pinned);
-        startAction(() => setPinned(kind, slug, !pinned));
+        startAction(async () => {
+          const result = await setPinned(kind, slug, !pinned);
+          if (result.error) {
+            list?.pin(slug, pinned);
+            setProblem(result.error);
+          }
+        });
       },
     });
     if (!locked) {
@@ -101,7 +116,12 @@ export function useItemActions({
         key: "clone",
         label: "Clone",
         icon: CloneIcon,
-        onSelect: () => startAction(async () => router.push(`${base}/${await cloneItem(kind, slug)}`)),
+        onSelect: () =>
+          startAction(async () => {
+            const result = await cloneItem(kind, slug);
+            if (result.slug) router.push(`${base}/${result.slug}`);
+            else setProblem(result.error ?? "Could not make the copy. Try again.");
+          }),
       });
     }
     // Agents can't see a locked note, so there's nothing to hand them.
@@ -165,6 +185,13 @@ export function useItemActions({
         }
       />
       <ShareDialog kind={kind} slug={slug} title={title} open={sharing} onOpenChange={setSharing} />
+      <ConfirmDialog
+        open={problem !== ""}
+        onOpenChange={(open) => !open && setProblem("")}
+        title="That didn't work"
+        message={problem}
+        action={<DialogAction label="OK" onClick={() => setProblem("")} />}
+      />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

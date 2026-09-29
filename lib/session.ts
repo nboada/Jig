@@ -1,63 +1,71 @@
+import type { Db } from "./db";
+import { safeEqual, seal, unseal } from "./signing";
+
 /**
- * Single-user login for the dashboard. The cookie holds an expiry timestamp
- * signed with HMAC-SHA256, so checking it needs no database and runs in the proxy.
+ * Single-user login for the dashboard. The cookie holds when the session started and when it
+ * expires, signed (lib/signing.ts). A session lasts a week from its last renewal and 30 days at
+ * most, and "Sign out everywhere" ends every session started before it.
+ *
+ * The proxy only checks that the cookie is there and not expired (it has no database); the real
+ * check is `readSession`, through `requireAuth` in lib/auth.ts.
  */
 
-export const SESSION_COOKIE = "jig_session";
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+// "__Host-" makes the browser refuse the cookie unless it's Secure, host-only and on "/".
+export const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-jig_session" : "jig_session";
+export const SESSION_IDLE_SECONDS = 7 * 24 * 60 * 60;
+export const SESSION_ABSOLUTE_SECONDS = 30 * 24 * 60 * 60;
+/** A session is renewed (its week restarted) once it's this old. */
+export const SESSION_RENEW_SECONDS = 24 * 60 * 60;
 
-function secret(): string {
-  const value = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
-  if (!value) throw new Error("Set ADMIN_PASSWORD (and SESSION_SECRET) to use the dashboard.");
-  return value;
+export const MIN_PASSWORD_LENGTH = 12;
+
+const VALID_AFTER = "sessions-valid-after";
+
+export type Session = { issuedAt: number; expires: number };
+
+/** A new session value, and how long the cookie should last. `issuedAt` carries over on renewal. */
+export async function createSession(db: Db, now = Date.now(), issuedAt = now): Promise<{ value: string; maxAge: number }> {
+  const expires = Math.min(Math.floor(now / 1000) + SESSION_IDLE_SECONDS, Math.floor(issuedAt / 1000) + SESSION_ABSOLUTE_SECONDS);
+  const value = await seal(db, "session", [String(issuedAt)], expires);
+  return { value, maxAge: Math.max(0, expires - Math.floor(now / 1000)) };
 }
 
-async function sign(payload: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret()),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
+/** The session behind a cookie, or null when it's forged, expired or was signed out everywhere. */
+export async function readSession(db: Db, value: string | undefined, now = Date.now()): Promise<Session | null> {
+  const fields = await unseal(db, "session", value, now);
+  const issuedAt = Number(fields?.[0]);
+  if (!fields || fields.length !== 1 || !Number.isFinite(issuedAt)) return null;
+  const rows = await db.query<{ value: string }>(`SELECT value FROM app_secrets WHERE name = $1`, [VALID_AFTER]);
+  if (rows[0] && issuedAt <= Number(rows[0].value)) return null;
+  return { issuedAt, expires: Number(value!.split(".")[1]) };
+}
+
+/** Ends every session, this one included. */
+export async function endAllSessions(db: Db, now = Date.now()): Promise<void> {
+  await db.query(
+    `INSERT INTO app_secrets (name, value) VALUES ($1, $2)
+     ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [VALID_AFTER, String(now)],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  return Buffer.from(signature).toString("base64url");
 }
 
-/**
- * Signs a value for a purpose other than the session (e.g. a share's "already viewed" pass).
- * Callers prefix the payload with their purpose, so no signed value can pass as a session.
- */
-export async function signValue(payload: string): Promise<string> {
-  return sign(payload);
+/** For the proxy, which has no database: a session cookie that isn't expired. Never enough on its own. */
+export function sessionLooksCurrent(value: string | undefined, now = Date.now()): boolean {
+  const parts = value?.split(".") ?? [];
+  return parts.length === 3 && Number(parts[1]) * 1000 > now;
 }
 
-/** Compares two strings in constant time for equal lengths. */
-export function safeEqual(a: string, b: string): boolean {
-  const x = new TextEncoder().encode(a);
-  const y = new TextEncoder().encode(b);
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
-  return diff === 0;
-}
-
-export async function createSessionValue(now = Date.now()): Promise<string> {
-  const expires = String(Math.floor(now / 1000) + SESSION_MAX_AGE);
-  return `${expires}.${await sign(expires)}`;
-}
-
-export async function isValidSession(value: string | undefined, now = Date.now()): Promise<boolean> {
-  if (!value) return false;
-  const [expires, signature] = value.split(".");
-  if (!expires || !signature || Number(expires) * 1000 < now) return false;
-  try {
-    return safeEqual(signature, await sign(expires));
-  } catch {
-    return false;
+/** Why the dashboard password can't be used, if it can't. */
+export function passwordProblem(): string | null {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) return "ADMIN_PASSWORD is not set on the server.";
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `ADMIN_PASSWORD is too short. Set one of at least ${MIN_PASSWORD_LENGTH} characters in your host's environment variables and redeploy.`;
   }
+  return null;
 }
 
 export function checkPassword(password: string): boolean {
   const expected = process.env.ADMIN_PASSWORD;
-  return Boolean(expected) && safeEqual(password, expected!);
+  return passwordProblem() === null && safeEqual(password, expected!);
 }

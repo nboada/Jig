@@ -13,6 +13,7 @@ import { getDb } from "@/lib/db";
 import { timeAgoShort } from "@/lib/format";
 import { listNotes, listNoteTags } from "@/lib/notes";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Notes" };
 
@@ -26,6 +27,7 @@ function href(current: Search, change: Search) {
 }
 
 export default async function NotesPage({ searchParams }: { searchParams: Promise<Search> }) {
+  await requireAuth();
   const search = await searchParams;
   const { view, sort } = await getListPrefs("notes", search.sort);
   // In list view the layout shows the notes in a column; this pane waits for a pick.

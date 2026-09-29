@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { sha256 } from "./signing";
 
 /**
  * API tokens let agents reach the MCP endpoint. Only a SHA-256 hash is stored,
@@ -10,11 +11,6 @@ export type ApiToken = { id: string; name: string; prefix: string; createdAt: st
 const TOKEN_PREFIX = "jig_";
 /** Tokens created before the rename to Jig keep working. */
 const LEGACY_PREFIX = "snp_";
-
-async function sha256(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Buffer.from(digest).toString("hex");
-}
 
 function toToken(row: Record<string, unknown>): ApiToken {
   return {
@@ -36,11 +32,18 @@ export async function createToken(db: Db, name: string): Promise<{ token: string
   return { token, record: toToken(rows[0]) };
 }
 
-/** Returns the token's record when it is valid, and notes when it was last used. */
+/**
+ * Returns the token's record when it is valid, and notes when it was last used (to the nearest
+ * few minutes, so a busy agent doesn't write to the database on every request).
+ */
 export async function verifyToken(db: Db, token: string | undefined): Promise<ApiToken | null> {
   if (!token?.startsWith(TOKEN_PREFIX) && !token?.startsWith(LEGACY_PREFIX)) return null;
   const rows = await db.query(
-    `UPDATE api_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING *`,
+    `WITH used AS (
+       UPDATE api_tokens SET last_used_at = now()
+       WHERE token_hash = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '5 minutes')
+     )
+     SELECT * FROM api_tokens WHERE token_hash = $1`,
     [await sha256(token)],
   );
   return rows[0] ? toToken(rows[0]) : null;

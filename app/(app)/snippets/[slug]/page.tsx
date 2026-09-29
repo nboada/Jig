@@ -24,6 +24,7 @@ import { formatDate, formatSource, timeAgo } from "@/lib/format";
 import { languageLabel } from "@/lib/languages";
 import { getSnippet } from "@/lib/snippets";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
@@ -35,11 +36,13 @@ const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) 
 const loadSnippet = cache(async (slug: string, version: number | undefined) => getSnippet(await getDb(), slug, version));
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  await requireAuth();
   const snippet = await loadSnippet((await params).slug, toVersion((await searchParams).v));
   return { title: snippet?.title ?? "Not found" };
 }
 
 export default async function SnippetPage({ params, searchParams }: Props) {
+  await requireAuth();
   const { slug } = await params;
   const { v } = await searchParams;
   const snippet = await loadSnippet(slug, toVersion(v));

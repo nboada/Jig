@@ -33,6 +33,8 @@ export type ListState = {
   setSort: (sort: Sort) => void;
   /** Takes an item out of the list at once, ahead of the server (after confirming a delete). */
   hide: (slug: string) => void;
+  /** Puts a hidden item back, when the server couldn't delete it after all. */
+  unhide: (slug: string) => void;
   /** Pins or unpins an item in the list at once, ahead of the server. */
   pin: (slug: string, pinned: boolean) => void;
   /** Shows a note as locked or not in the list at once, ahead of the server. */

@@ -9,11 +9,15 @@ import { KeyMissing } from "@/components/KeyMissing";
 import { Meta } from "@/components/Meta";
 import { MoreMenu } from "@/components/MoreMenu";
 import { ExternalIcon } from "@/components/NavIcons";
+import { UnlockPanel } from "@/components/Passkeys";
 import { SecretValue } from "@/components/SecretValue";
 import { ShareButton } from "@/components/ShareButton";
 import { getCredential } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
+import { requireAuth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { isUnlocked } from "@/lib/locked-notes";
+import { hasPasskeys } from "@/lib/passkeys";
 import { getListPrefs } from "@/lib/view";
 import { formatDate, safeHref, timeAgo } from "@/lib/format";
 
@@ -31,10 +35,15 @@ function host(url: string) {
 }
 
 export default async function CredentialPage({ params }: Props) {
+  await requireAuth();
   if (!encryptionReady()) return <KeyMissing />;
   const { slug } = await params;
-  const credential = await getCredential(await getDb(), slug);
+  const db = await getDb();
+  const credential = await getCredential(db, slug);
   if (!credential) notFound();
+  // Secrets need an unlock (Touch ID or the password), like locked notes.
+  const locked = credential.fields.some((f) => f.secret) && !(await isUnlocked());
+  const passkey = locked ? await hasPasskeys(db) : false;
   const link = safeHref(credential.url);
   const { view } = await getListPrefs("credentials");
   const where = credential.url ? host(link ?? "") : "";
@@ -102,13 +111,15 @@ export default async function CredentialPage({ params }: Props) {
         }
       />
 
+      {locked && <UnlockPanel hasPasskey={passkey} compact title="Secrets are locked" line="Unlock to reveal or copy them, and to share this credential." />}
+
       <dl className="divide-y divide-line rounded-xl border border-line bg-panel">
         {credential.fields.map((f) => (
           <div key={f.id} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[150px_1fr] sm:items-center sm:gap-4">
             <dt className="engraved">{f.label}</dt>
             <dd className="min-w-0">
               {f.secret ? (
-                <SecretValue slug={credential.slug} fieldId={f.id} />
+                <SecretValue slug={credential.slug} fieldId={f.id} locked={locked} />
               ) : f.value ? (
                 <div className="flex items-center gap-1">
                   <span className="min-w-0 flex-1 font-mono text-ui break-all">{f.value}</span>

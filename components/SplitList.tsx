@@ -101,12 +101,13 @@ export function ListFilters<T extends Item>({
     [items],
   );
   const hide = useCallback((slug: string) => edit((e) => void e.hidden.add(slug)), [edit]);
+  const unhide = useCallback((slug: string) => edit((e) => void e.hidden.delete(slug)), [edit]);
   const pin = useCallback((slug: string, pinned: boolean) => edit((e) => void e.pins.set(slug, pinned)), [edit]);
   const lock = useCallback((slug: string, locked: boolean) => edit((e) => void e.locks.set(slug, locked)), [edit]);
 
   return (
     <ListContext.Provider
-      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, pin, lock, section, base }}
+      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, unhide, pin, lock, section, base }}
     >
       {children}
     </ListContext.Provider>
@@ -238,7 +239,7 @@ export function ListColumn<T extends Item>({
                 <Link
                   href={`${base}/${item.slug}`}
                   aria-current={active ? "page" : undefined}
-                  className={`group block rounded-lg px-2.5 py-2 transition ${active ? "bg-accent-soft" : "hover:bg-raised/60"}`}
+                  className={`group mb-[3px] block rounded-lg px-2.5 py-2 transition ${active ? "bg-accent-soft" : "hover:bg-raised/60"}`}
                 >
                   {renderRow(item as T)}
                 </Link>
@@ -246,6 +247,10 @@ export function ListColumn<T extends Item>({
             </li>
           );
         })}
+        {/* The column holds the first 500 (the section layouts' limit); the grid view's search asks the server. */}
+        {visible.length >= 500 && (
+          <li className="px-3 py-4 text-center text-meta text-muted">{`Showing the first 500 ${noun}s. Search in the grid view to reach the rest.`}</li>
+        )}
         {visible.length === 0 && (
           <li className="px-3 py-10 text-center text-ui text-muted">
             {filtered ? "Nothing matches." : (

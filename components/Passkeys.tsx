@@ -27,8 +27,8 @@ function useWebAuthn() {
 }
 
 /** Asks the device for its Jig passkey (the Touch ID prompt). Null if the person cancelled. */
-async function promptPasskey() {
-  const optionsJSON = await passkeyPromptOptions();
+async function promptPasskey(use: "login" | "unlock") {
+  const optionsJSON = await passkeyPromptOptions(use);
   try {
     return await startAuthentication({ optionsJSON });
   } catch (error) {
@@ -52,7 +52,7 @@ export function PasskeyLogin({ next }: { next: string }) {
           start(async () => {
             setError("");
             try {
-              const response = await promptPasskey();
+              const response = await promptPasskey("login");
               if (!response) return;
               const result = await loginWithPasskey(response, next);
               if (result?.error) setError(result.error);
@@ -72,10 +72,22 @@ export function PasskeyLogin({ next }: { next: string }) {
 }
 
 /**
- * Stands in for a locked note's text until it's unlocked: Touch ID when there's a passkey, the
- * dashboard password otherwise (or as a fallback). One unlock opens every locked note for 5 minutes.
+ * Stands in for a locked note's text, or a credential's secrets, until unlocked: Touch ID when
+ * there's a passkey, the dashboard password otherwise (or as a fallback). One unlock opens every
+ * locked note and every secret for 30 minutes, or until the browser closes.
  */
-export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
+export function UnlockPanel({
+  hasPasskey,
+  title = "This note is locked",
+  line = "Its text is encrypted and hidden from agents.",
+  compact = false,
+}: {
+  hasPasskey: boolean;
+  title?: string;
+  line?: string;
+  /** Less padding, for sitting above a credential's fields. */
+  compact?: boolean;
+}) {
   const router = useRouter();
   const supported = useWebAuthn();
   const canUsePasskey = hasPasskey && supported;
@@ -91,13 +103,13 @@ export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
   };
 
   return (
-    <div className="grid place-items-center gap-4 rounded-xl border border-line bg-well px-5 py-12 text-center">
+    <div className={`grid place-items-center gap-4 rounded-xl border border-line bg-well px-5 text-center ${compact ? "py-6" : "py-12"}`}>
       <span className="grid size-11 place-items-center rounded-full bg-raised text-text-2">
         <LockIcon className="size-5" />
       </span>
       <div>
-        <p className="text-body font-medium text-text">This note is locked</p>
-        <p className="mt-1 text-ui text-muted">Its text is encrypted and hidden from agents.</p>
+        <p className="text-body font-medium text-text">{title}</p>
+        <p className="mt-1 text-ui text-muted">{line}</p>
       </div>
 
       {canUsePasskey && !usePassword ? (
@@ -108,7 +120,7 @@ export function UnlockPanel({ hasPasskey }: { hasPasskey: boolean }) {
             start(async () => {
               setError("");
               try {
-                const response = await promptPasskey();
+                const response = await promptPasskey("unlock");
                 if (response) done(await unlockWithPasskey(response));
                 else setError("No passkey on this device? Add one from ⋯ → Passkeys in the header, or use your password.");
               } catch {
@@ -210,7 +222,7 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       title="Passkeys"
-      description="Sign in and unlock locked notes with Touch ID, Face ID or a security key. A passkey works on the site it was made on."
+      description="Sign in, and unlock locked notes and secrets, with Touch ID, Face ID or a security key. A passkey works on the site it was made on."
     >
       <div className="mt-5 space-y-5">
         {keys === null ? (

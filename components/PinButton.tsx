@@ -26,7 +26,8 @@ export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; 
           startTransition(async () => {
             setShown(!shown);
             list?.pin(slug, !shown);
-            await setPinned(kind, slug, !shown);
+            // The button goes back by itself when the transition ends; the list needs telling.
+            if ((await setPinned(kind, slug, !shown)).error) list?.pin(slug, shown);
           })
         }
         className={iconButton({ className: shown ? "text-accent hover:text-accent" : "" })}

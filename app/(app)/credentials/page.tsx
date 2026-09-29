@@ -14,6 +14,7 @@ import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
 import { timeAgoShort } from "@/lib/format";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Credentials" };
 
@@ -27,6 +28,7 @@ function href(current: Search, change: Search) {
 }
 
 export default async function CredentialsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  await requireAuth();
   if (!encryptionReady()) return <KeyMissing />;
   const search = await searchParams;
   const { view, sort } = await getListPrefs("credentials", search.sort);

@@ -43,7 +43,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const noun = NOUNS[share.kind];
 
   // Seen a moment ago in this browser: show it again without using another view.
-  if (await passAdmits(share, pass)) return <Shared share={share} item={await loadSharedItem(db, share)} />;
+  if (await passAdmits(db, share, pass)) return <Shared share={share} item={await loadSharedItem(db, share)} />;
 
   const status = shareStatus(share);
   if (status !== "open") return <Gate state={CLOSED[status][0]} title={CLOSED[status][1]} />;

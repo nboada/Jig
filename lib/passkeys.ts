@@ -7,7 +7,7 @@ import {
   type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import type { Db } from "./db";
-import { safeEqual, signValue } from "./session";
+import { seal, unseal } from "./signing";
 import { SnippetError } from "./snippets";
 
 /**
@@ -18,10 +18,14 @@ import { SnippetError } from "./snippets";
 
 export type Passkey = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 
-/** The site a passkey is tied to, from the request's host and scheme. */
+/** The site a passkey is tied to, from JIG_ORIGIN when set, else the request's host and scheme. */
 export type Site = { rpID: string; origin: string };
 
-export function siteFrom(host: string | null, proto: string | null): Site {
+export function siteFrom(host: string | null, proto: string | null, configured = process.env.JIG_ORIGIN): Site {
+  if (configured) {
+    const url = new URL(configured);
+    return { rpID: url.hostname, origin: url.origin };
+  }
   const hostname = (host ?? "localhost").split(",")[0].trim();
   const scheme = (proto ?? "").split(",")[0].trim() || (hostname.startsWith("localhost") ? "http" : "https");
   return { rpID: hostname.replace(/:\d+$/, ""), origin: `${scheme}://${hostname}` };
@@ -125,23 +129,19 @@ export async function verifyPasskey(db: Db, site: Site, response: Authentication
 
 /**
  * The challenge travels in a short-lived signed cookie between asking for options and answering
- * them, since there's no server-side session to keep it in. Signed so it can't be swapped.
+ * them, since there's no server-side session to keep it in. Signed so it can't be swapped, and
+ * tied to what it was asked for, so a sign-in challenge can't answer an unlock or a new passkey.
  */
 export const CHALLENGE_COOKIE = "jig_webauthn";
 export const CHALLENGE_SECONDS = 5 * 60;
 
-export async function makeChallengeCookie(challenge: string, now = Date.now()) {
-  const expires = String(Math.floor(now / 1000) + CHALLENGE_SECONDS);
-  return `${expires}.${challenge}.${await signValue(`webauthn:${expires}:${challenge}`)}`;
+export type ChallengeUse = "login" | "unlock" | "register";
+
+export async function makeChallengeCookie(db: Db, use: ChallengeUse, challenge: string, now = Date.now()) {
+  return seal(db, "webauthn", [use, challenge], Math.floor(now / 1000) + CHALLENGE_SECONDS);
 }
 
-export async function readChallengeCookie(value: string | undefined, now = Date.now()): Promise<string | null> {
-  if (!value) return null;
-  const [expires, challenge, signature] = value.split(".");
-  if (!expires || !challenge || !signature || Number(expires) * 1000 < now) return null;
-  try {
-    return safeEqual(signature, await signValue(`webauthn:${expires}:${challenge}`)) ? challenge : null;
-  } catch {
-    return null;
-  }
+export async function readChallengeCookie(db: Db, use: ChallengeUse, value: string | undefined, now = Date.now()): Promise<string | null> {
+  const fields = await unseal(db, "webauthn", value, now);
+  return fields?.length === 2 && fields[0] === use ? fields[1] : null;
 }

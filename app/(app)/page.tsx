@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { button } from "@/components/Button";
 import { LanguageIcon } from "@/components/LanguageIcon";
-import { CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
+import { CredentialsIcon, NotesIcon, PlusIcon, SnippetsIcon } from "@/components/NavIcons";
 import { SearchInput } from "@/components/SearchInput";
 import { listCredentials } from "@/lib/credentials";
 import { getDb } from "@/lib/db";
@@ -11,6 +11,7 @@ import { languageLabel } from "@/lib/languages";
 import { countLibrary } from "@/lib/library";
 import { listNotes } from "@/lib/notes";
 import { listSnippets } from "@/lib/snippets";
+import { requireAuth } from "@/lib/auth";
 
 type Search = { q?: string; lang?: string; tag?: string };
 
@@ -24,6 +25,7 @@ const PER_CARD = 3;
 const RECENT = 8;
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<Search> }) {
+  await requireAuth();
   const search = await searchParams;
   // The snippet list used to live here; keep its old filter links working.
   if (search.lang || search.tag) redirect(`/snippets?${new URLSearchParams(search as Record<string, string>)}`);
@@ -126,14 +128,12 @@ function Overview({ kinds, counts }: { kinds: Kind[]; counts: Record<string, num
                     <k.Icon className="size-4" />
                   </span>
                   <span>
-                    <span className="block font-medium group-hover:underline">{k.name}</span>
+                    <span className="block font-medium transition group-hover:text-accent">{k.name}</span>
                     <span className="block text-meta text-muted">{count === 1 ? "1 item" : `${count} items`}</span>
                   </span>
                 </Link>
-                <Link
-                  href={k.create}
-                  className={button({ variant: "ghost", size: "sm" })}
-                >
+                <Link href={k.create} className={button({ size: "sm" })}>
+                  <PlusIcon className="size-3.5" />
                   New
                 </Link>
               </div>

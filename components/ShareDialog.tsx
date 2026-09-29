@@ -74,11 +74,13 @@ export function ShareDialog({
    * Turning a link off or on, or deleting it, shows in the list at once; the server catches up
    * behind it, and the list reloads from the server either way, so a failure puts it back.
    */
-  function change(apply: (links: Share[]) => Share[], action: () => Promise<void>) {
+  function change(apply: (links: Share[]) => Share[], action: () => Promise<{ error?: string }>) {
+    setError("");
     setLinks((current) => (current ? apply(current) : current));
     startTransition(async () => {
       try {
-        await action();
+        const result = await action();
+        if (result.error) setError(result.error);
       } finally {
         await refresh();
       }
@@ -249,9 +251,12 @@ function Copyable({ label, value }: { label: string; value: string }) {
 /** Copies a link (and a credential link's passcode) again, from the encrypted copy kept for its owner. */
 function CopyAgain({ id, passcode }: { id: string; passcode: boolean }) {
   const [copied, setCopied] = useState<"link" | "passcode" | null>(null);
+  const [problem, setProblem] = useState("");
   async function copy(what: "link" | "passcode") {
     const result = await revealShareLink(id);
-    if (!result.token) return;
+    // A credential's link needs an unlock, like its secrets; say so where the copy was asked for.
+    if (!result.token) return setProblem(result.error ?? "Could not copy the link. Try again.");
+    setProblem("");
     await navigator.clipboard.writeText(what === "link" ? `${window.location.origin}/s/${result.token}` : (result.passcode ?? ""));
     setCopied(what);
     setTimeout(() => setCopied(null), 1500);
@@ -259,6 +264,7 @@ function CopyAgain({ id, passcode }: { id: string; passcode: boolean }) {
   const quiet = "grid size-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-raised hover:text-text";
   return (
     <>
+      {problem && <span className="text-meta text-danger">{problem}</span>}
       <Tip label={copied === "link" ? "Copied" : "Copy link"}>
         <button type="button" aria-label="Copy link" onClick={() => copy("link")} className={quiet}>
           {copied === "link" ? <CheckIcon className="size-4 text-accent" /> : <CopyIcon className="size-4" />}

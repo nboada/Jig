@@ -1,12 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { revealSecret } from "@/app/actions";
 import { iconButton } from "@/components/Button";
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, LockIcon } from "@/components/NavIcons";
 
-/** A hidden secret. Its value is fetched from the server only when revealed or copied, and forgotten on leaving. */
-export function SecretValue({ slug, fieldId }: { slug: string; fieldId: string }) {
+/**
+ * A hidden secret. Its value is fetched from the server only when revealed or copied, and
+ * forgotten on leaving. While `locked` (no recent unlock) the buttons wait for the unlock panel.
+ */
+export function SecretValue({ slug, fieldId, locked = false }: { slug: string; fieldId: string; locked?: boolean }) {
+  const router = useRouter();
   const [value, setValue] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -14,6 +19,8 @@ export function SecretValue({ slug, fieldId }: { slug: string; fieldId: string }
 
   async function load(): Promise<string> {
     const result = await revealSecret(slug, fieldId);
+    // The unlock ran out: redraw, so the page shows the unlock panel again.
+    if (result.locked) router.refresh();
     if (result.error !== undefined) throw new Error(result.error);
     return result.value ?? "";
   }
@@ -57,15 +64,22 @@ export function SecretValue({ slug, fieldId }: { slug: string; fieldId: string }
         )}
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || locked}
           onClick={value === null ? reveal : () => setValue(null)}
           aria-label={value === null ? "Reveal" : "Hide"}
           title={value === null ? "Reveal" : "Hide"}
-          className={iconButton({ className: pending ? "animate-pulse" : "" })}
+          className={iconButton({ className: `disabled:pointer-events-none disabled:opacity-40 ${pending ? "animate-pulse" : ""}` })}
         >
           {value === null ? <EyeIcon className="size-4" /> : <EyeOffIcon className="size-4" />}
         </button>
-        <button type="button" onClick={copy} aria-label={copied ? "Copied" : "Copy"} title="Copy" className={iconButton({ className: copied ? "text-accent" : "" })}>
+        <button
+          type="button"
+          disabled={locked}
+          onClick={copy}
+          aria-label={copied ? "Copied" : "Copy"}
+          title="Copy"
+          className={iconButton({ className: `disabled:pointer-events-none disabled:opacity-40 ${copied ? "text-accent" : ""}` })}
+        >
           {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
         </button>
       </div>

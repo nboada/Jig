@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
+import { connection } from "next/server";
 import { TooltipProvider } from "@/components/Tooltip";
 import "./globals.css";
 
@@ -17,7 +18,10 @@ export const metadata: Metadata = {
 // The installed app's title bar and the browser's UI take the page's darkest colour.
 export const viewport: Viewport = { themeColor: "#181818" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page is rendered per request, so each gets the nonce proxy.ts put in its
+  // Content-Security-Policy; a page built ahead of time would have scripts without one.
+  await connection();
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh">

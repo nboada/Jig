@@ -4,7 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { logout } from "@/app/actions";
+import { logout, signOutEverywhere } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { menuContentClass, menuItemClass } from "@/components/ItemActions";
 import { Kbd } from "@/components/Kbd";
@@ -16,13 +16,13 @@ const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 
 
 /**
  * The right side of the header: search everything (⌘K), Connect, and a ⋯ menu with the
- * keyboard shortcuts (also ?) and Log out, which is used rarely enough to live in a menu.
+ * keyboard shortcuts (also ?), Log out and Sign out everywhere, used rarely enough to live in a menu.
  */
 export function HeaderActions() {
   const [searching, setSearching] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [passkeys, setPasskeys] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [leaving, setLeaving] = useState<"here" | "everywhere" | null>(null);
   const [loggingOut, startLogout] = useTransition();
   const pathname = usePathname();
 
@@ -89,9 +89,13 @@ export function HeaderActions() {
               Passkeys…
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="mx-1 my-1 h-px bg-line" />
-            <DropdownMenu.Item onSelect={() => setLeaving(true)} className={menuItemClass()}>
+            <DropdownMenu.Item onSelect={() => setLeaving("here")} className={menuItemClass()}>
               <LogoutIcon className="size-4 text-muted" />
               Log out
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => setLeaving("everywhere")} className={menuItemClass()}>
+              <LogoutIcon className="size-4 text-muted" />
+              Sign out everywhere…
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -101,11 +105,22 @@ export function HeaderActions() {
       <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
       <PasskeysDialog open={passkeys} onOpenChange={setPasskeys} />
       <ConfirmDialog
-        open={leaving}
-        onOpenChange={setLeaving}
-        title="Log out?"
-        message="You'll need your password to get back in."
-        action={<DialogAction label="Log out" pending={loggingOut} onClick={() => startLogout(() => logout())} />}
+        open={leaving !== null}
+        onOpenChange={(open) => !open && setLeaving(null)}
+        title={leaving === "everywhere" ? "Sign out everywhere?" : "Log out?"}
+        message={
+          leaving === "everywhere"
+            ? "Every browser and device signed in to Jig is signed out, this one too. Agents keep working: their tokens are separate."
+            : "You'll need your password to get back in."
+        }
+        action={
+          <DialogAction
+            label={leaving === "everywhere" ? "Sign out everywhere" : "Log out"}
+            tone={leaving === "everywhere" ? "danger" : "default"}
+            pending={loggingOut}
+            onClick={() => startLogout(() => (leaving === "everywhere" ? signOutEverywhere() : logout()))}
+          />
+        }
       />
     </div>
   );

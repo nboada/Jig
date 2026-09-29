@@ -5,12 +5,14 @@ import { listCredentials } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 /**
  * In list view, credentials open beside a column listing them all. In grid view, or before the
  * encryption key is set up, the pages get the full width.
  */
 export default async function CredentialsLayout({ children }: { children: React.ReactNode }) {
+  await requireAuth();
   const { view, sort } = await getListPrefs("credentials");
   if (!encryptionReady()) return <div className="@container">{children}</div>;
   if (view === "grid") {

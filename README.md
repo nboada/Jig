@@ -228,10 +228,11 @@ The others are ignored while you type, and on new and edit pages, so they can't 
 
 | Variable | Required | What it does |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | Yes | The password for your dashboard. After 10 wrong attempts from one address, logins from it are paused for 15 minutes. |
+| `ADMIN_PASSWORD` | Yes | The password for your dashboard, at least 12 characters. After 10 wrong attempts from one address, logins from it are paused for 15 minutes, and after 100 from anywhere, password logins pause for everyone (a passkey still works). |
 | `DATABASE_URL` | Set for you | Postgres connection string. The Deploy button's Neon database sets it. Leave it empty locally to use a built-in database stored in `.data/`. |
 | `JIG_ENCRYPTION_KEY` | For credentials | Encrypts saved secrets: 32 random bytes in base64. The Credentials page generates one for you. If it is lost, saved secrets cannot be recovered. |
-| `SESSION_SECRET` | No | Signs the login cookie. Defaults to `ADMIN_PASSWORD`. Set a random value (`openssl rand -hex 32`) if you want changing the password to be independent of sessions. |
+| `SESSION_SECRET` | No | Mixed into the key that signs the login cookie, together with a random secret Jig makes for itself in the database. Defaults to `ADMIN_PASSWORD`. Set a random value (`openssl rand -hex 32`) if you want changing the password to be independent of sessions. |
+| `JIG_ORIGIN` | No | The site's address, e.g. `https://snippets.example.com`, if passkeys should always belong to it rather than to whichever address the page was opened at. |
 | `JIG_TIMEZONE` | No | Time zone for dates in the dashboard, e.g. `Europe/London`. Defaults to `Australia/Sydney`. |
 
 Changing a variable in Vercel only takes effect after a redeploy.
@@ -246,7 +247,7 @@ Your password is the `ADMIN_PASSWORD` environment variable, so anyone who can si
 2. Find `ADMIN_PASSWORD`. Reveal it to see it, or edit it to set a new one.
 3. If you changed it, redeploy (**Deployments → ⋯ → Redeploy**). New values only apply to new deployments.
 
-Changing it signs out every open session, unless you set `SESSION_SECRET`. Your snippets, notes and credentials are not affected; credentials are encrypted with `JIG_ENCRYPTION_KEY`, not the password.
+Changing it signs out every open session, unless you set `SESSION_SECRET`. To sign out every browser without changing it, use **⋯ → Sign out everywhere**. Your snippets, notes and credentials are not affected; credentials are encrypted with `JIG_ENCRYPTION_KEY`, not the password.
 
 </details>
 

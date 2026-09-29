@@ -121,7 +121,7 @@ describe("credential links", () => {
     expect(share.protected).toBe(true);
 
     // Case, spaces and the dash don't matter when typing it back.
-    expect(await checkPasscode(db, share, passcode!.toLowerCase().replace("-", " "))).toBe(true);
+    expect(await checkPasscode(db, share, passcode!.toLowerCase().replace("-", " "))).toEqual({ ok: true, left: MAX_FAILED });
     const item = await loadSharedItem(db, share);
     if (item?.kind !== "credentials") throw new Error("expected a credential");
     const password = item.credential.fields.find((f) => f.label === "Password")!;
@@ -130,11 +130,27 @@ describe("credential links", () => {
 
   test(`lock after ${MAX_FAILED} wrong passcodes`, async () => {
     const { token, passcode, share } = await createShare(db, "credentials", "staging", { expiry: "24h", maxViews: 1 });
-    for (let i = 0; i < MAX_FAILED; i++) expect(await checkPasscode(db, share, "WRONG-CODE")).toBe(false);
+    for (let i = 0; i < MAX_FAILED; i++) {
+      expect(await checkPasscode(db, share, "WRONG-CODE")).toEqual({ ok: false, left: MAX_FAILED - i - 1 });
+    }
     expect(shareStatus(await reload(token))).toBe("locked");
-    // Even the right passcode can't get a view out of a locked link.
-    expect(await checkPasscode(db, share, passcode!)).toBe(true);
+    // Once locked, even the right passcode isn't checked, and no view comes out of it.
+    expect(await checkPasscode(db, share, passcode!)).toEqual({ ok: false, left: 0 });
     expect(await recordView(db, share)).toBe(false);
+  });
+
+  test(`a burst of guesses at once still gets only ${MAX_FAILED} checked`, async () => {
+    const { token, share } = await createShare(db, "credentials", "staging", { expiry: "24h", maxViews: 1 });
+    const results = await Promise.all(Array.from({ length: 12 }, () => checkPasscode(db, share, "WRONG-CODE")));
+    expect(results.filter((r) => r.left > 0 || r.ok).length).toBeLessThan(MAX_FAILED);
+    expect((await reload(token)).failedAttempts).toBe(MAX_FAILED);
+  });
+
+  test("a right passcode gives its try back", async () => {
+    const { token, passcode, share } = await createShare(db, "credentials", "staging", { expiry: "24h", maxViews: 1 });
+    await checkPasscode(db, share, "WRONG-CODE");
+    expect((await checkPasscode(db, share, passcode!)).ok).toBe(true);
+    expect((await reload(token)).failedAttempts).toBe(1);
   });
 });
 

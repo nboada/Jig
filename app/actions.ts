@@ -5,16 +5,17 @@ import { join } from "node:path";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth";
-import { PREFS_SYNCED_COOKIE, prefCookie, type Section, type View } from "@/lib/prefs";
+import { z } from "zod";
+import { renewSession, requireAuth, startSession } from "@/lib/auth";
+import { PREFS_SYNCED_COOKIE, prefCookie, SECTION_ORDER } from "@/lib/prefs";
 import { loadSettings, saveSetting, SETTING_KEYS, validSetting } from "@/lib/settings";
 import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
-import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
+import { checkPassword, endAllSessions, passwordProblem, SESSION_COOKIE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { cloneSnippet, createSnippet, deleteSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
 import { cloneNote, createNote, deleteNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
-import { makeUnlock, noteCodec, notesUnlocked, UNLOCK_COOKIE, unlockedCodec } from "@/lib/locked-notes";
+import { isUnlocked, makeUnlock, noteCodec, UNLOCK_COOKIE, unlockedCodec } from "@/lib/locked-notes";
 import {
   authenticationOptions,
   CHALLENGE_COOKIE,
@@ -27,53 +28,94 @@ import {
   savePasskey,
   siteFrom,
   verifyPasskey,
+  type ChallengeUse,
   type Passkey,
 } from "@/lib/passkeys";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
-import { createShare, deleteShare, listShares, restoreShare, revealShare, revokeShare, type Share, type ShareKind, type ShareOptions } from "@/lib/shares";
+import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealShare, revokeShare, type Share } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
+export type Result = { error?: string };
 
-function safeNext(value: FormDataEntryValue | null) {
-  const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+/*
+ * Every export here is a public endpoint: anyone can call it with any arguments, whatever the
+ * TypeScript types say. So each one calls requireAuth() first (lib/actions.test.ts checks), apart
+ * from the few that run before there's a session, and checks its arguments before using them.
+ */
+
+const Slug = z.string().min(1).max(200);
+const Id = z.string().min(1).max(200);
+const Section = z.enum(["snippets", "notes", "credentials"]);
+const Versioned = z.enum(["snippets", "notes"]);
+
+/** Arguments that don't fit their schema never reach lib/. */
+function parse<T>(schema: z.ZodType<T>, value: unknown): T {
+  const result = schema.safeParse(value);
+  if (!result.success) throw new SnippetError("That request doesn't look right.", "invalid");
+  return result.data;
 }
 
-export async function login(_: FormState, form: FormData): Promise<FormState> {
-  if (!process.env.ADMIN_PASSWORD) return { error: "ADMIN_PASSWORD is not set on the server." };
-  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
+/** A SnippetError's message for the person, anything else logged and replaced by `fallback`. */
+function failure(error: unknown, fallback: string): { error: string } {
+  if (error instanceof SnippetError || error instanceof DecryptError || error instanceof CredentialsUnavailable) {
+    return { error: error.message };
+  }
+  console.error(`[jig] ${fallback}`, error);
+  return { error: fallback };
+}
+
+function safeNext(value: unknown) {
+  const next = typeof value === "string" ? value : "";
+  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
+}
+
+async function clientIp() {
+  const h = await headers();
+  return clientIpFrom(h.get("x-forwarded-for"), h.get("x-real-ip"));
+}
+
+/**
+ * Records an attempt at the password (or a passkey) and says whether it may go ahead. The attempt
+ * is recorded before it's counted, so parallel requests can't all slip through; `everywhere` also
+ * applies the limit across all IPs (password attempts only: a passkey can't be guessed). Fails
+ * closed: when the check itself fails, the attempt is refused.
+ */
+async function guardAttempt(ip: string, everywhere: boolean): Promise<string | null> {
   try {
     const db = await getDb();
     await recordFailure(db, ip);
-    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
-    if (blocked) {
-      return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
-    }
-    if (!checkPassword(String(form.get("password") ?? ""))) {
-      return { error: "Wrong password." };
-    }
-    await clearFailures(db, ip);
+    const { blocked, retryAfterMinutes, everywhere: forEveryone } = await checkLogin(db, ip, new Date(), { everywhere });
+    if (!blocked) return null;
+    console.warn(`[jig] login attempts blocked ${forEveryone ? "for every IP" : `for ${ip}`} (${retryAfterMinutes} min left)`);
+    return `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.`;
   } catch (error) {
-    // Refuse rather than allow unlimited guesses when the check itself fails.
-    console.error("[jig] login check failed", error);
-    return { error: "Could not check the login right now. Try again." };
+    console.error("[jig] attempt check failed", error);
+    return "Could not check that right now. Try again.";
   }
-  await startSession();
+}
+
+async function attemptSucceeded(ip: string) {
+  await clearFailures(await getDb(), ip).catch((error) => console.error("[jig] could not clear attempts", error));
+}
+
+export async function login(_: FormState, form: FormData): Promise<FormState> {
+  const problem = passwordProblem();
+  if (problem) return { error: problem };
+  const ip = await clientIp();
+  const blocked = await guardAttempt(ip, true);
+  if (blocked) return { error: blocked };
+  if (!checkPassword(String(form.get("password") ?? ""))) return { error: "Wrong password." };
+  await attemptSucceeded(ip);
+  await signIn();
   redirect(safeNext(form.get("next")));
 }
 
-async function startSession() {
-  (await cookies()).set(SESSION_COOKIE, await createSessionValue(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_MAX_AGE,
-    path: "/",
-  });
+async function signIn() {
+  await startSession();
   // Bring this browser's layout (tab order, views, sorts) in line with the saved one.
   await applyStoredPreferences().catch((error) => console.error("[jig] could not load preferences", error));
 }
@@ -105,12 +147,14 @@ async function applyStoredPreferences(): Promise<boolean> {
 }
 
 /**
- * Catches this browser up with preferences changed on another device. The page calls it in the
- * background at most every few minutes; it returns true when the page should redraw.
+ * Catches this browser up with preferences changed on another device, and renews the session so
+ * it only runs out after a week away. The page calls it in the background at most every few
+ * minutes; it returns true when the page should redraw.
  */
 export async function syncPreferences(): Promise<boolean> {
-  await requireAuth();
+  const session = await requireAuth();
   try {
+    await renewSession(session);
     return await applyStoredPreferences();
   } catch (error) {
     console.error("[jig] preference sync failed", error);
@@ -121,13 +165,29 @@ export async function syncPreferences(): Promise<boolean> {
 /** Saves a preference (tab order, a list's sort) here and for every other browser. */
 export async function savePreference(key: string, value: string): Promise<void> {
   await requireAuth();
-  if (!validSetting(key, value)) return;
+  if (typeof key !== "string" || typeof value !== "string" || !validSetting(key, value)) return;
   (await cookies()).set(key, value, PREF_COOKIE);
   await saveSetting(await getDb(), key, value);
 }
 
+/** Forgets this browser's session, unlock and any passkey prompt in progress. */
+async function forgetThisBrowser() {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+  store.delete(UNLOCK_COOKIE);
+  store.delete(CHALLENGE_COOKIE);
+}
+
 export async function logout() {
-  (await cookies()).delete(SESSION_COOKIE);
+  await forgetThisBrowser();
+  redirect("/login");
+}
+
+/** Signs out every browser and device, this one included (a lost laptop, a shared computer). */
+export async function signOutEverywhere() {
+  await requireAuth();
+  await endAllSessions(await getDb());
+  await forgetThisBrowser();
   redirect("/login");
 }
 
@@ -150,9 +210,7 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
       target = (await createSnippet(db, data)).slug;
     }
   } catch (error) {
-    if (error instanceof SnippetError) return { error: error.message };
-    console.error("[jig] save failed", error);
-    return { error: "Could not save the snippet. Try again." };
+    return failure(error, "Could not save the snippet. Try again.");
   }
   revalidatePath("/", "layout");
   redirect(`/snippets/${target}`);
@@ -198,9 +256,7 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
       ? (await updateNote(db, slug, data, "web", await unlockedCodec())).note.slug
       : (await createNote(db, data)).slug;
   } catch (error) {
-    if (error instanceof SnippetError) return { error: error.message };
-    console.error("[jig] note save failed", error);
-    return { error: "Could not save the note. Try again." };
+    return failure(error, "Could not save the note. Try again.");
   }
   revalidatePath("/", "layout");
   redirect(`/notes/${target}`);
@@ -230,9 +286,7 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
     const db = await getDb();
     target = (slug ? await updateCredential(db, slug, data) : await createCredential(db, data)).slug;
   } catch (error) {
-    if (error instanceof SnippetError || error instanceof CredentialsUnavailable) return { error: error.message };
-    console.error("[jig] credential save failed", error);
-    return { error: "Could not save the credential. Try again." };
+    return failure(error, "Could not save the credential. Try again.");
   }
   revalidatePath("/", "layout");
   redirect(`/credentials/${target}`);
@@ -245,17 +299,20 @@ export async function removeCredential(form: FormData) {
   redirect("/credentials");
 }
 
-/** Decrypts one secret for the Reveal and Copy buttons. */
-export async function revealSecret(slug: string, fieldId: string): Promise<{ value?: string; error?: string }> {
+/** What a secret-revealing action says while this browser hasn't unlocked. */
+const LOCKED = "Unlock first: secrets need Touch ID or your password.";
+
+/**
+ * Decrypts one secret for the Reveal and Copy buttons. Like a locked note, it needs a recent
+ * unlock (a passkey or the password), so a stolen session alone can't read every secret.
+ */
+export async function revealSecret(slug: string, fieldId: string): Promise<{ value?: string; error?: string; locked?: boolean }> {
   await requireAuth();
+  if (!(await isUnlocked())) return { error: LOCKED, locked: true };
   try {
-    return { value: await revealField(await getDb(), String(slug), String(fieldId)) };
+    return { value: await revealField(await getDb(), parse(Slug, slug), parse(Id, fieldId)) };
   } catch (error) {
-    if (error instanceof SnippetError || error instanceof DecryptError || error instanceof CredentialsUnavailable) {
-      return { error: error.message };
-    }
-    console.error("[jig] reveal failed", error);
-    return { error: "Could not reveal this value. Try again." };
+    return failure(error, "Could not reveal this value. Try again.");
   }
 }
 
@@ -291,6 +348,8 @@ export async function createEncryptionKey(): Promise<{ error?: string }> {
     return { error: "Could not write .env.local. Add the key to it yourself, then restart the server." };
   }
   process.env.JIG_ENCRYPTION_KEY = key;
+  // The key is part of what signs sessions, so this browser's session is signed again with it.
+  await startSession();
   revalidatePath("/", "layout");
   return {};
 }
@@ -298,14 +357,14 @@ export async function createEncryptionKey(): Promise<{ error?: string }> {
 /** Slugs of the snippets matching a search, code included, for the snippet list's search box. */
 export async function searchSnippetSlugs(query: string): Promise<string[]> {
   await requireAuth();
-  const found = await listSnippets(await getDb(), { query, limit: 500 });
+  const found = await listSnippets(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((s) => s.slug);
 }
 
 /** Slugs of the notes matching a search, full text included, for the note list's search box. */
 export async function searchNoteSlugs(query: string): Promise<string[]> {
   await requireAuth();
-  const found = await listNotes(await getDb(), { query, limit: 500 });
+  const found = await listNotes(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((n) => n.slug);
 }
 
@@ -315,124 +374,169 @@ export async function searchNoteSlugs(query: string): Promise<string[]> {
  */
 export async function searchCredentialSlugs(query: string): Promise<string[]> {
   await requireAuth();
-  const found = await listCredentials(await getDb(), { query, limit: 500 });
+  const found = await listCredentials(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((c) => c.slug);
 }
 
 /** Copies a snippet or note from the list's right-click menu; returns the copy's slug to open. */
-export async function cloneItem(kind: "snippets" | "notes", slug: string): Promise<string> {
+export async function cloneItem(kind: "snippets" | "notes", slug: string): Promise<{ slug?: string; error?: string }> {
   await requireAuth();
-  const db = await getDb();
-  const copy = kind === "snippets" ? await cloneSnippet(db, slug) : await cloneNote(db, slug);
-  revalidatePath("/", "layout");
-  return copy.slug;
+  try {
+    const db = await getDb();
+    const copy = parse(Versioned, kind) === "snippets" ? await cloneSnippet(db, parse(Slug, slug)) : await cloneNote(db, parse(Slug, slug));
+    revalidatePath("/", "layout");
+    return { slug: copy.slug };
+  } catch (error) {
+    return failure(error, "Could not make the copy. Try again.");
+  }
 }
 
 /**
  * Deletes an item from the list's right-click menu. Unlike the item page's delete, it does not
  * redirect: the menu decides where to go (nowhere, unless the deleted item was open).
  */
-export async function deleteItem(kind: "snippets" | "notes" | "credentials", slug: string): Promise<void> {
+export async function deleteItem(kind: "snippets" | "notes" | "credentials", slug: string): Promise<Result> {
   await requireAuth();
-  const db = await getDb();
-  if (kind === "snippets") await deleteSnippet(db, slug);
-  else if (kind === "notes") await deleteNote(db, slug);
-  else await deleteCredential(db, slug);
+  try {
+    const db = await getDb();
+    const section = parse(Section, kind);
+    const target = parse(Slug, slug);
+    if (section === "snippets") await deleteSnippet(db, target);
+    else if (section === "notes") await deleteNote(db, target);
+    else await deleteCredential(db, target);
+  } catch (error) {
+    return failure(error, "Could not delete it. Try again.");
+  }
   revalidatePath("/", "layout");
+  return {};
 }
 
 /** Pins a snippet or note to the top of its list, or unpins it. */
-export async function setPinned(kind: "snippets" | "notes", slug: string, pinned: boolean): Promise<void> {
-  await requireAuth();
-  const db = await getDb();
-  if (kind === "snippets") await setSnippetPinned(db, slug, pinned);
-  else await setNotePinned(db, slug, pinned);
-  revalidatePath("/", "layout");
-}
-
-/** Makes a share link for an item. The token and passcode come back once; only hashes are kept. */
-export async function createShareLink(
-  kind: ShareKind,
-  slug: string,
-  options: ShareOptions,
-): Promise<{ token: string; passcode?: string } | { error: string }> {
+export async function setPinned(kind: "snippets" | "notes", slug: string, pinned: boolean): Promise<Result> {
   await requireAuth();
   try {
-    const { token, passcode } = await createShare(await getDb(), kind, slug, options);
+    const db = await getDb();
+    const target = parse(Slug, slug);
+    if (parse(Versioned, kind) === "snippets") await setSnippetPinned(db, target, parse(z.boolean(), pinned));
+    else await setNotePinned(db, target, parse(z.boolean(), pinned));
+  } catch (error) {
+    return failure(error, "Could not change the pin. Try again.");
+  }
+  revalidatePath("/", "layout");
+  return {};
+}
+
+const ShareOptionsSchema = z.object({
+  expiry: z.enum(Object.keys(EXPIRIES) as [keyof typeof EXPIRIES, ...(keyof typeof EXPIRIES)[]]),
+  maxViews: z.number().int().min(1).max(100).nullable(),
+  label: z.string().max(200).optional(),
+});
+
+/**
+ * Makes a share link for an item. The token and passcode come back once; only hashes are kept. A
+ * credential's link hands out its secrets, so it needs an unlock like revealing them does.
+ */
+export async function createShareLink(
+  kind: "snippets" | "notes" | "credentials",
+  slug: string,
+  options: z.infer<typeof ShareOptionsSchema>,
+): Promise<{ token: string; passcode?: string } | { error: string; locked?: boolean }> {
+  await requireAuth();
+  try {
+    const section = parse(Section, kind);
+    if (section === "credentials" && !(await isUnlocked())) return { error: LOCKED, locked: true };
+    const { token, passcode } = await createShare(await getDb(), section, parse(Slug, slug), parse(ShareOptionsSchema, options));
     return { token, passcode };
   } catch (error) {
-    if (error instanceof SnippetError) return { error: error.message };
-    throw error;
+    return failure(error, "Could not make the link. Try again.");
   }
 }
 
 /** An item's share links, for the share dialog. */
-export async function listItemShares(kind: ShareKind, slug: string): Promise<Share[]> {
+export async function listItemShares(kind: "snippets" | "notes" | "credentials", slug: string): Promise<Share[]> {
   await requireAuth();
-  return listShares(await getDb(), kind, slug);
+  return listShares(await getDb(), parse(Section, kind), parse(Slug, slug));
 }
 
-/** A link and passcode again, for copying from the share dialog. */
-export async function revealShareLink(id: string): Promise<{ token?: string; passcode?: string; error?: string }> {
+/** A link and passcode again, for copying from the share dialog. A credential's needs an unlock. */
+export async function revealShareLink(id: string): Promise<{ token?: string; passcode?: string; error?: string; locked?: boolean }> {
   await requireAuth();
   try {
-    return await revealShare(await getDb(), String(id));
+    const { kind, token, passcode } = await revealShare(await getDb(), parse(Id, id));
+    if (kind === "credentials" && !(await isUnlocked())) return { error: LOCKED, locked: true };
+    return { token, passcode };
   } catch (error) {
-    if (error instanceof SnippetError || error instanceof DecryptError) return { error: error.message };
-    throw error;
+    return failure(error, "Could not copy the link. Try again.");
   }
 }
 
-export async function deleteShareLink(id: string): Promise<void> {
+export async function deleteShareLink(id: string): Promise<Result> {
   await requireAuth();
-  await deleteShare(await getDb(), String(id));
+  try {
+    await deleteShare(await getDb(), parse(Id, id));
+    return {};
+  } catch (error) {
+    return failure(error, "Could not delete the link. Try again.");
+  }
 }
 
-export async function restoreShareLink(id: string): Promise<void> {
+export async function restoreShareLink(id: string): Promise<Result> {
   await requireAuth();
-  await restoreShare(await getDb(), String(id));
+  try {
+    await restoreShare(await getDb(), parse(Id, id));
+    return {};
+  } catch (error) {
+    return failure(error, "Could not turn the link back on. Try again.");
+  }
 }
 
-export async function revokeShareLink(id: string): Promise<void> {
+export async function revokeShareLink(id: string): Promise<Result> {
   await requireAuth();
-  await revokeShare(await getDb(), id);
+  try {
+    await revokeShare(await getDb(), parse(Id, id));
+    return {};
+  } catch (error) {
+    return failure(error, "Could not turn the link off. Try again.");
+  }
 }
 
 /**
  * Saves a list page's grid/list choice and redraws its layout (the split view lives in the
  * section's layout, which a plain navigation doesn't re-render). With `goTo`, lands there too.
  */
-export async function setViewPreference(section: Section, view: View, goTo?: string): Promise<void> {
+export async function setViewPreference(section: string, view: string, goTo?: string): Promise<void> {
   await requireAuth();
-  (await cookies()).set(prefCookie("view", section), view, PREF_COOKIE);
-  await saveSetting(await getDb(), prefCookie("view", section), view);
+  if (!SECTION_ORDER.includes(section as never) || (view !== "grid" && view !== "list")) return;
+  const key = prefCookie("view", section as (typeof SECTION_ORDER)[number]);
+  (await cookies()).set(key, view, PREF_COOKIE);
+  await saveSetting(await getDb(), key, view);
   revalidatePath("/", "layout");
-  if (goTo) redirect(goTo);
+  if (goTo !== undefined) redirect(safeNext(goTo));
 }
 
-// --- Passkeys, and locked notes ---------------------------------------------------------------
+// --- Passkeys, and unlocking --------------------------------------------------------------------
 
 async function site() {
   const h = await headers();
   return siteFrom(h.get("x-forwarded-host") ?? h.get("host"), h.get("x-forwarded-proto"));
 }
 
-const shortCookie = (maxAge: number) => ({
+const shortCookie = (maxAge?: number) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
-  maxAge,
+  ...(maxAge ? { maxAge } : {}),
   path: "/",
 });
 
-async function rememberChallenge(challenge: string) {
-  (await cookies()).set(CHALLENGE_COOKIE, await makeChallengeCookie(challenge), shortCookie(CHALLENGE_SECONDS));
+async function rememberChallenge(use: ChallengeUse, challenge: string) {
+  (await cookies()).set(CHALLENGE_COOKIE, await makeChallengeCookie(await getDb(), use, challenge), shortCookie(CHALLENGE_SECONDS));
 }
 
-/** Reads the pending challenge and forgets it, so an answer can only be used once. */
-async function takeChallenge(): Promise<string | null> {
+/** Reads the pending challenge for this use and forgets it, so an answer can only be used once. */
+async function takeChallenge(use: ChallengeUse): Promise<string | null> {
   const store = await cookies();
-  const challenge = await readChallengeCookie(store.get(CHALLENGE_COOKIE)?.value);
+  const challenge = await readChallengeCookie(await getDb(), use, store.get(CHALLENGE_COOKIE)?.value);
   store.delete(CHALLENGE_COOKIE);
   return challenge;
 }
@@ -446,13 +550,13 @@ export async function myPasskeys(): Promise<Passkey[]> {
 export async function passkeySetupOptions() {
   await requireAuth();
   const options = await registrationOptions(await getDb(), await site());
-  await rememberChallenge(options.challenge);
+  await rememberChallenge("register", options.challenge);
   return options;
 }
 
 export async function addPasskey(response: RegistrationResponseJSON, name: string): Promise<{ error?: string }> {
   await requireAuth();
-  const challenge = await takeChallenge();
+  const challenge = await takeChallenge("register");
   if (!challenge) return { error: "That took too long. Try again." };
   try {
     await savePasskey(await getDb(), await site(), response, challenge, String(name));
@@ -465,50 +569,51 @@ export async function addPasskey(response: RegistrationResponseJSON, name: strin
 
 export async function deletePasskey(id: string): Promise<void> {
   await requireAuth();
-  await removePasskey(await getDb(), String(id));
+  await removePasskey(await getDb(), parse(Id, id));
 }
 
 /**
- * Options for a passkey prompt. Public, because signing in uses it before there's a session; it
- * reveals nothing (no list of passkeys: the device offers its own).
+ * Options for a passkey prompt, to sign in or to unlock. Public, because signing in uses it
+ * before there's a session; it reveals nothing (no list of passkeys: the device offers its own).
  */
-export async function passkeyPromptOptions() {
+export async function passkeyPromptOptions(use: "login" | "unlock") {
   const options = await authenticationOptions(await site());
-  await rememberChallenge(options.challenge);
+  await rememberChallenge(use === "unlock" ? "unlock" : "login", options.challenge);
   return options;
 }
 
 /** Signs in with a passkey. Counted like a password attempt, so it can't be hammered either. */
 export async function loginWithPasskey(response: AuthenticationResponseJSON, next: string): Promise<{ error?: string }> {
-  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
+  const ip = await clientIp();
+  const blocked = await guardAttempt(ip, false);
+  if (blocked) return { error: blocked };
   try {
-    const db = await getDb();
-    await recordFailure(db, ip);
-    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
-    if (blocked) return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
-    const challenge = await takeChallenge();
-    if (!challenge || !(await verifyPasskey(db, await site(), response, challenge))) {
+    const challenge = await takeChallenge("login");
+    if (!challenge || !(await verifyPasskey(await getDb(), await site(), response, challenge))) {
       return { error: "That passkey didn't work. Try again, or use your password." };
     }
-    await clearFailures(db, ip);
   } catch (error) {
     console.error("[jig] passkey login failed", error);
     return { error: "Could not check the passkey right now. Try again." };
   }
-  await startSession();
+  await attemptSucceeded(ip);
+  await signIn();
   redirect(safeNext(next));
 }
 
 async function startUnlock() {
-  const { value, maxAge } = await makeUnlock();
-  (await cookies()).set(UNLOCK_COOKIE, value, shortCookie(maxAge));
-  revalidatePath("/notes", "layout");
+  const session = await requireAuth();
+  // A session cookie (no maxAge), so closing the browser locks again; the 30 minutes are
+  // enforced by the expiry signed into the value, which also ties it to this session.
+  const { value } = await makeUnlock(await getDb(), session.issuedAt);
+  (await cookies()).set(UNLOCK_COOKIE, value, shortCookie());
+  revalidatePath("/", "layout");
 }
 
-/** Unlocks locked notes for a few minutes with a passkey. */
+/** Unlocks locked notes and credential secrets with a passkey, for 30 minutes or until the browser closes. */
 export async function unlockWithPasskey(response: AuthenticationResponseJSON): Promise<{ error?: string }> {
   await requireAuth();
-  const challenge = await takeChallenge();
+  const challenge = await takeChallenge("unlock");
   if (!challenge || !(await verifyPasskey(await getDb(), await site(), response, challenge))) {
     return { error: "That passkey didn't work. Try again, or use your password." };
   }
@@ -519,27 +624,22 @@ export async function unlockWithPasskey(response: AuthenticationResponseJSON): P
 /** Unlocks with the dashboard password instead, for a device without a passkey. Rate limited like login. */
 export async function unlockWithPassword(password: string): Promise<{ error?: string }> {
   await requireAuth();
-  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
-  try {
-    const db = await getDb();
-    await recordFailure(db, ip);
-    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
-    if (blocked) return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
-    if (!checkPassword(String(password))) return { error: "Wrong password." };
-    await clearFailures(db, ip);
-  } catch (error) {
-    console.error("[jig] unlock check failed", error);
-    return { error: "Could not check the password right now. Try again." };
-  }
+  const problem = passwordProblem();
+  if (problem) return { error: problem };
+  const ip = await clientIp();
+  const blocked = await guardAttempt(ip, true);
+  if (blocked) return { error: blocked };
+  if (!checkPassword(String(password))) return { error: "Wrong password." };
+  await attemptSucceeded(ip);
   await startUnlock();
   return {};
 }
 
-/** Locks the notes again straight away, before the few minutes are up. */
+/** Locks notes and secrets again straight away, before the 30 minutes are up. */
 export async function relockNotes(): Promise<void> {
   await requireAuth();
   (await cookies()).delete(UNLOCK_COOKIE);
-  revalidatePath("/notes", "layout");
+  revalidatePath("/", "layout");
 }
 
 /**
@@ -549,14 +649,12 @@ export async function relockNotes(): Promise<void> {
 export async function setNoteLock(slug: string, locked: boolean): Promise<{ error?: string }> {
   await requireAuth();
   if (!encryptionReady()) return { error: "Locking notes needs JIG_ENCRYPTION_KEY, the same key as Credentials." };
-  if (!locked && !(await notesUnlocked())) return { error: "Unlock the note first." };
   try {
-    const db = await getDb();
-    await setNoteLocked(db, String(slug), Boolean(locked), noteCodec);
+    const lock = parse(z.boolean(), locked);
+    if (!lock && !(await isUnlocked())) return { error: "Unlock the note first." };
+    await setNoteLocked(await getDb(), parse(Slug, slug), lock, noteCodec);
   } catch (error) {
-    if (error instanceof SnippetError || error instanceof DecryptError) return { error: error.message };
-    console.error("[jig] lock failed", error);
-    return { error: "Could not change the lock. Try again." };
+    return failure(error, "Could not change the lock. Try again.");
   }
   revalidatePath("/", "layout");
   return {};

@@ -11,12 +11,14 @@ import { getDb } from "@/lib/db";
 import { compareVersions } from "@/lib/diff";
 import { formatDate, formatSource } from "@/lib/format";
 import { getSnippet, getVersionPair, listVersions } from "@/lib/snippets";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "History" };
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ from?: string; to?: string }> };
 
 export default async function HistoryPage({ params, searchParams }: Props) {
+  await requireAuth();
   const { slug } = await params;
   const search = await searchParams;
   const db = await getDb();

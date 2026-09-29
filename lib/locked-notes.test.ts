@@ -101,13 +101,15 @@ describe("locked notes", () => {
 });
 
 describe("unlock cookie", () => {
-  test("is valid until it expires and can't be forged", async () => {
+  test("is valid until it expires, only in its own session, and can't be forged", async () => {
     const now = Date.now();
-    const { value } = await makeUnlock(now);
-    expect(await isUnlockValid(value, now)).toBe(true);
-    expect(await isUnlockValid(value, now + 6 * 60_000)).toBe(false);
-    const [expires] = value.split(".");
-    expect(await isUnlockValid(`${Number(expires) + 3600}.${value.split(".")[1]}`, now)).toBe(false);
-    expect(await isUnlockValid(undefined, now)).toBe(false);
+    const session = now - 1000;
+    const { value } = await makeUnlock(db, session, now);
+    expect(await isUnlockValid(db, value, session, now)).toBe(true);
+    expect(await isUnlockValid(db, value, session, now + 31 * 60_000)).toBe(false);
+    expect(await isUnlockValid(db, value, session + 1, now)).toBe(false);
+    const [issued, expires, signature] = value.split(".");
+    expect(await isUnlockValid(db, `${issued}.${Number(expires) + 3600}.${signature}`, session, now)).toBe(false);
+    expect(await isUnlockValid(db, undefined, session, now)).toBe(false);
   });
 });

@@ -52,5 +52,13 @@ describe("login rate limiting", () => {
     expect(clientIpFrom(" 203.0.113.5 ")).toBe("203.0.113.5");
     expect(clientIpFrom(null)).toBe("unknown");
     expect(clientIpFrom("  ")).toBe("unknown");
+    expect(clientIpFrom("203.0.113.5", "198.51.100.7")).toBe("198.51.100.7");
+  });
+
+  test("with everywhere, many IPs together are blocked too, and each IP alone isn't", async () => {
+    for (let i = 0; i < 101; i++) await recordFailure(db, `10.0.0.${i}`, at(0));
+    expect((await checkLogin(db, "10.0.0.1", at(0))).blocked).toBe(false);
+    expect(await checkLogin(db, "10.0.0.1", at(0), { everywhere: true })).toEqual({ blocked: true, retryAfterMinutes: 15, everywhere: true });
+    expect((await checkLogin(db, "10.0.0.1", at(15.01), { everywhere: true })).blocked).toBe(false);
   });
 });

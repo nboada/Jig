@@ -1,3 +1,4 @@
+import { originValidationResponse } from "@modelcontextprotocol/server";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { getDb } from "@/lib/db";
 import { registerTools, SERVER_INSTRUCTIONS } from "@/lib/mcp";
@@ -21,4 +22,13 @@ const authed = withMcpAuth(
   { required: true },
 );
 
-export { authed as GET, authed as POST, authed as DELETE };
+/**
+ * The MCP spec requires refusing requests from another site's page (DNS rebinding). Agents send no
+ * Origin at all and pass; a browser page may only call from this site.
+ */
+async function guarded(req: Request) {
+  const own = [new URL(req.url).hostname, (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(":")[0]];
+  return originValidationResponse(req, own.filter(Boolean)) ?? authed(req);
+}
+
+export { guarded as GET, guarded as POST, guarded as DELETE };

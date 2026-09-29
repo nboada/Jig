@@ -26,6 +26,7 @@ import { hasPasskeys } from "@/lib/passkeys";
 import { UnlockPanel } from "@/components/Passkeys";
 import { LockIcon } from "@/components/NavIcons";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
@@ -40,11 +41,13 @@ const loadNote = cache(async (slug: string, version: number | undefined) =>
 );
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  await requireAuth();
   const note = await loadNote((await params).slug, toVersion((await searchParams).v));
   return { title: note?.title ?? "Not found" };
 }
 
 export default async function NotePage({ params, searchParams }: Props) {
+  await requireAuth();
   const { slug } = await params;
   const { v } = await searchParams;
   const note = await loadNote(slug, toVersion(v));

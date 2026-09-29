@@ -341,8 +341,8 @@ export async function setNotePinned(db: Db, slug: string, pinned: boolean): Prom
 
 /**
  * Locks a note (encrypts the text of every version) or removes its lock (decrypts them all).
- * The whole history changes in one statement, and only if nobody saved a version meanwhile, so
- * no version is ever left readable in a locked note's history.
+ * The whole history changes in one statement, and only if nobody saved a version or changed the
+ * lock meanwhile, so no version is ever left readable in a locked note's history.
  */
 export async function setNoteLocked(db: Db, slug: string, locked: boolean, codec: NoteCodec): Promise<void> {
   const rows = await db.query(
@@ -368,11 +368,11 @@ export async function setNoteLocked(db: Db, slug: string, locked: boolean, codec
      changed AS (
        UPDATE note_versions v SET body = next.body FROM next
        WHERE v.note_id = $1 AND v.version = next.version
-         AND EXISTS (SELECT 1 FROM notes WHERE id = $1 AND current_version = $2)
+         AND EXISTS (SELECT 1 FROM notes WHERE id = $1 AND current_version = $2 AND (locked_at IS NOT NULL) = NOT $4::boolean)
        RETURNING 1
      )
      UPDATE notes SET locked_at = CASE WHEN $4::boolean THEN now() END
-     WHERE id = $1 AND current_version = $2
+     WHERE id = $1 AND current_version = $2 AND (locked_at IS NOT NULL) = NOT $4::boolean
      RETURNING id`,
     [id, expected, JSON.stringify(bodies), locked],
   );

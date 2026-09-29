@@ -76,7 +76,7 @@ function toSummary(row: Row): SnippetSummary {
     language: row.language as string,
     tags: row.tags as string[],
     version: row.current_version as number,
-    fileNames: (row.files as SnippetFile[]).map((f) => f.name),
+    fileNames: row.file_names as string[],
     pinned: row.pinned_at != null,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
@@ -99,6 +99,9 @@ function toVersion(row: Row): SnippetVersion {
     createdAt: iso(row.created_at),
   };
 }
+
+/** A version's file names, in order, without their contents. */
+const FILE_NAMES = `coalesce((SELECT jsonb_agg(f->'name' ORDER BY i) FROM jsonb_array_elements(v.files) WITH ORDINALITY AS e(f, i)), '[]'::jsonb)`;
 
 export type ListOptions = { query?: string; language?: string; tag?: string; limit?: number; sort?: Sort };
 
@@ -130,7 +133,9 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, s.pinned_at, v.files
+    // Only the file names leave the database: the contents are searched there, never sent.
+    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, s.pinned_at,
+       ${FILE_NAMES} AS file_names
      FROM snippets s
      JOIN snippet_versions v ON v.snippet_id = s.id AND v.version = s.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -331,7 +336,7 @@ async function insertVersion(
 
 export async function listVersions(db: Db, slug: string): Promise<VersionSummary[]> {
   const rows = await db.query(
-    `SELECT v.version, v.title, v.message, v.source, v.created_at, v.files
+    `SELECT v.version, v.title, v.message, v.source, v.created_at, ${FILE_NAMES} AS file_names
      FROM snippet_versions v JOIN snippets s ON s.id = v.snippet_id
      WHERE s.slug = $1 ORDER BY v.version DESC`,
     [slug],
@@ -343,7 +348,7 @@ export async function listVersions(db: Db, slug: string): Promise<VersionSummary
     message: r.message as string,
     source: r.source as string,
     createdAt: iso(r.created_at),
-    fileNames: (r.files as SnippetFile[]).map((f) => f.name),
+    fileNames: r.file_names as string[],
   }));
 }
 

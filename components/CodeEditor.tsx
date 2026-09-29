@@ -1,44 +1,38 @@
 "use client";
 
-import { css } from "@codemirror/lang-css";
-import { html } from "@codemirror/lang-html";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { liquid } from "@codemirror/lang-liquid";
-import { markdown } from "@codemirror/lang-markdown";
-import { php } from "@codemirror/lang-php";
-import { sass } from "@codemirror/lang-sass";
-import { sql } from "@codemirror/lang-sql";
-import { vue } from "@codemirror/lang-vue";
-import { yaml } from "@codemirror/lang-yaml";
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
-import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SYNTAX } from "@/lib/code-theme";
 
-/** CodeMirror grammars per language id. Astro and Svelte files are HTML with extras, close enough to colour. */
-const GRAMMARS: Record<string, () => Extension> = {
-  javascript: () => javascript(),
-  jsx: () => javascript({ jsx: true }),
-  typescript: () => javascript({ typescript: true }),
-  tsx: () => javascript({ jsx: true, typescript: true }),
-  php: () => php(),
-  css: () => css(),
-  scss: () => sass(),
-  html: () => html(),
-  astro: () => html(),
-  svelte: () => html(),
-  vue: () => vue(),
-  liquid: () => liquid(),
-  json: () => json(),
-  yaml: () => yaml(),
-  sql: () => sql(),
-  bash: () => StreamLanguage.define(shell),
-  markdown: () => markdown(),
+/**
+ * CodeMirror grammars per language id, each loaded the first time it's needed, so an edit page
+ * only downloads the one it shows. Astro and Svelte files are HTML with extras, close enough to colour.
+ */
+const GRAMMARS: Record<string, () => Promise<Extension>> = {
+  javascript: async () => (await import("@codemirror/lang-javascript")).javascript(),
+  jsx: async () => (await import("@codemirror/lang-javascript")).javascript({ jsx: true }),
+  typescript: async () => (await import("@codemirror/lang-javascript")).javascript({ typescript: true }),
+  tsx: async () => (await import("@codemirror/lang-javascript")).javascript({ jsx: true, typescript: true }),
+  php: async () => (await import("@codemirror/lang-php")).php(),
+  css: async () => (await import("@codemirror/lang-css")).css(),
+  scss: async () => (await import("@codemirror/lang-sass")).sass(),
+  html: async () => (await import("@codemirror/lang-html")).html(),
+  astro: async () => (await import("@codemirror/lang-html")).html(),
+  svelte: async () => (await import("@codemirror/lang-html")).html(),
+  vue: async () => (await import("@codemirror/lang-vue")).vue(),
+  liquid: async () => (await import("@codemirror/lang-liquid")).liquid(),
+  json: async () => (await import("@codemirror/lang-json")).json(),
+  yaml: async () => (await import("@codemirror/lang-yaml")).yaml(),
+  sql: async () => (await import("@codemirror/lang-sql")).sql(),
+  bash: async () => {
+    const [{ StreamLanguage }, { shell }] = await Promise.all([import("@codemirror/language"), import("@codemirror/legacy-modes/mode/shell")]);
+    return StreamLanguage.define(shell);
+  },
+  markdown: async () => (await import("@codemirror/lang-markdown")).markdown(),
 };
 
 // "Jig Night", the same colours as the read view (lib/code-theme.ts).
@@ -96,15 +90,25 @@ export function CodeEditor({
   /** Hands over the editor, for changes that should go in as edits (and undo like them). */
   onReady?: (view: EditorView) => void;
 }) {
+  // The grammar arrives a moment after the editor; until then the code shows uncoloured.
+  const [grammar, setGrammar] = useState<{ language: string; extension: Extension } | null>(null);
+  useEffect(() => {
+    let current = true;
+    GRAMMARS[language]?.().then((extension) => current && setGrammar({ language, extension }));
+    return () => {
+      current = false;
+    };
+  }, [language]);
+
   const extensions = useMemo(
     () => [
       frame,
       jigNight,
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ "aria-label": label }),
-      ...(GRAMMARS[language] ? [GRAMMARS[language]()] : []),
+      ...(grammar?.language === language ? [grammar.extension] : []),
     ],
-    [language, label],
+    [grammar, language, label],
   );
 
   return (

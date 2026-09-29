@@ -14,6 +14,7 @@ import { timeAgoShort } from "@/lib/format";
 import { languageLabel } from "@/lib/languages";
 import { listSnippets, listTags } from "@/lib/snippets";
 import { getListPrefs } from "@/lib/view";
+import { requireAuth } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Snippets" };
 
@@ -27,6 +28,7 @@ function href(current: Search, change: Search) {
 }
 
 export default async function SnippetsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  await requireAuth();
   const search = await searchParams;
   const { view, sort } = await getListPrefs("snippets", search.sort);
   // In list view the layout shows the snippets in a column; this pane waits for a pick.

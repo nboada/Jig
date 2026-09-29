@@ -4,6 +4,7 @@ import { Logo } from "@/components/Logo";
 import { PasskeyLogin } from "@/components/Passkeys";
 import { getDb } from "@/lib/db";
 import { hasPasskeys } from "@/lib/passkeys";
+import { passwordProblem } from "@/lib/session";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = { title: "Log in" };
@@ -12,6 +13,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams;
   // The passkey button only appears once there is a passkey to sign in with.
   const passkey = await getDb().then(hasPasskeys).catch(() => false);
+  // A missing or too-short ADMIN_PASSWORD stops password sign-in; say so before anyone types.
+  const problem = passwordProblem();
   return (
     <main className="bench relative grid min-h-dvh place-items-center px-4">
       <div className="relative w-full max-w-sm">
@@ -19,6 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <Logo className="text-xl" />
           <p className="text-body text-text-2">Your snippet library, and the one your agents read from.</p>
         </div>
+        {problem && <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-ui text-danger">{problem}</p>}
         <LoginForm next={next ?? "/"} />
         {passkey && (
           <div className="mt-3">
