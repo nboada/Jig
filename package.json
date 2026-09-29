@@ -1,6 +1,7 @@
 {
   "name": "snippeta",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev",

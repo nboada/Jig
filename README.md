@@ -106,3 +106,7 @@ Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`
 
 - OAuth, which the claude.ai web and desktop connectors need. CLI agents work with bearer tokens today.
 - A syntax-highlighting code editor (the editor is a plain textarea with tab indenting).
+
+## License
+
+[MIT](LICENSE)
