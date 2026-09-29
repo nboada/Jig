@@ -70,26 +70,24 @@ export function ShareDialog({
     });
   }
 
-  function remove(id: string) {
+  /**
+   * Turning a link off or on, or deleting it, shows in the list at once; the server catches up
+   * behind it, and the list reloads from the server either way, so a failure puts it back.
+   */
+  function change(apply: (links: Share[]) => Share[], action: () => Promise<void>) {
+    setLinks((current) => (current ? apply(current) : current));
     startTransition(async () => {
-      await deleteShareLink(id);
-      await refresh();
+      try {
+        await action();
+      } finally {
+        await refresh();
+      }
     });
   }
-
-  function turnOn(id: string) {
-    startTransition(async () => {
-      await restoreShareLink(id);
-      await refresh();
-    });
-  }
-
-  function revoke(id: string) {
-    startTransition(async () => {
-      await revokeShareLink(id);
-      await refresh();
-    });
-  }
+  const setRevoked = (id: string, revoked: boolean) => (links: Share[]) => links.map((l) => (l.id === id ? { ...l, revoked } : l));
+  const remove = (id: string) => change((links) => links.filter((l) => l.id !== id), () => deleteShareLink(id));
+  const turnOn = (id: string) => change(setRevoked(id, false), () => restoreShareLink(id));
+  const revoke = (id: string) => change(setRevoked(id, true), () => revokeShareLink(id));
 
   return (
     <Modal

@@ -76,14 +76,12 @@ export function useItemActions({
   const versioned = kind !== "credentials";
 
   function remove() {
-    startDelete(async () => {
-      // Out of the list at once; the server catches up behind it.
-      list?.hide(slug);
-      await deleteItem(kind, slug);
-      setConfirming(false);
-      // Deleting the item that is open leaves nothing to show; go back to the list.
-      if (pathname.startsWith(`${base}/${slug}`)) router.push(base);
-    });
+    // Out of the list at once, and off the item's own page straight away if that's where we are;
+    // the server catches up behind it.
+    list?.hide(slug);
+    setConfirming(false);
+    if (pathname.startsWith(`${base}/${slug}`)) router.push(base);
+    startDelete(() => deleteItem(kind, slug));
   }
 
   const actions: ItemAction[] = [];
@@ -129,11 +127,16 @@ export function useItemActions({
     : [];
 
   function changeLock() {
+    const locked = locking === "lock";
     startLock(async () => {
       setLockError("");
-      const result = await setNoteLock(slug, locking === "lock");
-      if (result.error) setLockError(result.error);
-      else {
+      // The list shows the padlock (or drops it) at once; it goes back if the server says no.
+      list?.lock(slug, locked);
+      const result = await setNoteLock(slug, locked);
+      if (result.error) {
+        list?.lock(slug, !locked);
+        setLockError(result.error);
+      } else {
         setLocking(null);
         router.refresh();
       }

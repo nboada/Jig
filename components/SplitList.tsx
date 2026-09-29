@@ -59,8 +59,8 @@ export function ListFilters<T extends Item>({
   const [contentHits, setContentHits] = useState<Set<string>>();
   // Sorting, hiding and pinning happen here first, so the column changes the moment you ask.
   const [sort, setSort] = useState(initialSort);
-  type Edits = { items: T[]; hidden: Set<string>; pins: Map<string, boolean> };
-  const [edits, setEdits] = useState<Edits>({ items, hidden: new Set(), pins: new Map() });
+  type Edits = { items: T[]; hidden: Set<string>; pins: Map<string, boolean>; locks: Map<string, boolean> };
+  const [edits, setEdits] = useState<Edits>({ items, hidden: new Set(), pins: new Map(), locks: new Map() });
   // Fresh items from the server supersede any edits made ahead of it.
   const current = edits.items === items ? edits : null;
 
@@ -83,6 +83,7 @@ export function ListFilters<T extends Item>({
       ? items
           .filter((item) => !current.hidden.has(item.slug))
           .map((item) => (current.pins.has(item.slug) ? { ...item, pinned: current.pins.get(item.slug) } : item))
+          .map((item) => (current.locks.has(item.slug) ? { ...item, locked: current.locks.get(item.slug) } : item))
       : items;
     return sortItems(filterItems(shown, { query, language, tag }, text, contentHits), sort);
   }, [items, current, query, language, tag, text, contentHits, sort]);
@@ -92,8 +93,8 @@ export function ListFilters<T extends Item>({
       setEdits((previous) => {
         const next: Edits =
           previous.items === items
-            ? { items, hidden: new Set(previous.hidden), pins: new Map(previous.pins) }
-            : { items, hidden: new Set(), pins: new Map() };
+            ? { items, hidden: new Set(previous.hidden), pins: new Map(previous.pins), locks: new Map(previous.locks) }
+            : { items, hidden: new Set(), pins: new Map(), locks: new Map() };
         change(next);
         return next;
       }),
@@ -101,10 +102,11 @@ export function ListFilters<T extends Item>({
   );
   const hide = useCallback((slug: string) => edit((e) => void e.hidden.add(slug)), [edit]);
   const pin = useCallback((slug: string, pinned: boolean) => edit((e) => void e.pins.set(slug, pinned)), [edit]);
+  const lock = useCallback((slug: string, locked: boolean) => edit((e) => void e.locks.set(slug, locked)), [edit]);
 
   return (
     <ListContext.Provider
-      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, pin, section, base }}
+      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, pin, lock, section, base }}
     >
       {children}
     </ListContext.Provider>

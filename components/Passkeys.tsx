@@ -232,12 +232,17 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   type="button"
                   aria-label={`Remove ${k.name}`}
                   title="Remove"
-                  onClick={() =>
+                  onClick={() => {
+                    // Gone from the list at once; the server's list replaces it once it's done.
+                    setKeys((current) => current?.filter((p) => p.id !== k.id) ?? current);
                     start(async () => {
-                      await deletePasskey(k.id);
-                      setKeys(await myPasskeys());
-                    })
-                  }
+                      try {
+                        await deletePasskey(k.id);
+                      } finally {
+                        setKeys(await myPasskeys());
+                      }
+                    });
+                  }}
                   className="grid size-7 place-items-center rounded-md text-muted transition hover:bg-raised hover:text-danger"
                 >
                   <TrashIcon className="size-4" />

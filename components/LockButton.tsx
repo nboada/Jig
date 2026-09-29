@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { relockNotes, setNoteLock } from "@/app/actions";
 import { iconButton } from "@/components/Button";
+import { useOptionalList } from "@/components/ListContext";
 import { Modal } from "@/components/Modal";
 import { LockIcon, UnlockIcon } from "@/components/NavIcons";
 import { Tip } from "@/components/Tooltip";
@@ -12,11 +13,14 @@ import { Tip } from "@/components/Tooltip";
  * The lock beside a note's pin. On an unlocked note it locks it at once; on a locked note that's
  * open it locks it again before the few minutes are up; on one that's shut it just says so (the
  * panel below does the unlocking). Taking the lock off stays in the ⋯ menu, behind a confirm.
+ * The padlock (and the list's) changes at once; if the server says no, it goes back.
  */
-export function LockButton({ slug, locked, readable }: { slug: string; locked: boolean; readable: boolean }) {
+export function LockButton({ slug, locked: savedLocked, readable: savedReadable }: { slug: string; locked: boolean; readable: boolean }) {
   const router = useRouter();
+  const list = useOptionalList();
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+  const [{ locked, readable }, show] = useOptimistic({ locked: savedLocked, readable: savedReadable });
 
   if (locked && !readable) {
     return (
@@ -38,10 +42,17 @@ export function LockButton({ slug, locked, readable }: { slug: string; locked: b
           disabled={pending}
           onClick={() =>
             start(async () => {
-              if (locked) await relockNotes();
-              else {
+              if (locked) {
+                show({ locked: true, readable: false });
+                await relockNotes();
+              } else {
+                show({ locked: true, readable: true });
+                list?.lock(slug, true);
                 const result = await setNoteLock(slug, true);
-                if (result.error) return setError(result.error);
+                if (result.error) {
+                  list?.lock(slug, false);
+                  return setError(result.error);
+                }
               }
               router.refresh();
             })

@@ -35,6 +35,8 @@ export type ListState = {
   hide: (slug: string) => void;
   /** Pins or unpins an item in the list at once, ahead of the server. */
   pin: (slug: string, pinned: boolean) => void;
+  /** Shows a note as locked or not in the list at once, ahead of the server. */
+  lock: (slug: string, locked: boolean) => void;
   section: Section;
   base: string;
 };
