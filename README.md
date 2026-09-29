@@ -59,7 +59,7 @@ Each person runs their own copy, with their own database. Nothing is shared with
 - ✅ You want your **AI agents to use your code**, not whatever they guess
 - ✅ You want **every change versioned**, with a diff and a one-click rollback
 - ✅ You keep **runbooks, checklists and client notes** next to the code
-- ✅ You need somewhere safe for **logins and API keys** that agents can never read
+- ✅ You need somewhere safe for **logins and API keys** that agents can never read, and **notes you can lock** behind Touch ID
 - ✅ You'd rather **own your data**: your server, your database, MIT licensed
 
 <br/>
@@ -84,7 +84,7 @@ Every save is a full snapshot. Compare any two versions and restore one as a new
 <tr>
 <td align="center">
 <h3>📝 Notes</h3>
-A rich editor with headings, lists, checklists, quotes and code that saves plain markdown. Versioned, and searchable by agents.
+A rich editor with headings, lists, checklists, quotes and code that saves plain markdown. Versioned and searchable by agents, or <strong>locked</strong>: encrypted, hidden from agents, opened with Touch ID.
 </td>
 <td align="center">
 <h3>🔐 Credentials</h3>
@@ -106,7 +106,7 @@ A split view or a grid, sorting, pinning, instant search (code included), langua
 </td>
 <td align="center">
 <h3>📱 Installable</h3>
-Install it from Chrome or Edge for its own window and Dock icon. Works on your phone too, with a tab bar in thumb reach.
+Install it from Chrome or Edge for its own window and Dock icon. Works on your phone too, with a tab bar in thumb reach. Sign in with a passkey (Touch ID, Face ID) instead of your password.
 </td>
 </tr>
 </table>

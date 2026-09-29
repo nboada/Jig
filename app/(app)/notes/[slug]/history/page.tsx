@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { restoreNote } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
 import { Markdown } from "@/components/Markdown";
@@ -10,6 +10,7 @@ import { DiffView } from "@/components/DiffView";
 import { getDb } from "@/lib/db";
 import { compareNotes } from "@/lib/diff";
 import { formatDate, formatSource } from "@/lib/format";
+import { unlockedCodec } from "@/lib/locked-notes";
 import { getNote, getNoteVersionPair, listNoteVersions } from "@/lib/notes";
 
 export const metadata: Metadata = { title: "Note history" };
@@ -20,8 +21,11 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const search = await searchParams;
   const db = await getDb();
-  const note = await getNote(db, slug);
+  const codec = await unlockedCodec();
+  const note = await getNote(db, slug, undefined, codec);
   if (!note) notFound();
+  // A locked note's history is as private as the note: unlock it on the note's page first.
+  if (note.unreadable) redirect(`/notes/${slug}`);
 
   const versions = await listNoteVersions(db, slug);
   const numbers = new Set(versions.map((v) => v.version));
@@ -29,8 +33,8 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   const to = pick(search.to, note.currentVersion);
   const from = pick(search.from, Math.max(1, to - 1));
   // One version picked (the first, which has nothing before it): show it as it was saved.
-  const shown = from === to ? await getNote(db, slug, to) : null;
-  const diff = from !== to ? compareNotes(...(await getNoteVersionPair(db, slug, from, to))) : null;
+  const shown = from === to ? await getNote(db, slug, to, codec) : null;
+  const diff = from !== to ? compareNotes(...(await getNoteVersionPair(db, slug, from, to, codec))) : null;
 
   return (
     <div className="space-y-6">

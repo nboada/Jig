@@ -9,7 +9,8 @@ import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { menuContentClass, menuItemClass } from "@/components/ItemActions";
 import { Kbd } from "@/components/Kbd";
 import { Modal } from "@/components/Modal";
-import { ConnectIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon } from "@/components/NavIcons";
+import { ConnectIcon, FingerprintIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon } from "@/components/NavIcons";
+import { PasskeysDialog } from "@/components/Passkeys";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";
 
@@ -20,6 +21,7 @@ const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 
 export function HeaderActions() {
   const [searching, setSearching] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
+  const [passkeys, setPasskeys] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [loggingOut, startLogout] = useTransition();
   const pathname = usePathname();
@@ -82,6 +84,10 @@ export function HeaderActions() {
               <span className="flex-1">Keyboard shortcuts</span>
               <Kbd>?</Kbd>
             </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => setPasskeys(true)} className={menuItemClass()}>
+              <FingerprintIcon className="size-4 text-muted" />
+              Passkeys…
+            </DropdownMenu.Item>
             <DropdownMenu.Separator className="mx-1 my-1 h-px bg-line" />
             <DropdownMenu.Item onSelect={() => setLeaving(true)} className={menuItemClass()}>
               <LogoutIcon className="size-4 text-muted" />
@@ -93,6 +99,7 @@ export function HeaderActions() {
 
       <SearchDialog open={searching} onOpenChange={setSearching} />
       <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
+      <PasskeysDialog open={passkeys} onOpenChange={setPasskeys} />
       <ConfirmDialog
         open={leaving}
         onOpenChange={setLeaving}

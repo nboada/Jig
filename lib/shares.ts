@@ -128,6 +128,9 @@ export async function createShare(
     throw new SnippetError("A view limit is a whole number from 1 to 100.", "invalid");
   }
   const id = await itemId(db, kind, slug);
+  if (kind === "notes" && (await getNote(db, slug))?.locked) {
+    throw new SnippetError("Locked notes can't be shared. Remove the lock first.", "invalid");
+  }
   const token = randomBytes(24).toString("base64url");
   const passcode = kind === "credentials" ? makePasscode() : undefined;
   const rows = await db.query(
@@ -205,7 +208,8 @@ export async function loadSharedItem(db: Db, share: Share): Promise<SharedItem |
   }
   if (share.kind === "notes") {
     const note = await getNote(db, slug);
-    return note && { kind: "notes", note };
+    // Locked after the link was made: the link shows nothing until the lock comes off.
+    return note && !note.locked ? { kind: "notes", note } : null;
   }
   const credential = await getCredential(db, slug);
   if (!credential) return null;

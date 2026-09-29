@@ -19,6 +19,8 @@ export function MoreMenu({
   title,
   url,
   pinned = false,
+  locked = false,
+  readable = false,
   latest = true,
   versions = 1,
   details,
@@ -28,6 +30,8 @@ export function MoreMenu({
   title: string;
   url?: string;
   pinned?: boolean;
+  locked?: boolean;
+  readable?: boolean;
   latest?: boolean;
   versions?: number;
   details: React.ReactNode;
@@ -39,6 +43,8 @@ export function MoreMenu({
     title,
     url,
     pinned,
+    locked,
+    readable,
     latest,
     versions,
     newTab: false,

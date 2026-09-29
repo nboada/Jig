@@ -16,6 +16,7 @@ export type Item = {
   language?: string;
   url?: string;
   pinned?: boolean;
+  locked?: boolean;
   createdAt: string;
   updatedAt: string;
 };

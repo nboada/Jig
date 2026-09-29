@@ -17,7 +17,11 @@ import { ShareButton } from "@/components/ShareButton";
 import { getDb } from "@/lib/db";
 import { agentPrompt } from "@/lib/prompts";
 import { formatDate, formatSource, timeAgo } from "@/lib/format";
+import { unlockedCodec } from "@/lib/locked-notes";
 import { getNote } from "@/lib/notes";
+import { hasPasskeys } from "@/lib/passkeys";
+import { UnlockPanel } from "@/components/Passkeys";
+import { LockIcon } from "@/components/NavIcons";
 import { getListPrefs } from "@/lib/view";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
@@ -27,7 +31,10 @@ const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) 
 
 // The page title and the page both need the note; cache() makes that one query per request.
 // Both pass the same arguments, version included, so they share the cached result.
-const loadNote = cache(async (slug: string, version: number | undefined) => getNote(await getDb(), slug, version));
+// A locked note's text is only decoded while the notes are unlocked.
+const loadNote = cache(async (slug: string, version: number | undefined) =>
+  getNote(await getDb(), slug, version, await unlockedCodec()),
+);
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const note = await loadNote((await params).slug, toVersion((await searchParams).v));
@@ -43,6 +50,8 @@ export default async function NotePage({ params, searchParams }: Props) {
   const isLatest = note.version === note.currentVersion;
   const { view } = await getListPrefs("notes");
   const prompt = agentPrompt("notes", note.slug);
+  const readable = !note.unreadable;
+  const passkey = note.unreadable ? await hasPasskeys(await getDb()) : false;
 
   return (
     <article className="min-w-0 space-y-7">
@@ -71,20 +80,36 @@ export default async function NotePage({ params, searchParams }: Props) {
       )}
 
       <ItemHeader
-        kicker="Note"
+        kicker={
+          note.locked ? (
+            <>
+              Note<span className="text-faint">·</span>
+              <LockIcon className="size-3.5" />
+              {readable ? "Unlocked" : "Locked"}
+            </>
+          ) : (
+            "Note"
+          )
+        }
         title={note.title}
         actions={
           <>
             {isLatest && (
               <>
                 <PinButton kind="notes" slug={slug} pinned={note.pinned} />
-                {note.body && <CopyButton value={note.body} label="Copy markdown" iconOnly />}
-                <Link href={`/notes/${slug}/history`} aria-label="History" title="History" className={iconButton()}>
-                  <ClockIcon className="size-4" />
-                </Link>
-                <ShareButton kind="notes" slug={slug} title={note.title} />
-                <ActionDivider />
-                <EditLink href={`/notes/${slug}/edit`} />
+                {readable && note.body && <CopyButton value={note.body} label="Copy markdown" iconOnly />}
+                {readable && (
+                  <Link href={`/notes/${slug}/history`} aria-label="History" title="History" className={iconButton()}>
+                    <ClockIcon className="size-4" />
+                  </Link>
+                )}
+                {!note.locked && <ShareButton kind="notes" slug={slug} title={note.title} />}
+                {readable && (
+                  <>
+                    <ActionDivider />
+                    <EditLink href={`/notes/${slug}/edit`} />
+                  </>
+                )}
               </>
             )}
             <span className="ml-1">
@@ -93,6 +118,8 @@ export default async function NotePage({ params, searchParams }: Props) {
                 slug={slug}
                 title={note.title}
                 pinned={note.pinned}
+                locked={note.locked}
+                readable={readable}
                 latest={isLatest}
                 versions={note.currentVersion}
                 details={
@@ -122,7 +149,8 @@ export default async function NotePage({ params, searchParams }: Props) {
           <Meta>
             {[
               <span key="v" className="text-text-2">{`v${note.version}`}</span>,
-              formatSource(note.source),
+              // Who saved it, only worth a mention when it was an agent rather than you.
+              note.source !== "web" && formatSource(note.source),
               <span key="t" suppressHydrationWarning>
                 {timeAgo(note.versionCreatedAt)}
               </span>,
@@ -141,7 +169,9 @@ export default async function NotePage({ params, searchParams }: Props) {
       />
 
       {/* Framed like a snippet's file, with the text kept to a comfortable measure inside. */}
-      {note.body ? (
+      {!readable ? (
+        <UnlockPanel hasPasskey={passkey} />
+      ) : note.body ? (
         <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
           <div className="max-w-[68ch]">
             <Markdown size="read">{note.body}</Markdown>

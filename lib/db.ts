@@ -107,6 +107,19 @@ const SCHEMA = [
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS shares_item_idx ON shares (kind, item_id)`,
+  // A locked note's text (in every version) is encrypted; set when it was locked.
+  `ALTER TABLE notes ADD COLUMN IF NOT EXISTS locked_at timestamptz`,
+  // Passkeys (Touch ID, Face ID, a security key) for signing in and unlocking locked notes.
+  // Only the public key is kept; the private key never leaves the device.
+  `CREATE TABLE IF NOT EXISTS passkeys (
+    id text PRIMARY KEY,
+    public_key text NOT NULL,
+    counter bigint NOT NULL DEFAULT 0,
+    transports jsonb NOT NULL DEFAULT '[]'::jsonb,
+    name text NOT NULL DEFAULT '',
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz
+  )`,
 ];
 
 async function migrate(db: Db) {

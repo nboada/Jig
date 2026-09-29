@@ -2,10 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { cloneItem, deleteItem, setPinned } from "@/app/actions";
+import { cloneItem, deleteItem, relockNotes, setNoteLock, setPinned } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { useOptionalList } from "@/components/ListContext";
-import { AgentIcon, CloneIcon, ExternalIcon, InfoIcon, LinkIcon, PinIcon, PinOffIcon, ShareIcon, TrashIcon } from "@/components/NavIcons";
+import { AgentIcon, CloneIcon, ExternalIcon, InfoIcon, LinkIcon, LockIcon, PinIcon, PinOffIcon, ShareIcon, TrashIcon, UnlockIcon } from "@/components/NavIcons";
 import { ShareDialog } from "@/components/ShareDialog";
 import type { Section } from "@/lib/prefs";
 import { agentPrompt } from "@/lib/prompts";
@@ -39,6 +39,8 @@ export function useItemActions({
   title,
   url,
   pinned = false,
+  locked = false,
+  readable = false,
   latest = true,
   versions,
   newTab = true,
@@ -49,6 +51,9 @@ export function useItemActions({
   title: string;
   url?: string;
   pinned?: boolean;
+  /** A locked note, and whether it's unlocked right now (only known on its own page). */
+  locked?: boolean;
+  readable?: boolean;
   /** False on an older version: only Details is offered. */
   latest?: boolean;
   /** How many versions a delete removes, for its warning. */
@@ -63,6 +68,9 @@ export function useItemActions({
   const list = useOptionalList();
   const [confirming, setConfirming] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [locking, setLocking] = useState<"lock" | "unlock" | null>(null);
+  const [lockError, setLockError] = useState("");
+  const [changingLock, startLock] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [, startAction] = useTransition();
   const base = `/${kind}`;
@@ -92,26 +100,66 @@ export function useItemActions({
         startAction(() => setPinned(kind, slug, !pinned));
       },
     });
-    actions.push({
-      key: "clone",
-      label: "Clone",
-      icon: CloneIcon,
-      onSelect: () => startAction(async () => router.push(`${base}/${await cloneItem(kind, slug)}`)),
-    });
+    if (!locked) {
+      actions.push({
+        key: "clone",
+        label: "Clone",
+        icon: CloneIcon,
+        onSelect: () => startAction(async () => router.push(`${base}/${await cloneItem(kind, slug)}`)),
+      });
+    }
     actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => navigator.clipboard.writeText(agentPrompt(kind, slug)) });
   }
   if (latest && !versioned && url) {
     actions.push({ key: "url", label: "Copy URL", icon: LinkIcon, onSelect: () => navigator.clipboard.writeText(url) });
   }
-  if (latest) actions.push({ key: "share", label: "Share…", icon: ShareIcon, onSelect: () => setSharing(true) });
+  if (latest && !locked) actions.push({ key: "share", label: "Share…", icon: ShareIcon, onSelect: () => setSharing(true) });
+  if (latest && kind === "notes") {
+    if (!locked) actions.push({ key: "lock", label: "Lock note…", icon: LockIcon, onSelect: () => setLocking("lock") });
+    else if (readable) {
+      actions.push({ key: "relock", label: "Lock again now", icon: LockIcon, onSelect: () => startAction(() => relockNotes()) });
+      actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
+    }
+  }
   if (newTab) actions.push({ key: "tab", label: "Open in new tab", icon: ExternalIcon, onSelect: () => window.open(`${base}/${slug}`, "_blank", "noopener") });
   if (onDetails) actions.push({ key: "details", label: "Details…", icon: InfoIcon, onSelect: onDetails });
   const danger: ItemAction[] = latest
     ? [{ key: "delete", label: `Delete ${noun}…`, icon: TrashIcon, danger: true, onSelect: () => setConfirming(true) }]
     : [];
 
+  function changeLock() {
+    startLock(async () => {
+      setLockError("");
+      const result = await setNoteLock(slug, locking === "lock");
+      if (result.error) setLockError(result.error);
+      else {
+        setLocking(null);
+        router.refresh();
+      }
+    });
+  }
+
   const dialogs = (
     <>
+      <ConfirmDialog
+        open={locking !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLocking(null);
+            setLockError("");
+          }
+        }}
+        title={locking === "lock" ? "Lock this note?" : "Remove the lock?"}
+        message={
+          lockError ||
+          (locking === "lock"
+            ? `The text of "${title}" and every earlier version is encrypted. Agents can no longer find or read it, it can't be shared, and you unlock it with Touch ID or your password.`
+            : `"${title}" and its history go back to plain text, and agents can find and read it again.`)
+        }
+        action={
+          <DialogAction label={locking === "lock" ? "Lock note" : "Remove lock"} pending={changingLock} onClick={changeLock} />
+        }
+      />
       <ShareDialog kind={kind} slug={slug} title={title} open={sharing} onOpenChange={setSharing} />
       <ConfirmDialog
         open={confirming}

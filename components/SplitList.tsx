@@ -232,7 +232,7 @@ export function ListColumn<T extends Item>({
                   {groupLabel === "pinned" ? "Pinned" : "All"}
                 </p>
               )}
-              <ItemMenu kind={section} slug={item.slug} title={item.title} url={item.url} pinned={item.pinned}>
+              <ItemMenu kind={section} slug={item.slug} title={item.title} url={item.url} pinned={item.pinned} locked={item.locked}>
                 <Link
                   href={`${base}/${item.slug}`}
                   aria-current={active ? "page" : undefined}

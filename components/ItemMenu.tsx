@@ -14,6 +14,7 @@ export function ItemMenu({
   title,
   url,
   pinned = false,
+  locked = false,
   children,
 }: {
   kind: Section;
@@ -22,9 +23,11 @@ export function ItemMenu({
   /** A credential's URL, offered as "Copy URL". */
   url?: string;
   pinned?: boolean;
+  /** A locked note: no clone or share. Its lock is changed from the note's own page. */
+  locked?: boolean;
   children: React.ReactNode;
 }) {
-  const { actions, danger, dialogs } = useItemActions({ kind, slug, title, url, pinned });
+  const { actions, danger, dialogs } = useItemActions({ kind, slug, title, url, pinned, locked });
   return (
     <>
       <ContextMenu.Root>

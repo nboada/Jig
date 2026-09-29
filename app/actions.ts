@@ -12,7 +12,23 @@ import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { cloneSnippet, createSnippet, deleteSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
-import { cloneNote, createNote, deleteNote, listNotes, restoreNoteVersion, setNotePinned, updateNote } from "@/lib/notes";
+import { cloneNote, createNote, deleteNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
+import { makeUnlock, noteCodec, notesUnlocked, UNLOCK_COOKIE, unlockedCodec } from "@/lib/locked-notes";
+import {
+  authenticationOptions,
+  CHALLENGE_COOKIE,
+  CHALLENGE_SECONDS,
+  listPasskeys,
+  makeChallengeCookie,
+  readChallengeCookie,
+  registrationOptions,
+  removePasskey,
+  savePasskey,
+  siteFrom,
+  verifyPasskey,
+  type Passkey,
+} from "@/lib/passkeys";
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
@@ -45,6 +61,11 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     console.error("[jig] login check failed", error);
     return { error: "Could not check the login right now. Try again." };
   }
+  await startSession();
+  redirect(safeNext(form.get("next")));
+}
+
+async function startSession() {
   (await cookies()).set(SESSION_COOKIE, await createSessionValue(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -52,7 +73,6 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     maxAge: SESSION_MAX_AGE,
     path: "/",
   });
-  redirect(safeNext(form.get("next")));
 }
 
 export async function logout() {
@@ -123,7 +143,9 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
   try {
     const data = JSON.parse(String(form.get("payload") ?? "{}"));
     const db = await getDb();
-    target = slug ? (await updateNote(db, slug, data)).note.slug : (await createNote(db, data)).slug;
+    target = slug
+      ? (await updateNote(db, slug, data, "web", await unlockedCodec())).note.slug
+      : (await createNote(db, data)).slug;
   } catch (error) {
     if (error instanceof SnippetError) return { error: error.message };
     console.error("[jig] note save failed", error);
@@ -143,7 +165,7 @@ export async function removeNote(form: FormData) {
 export async function restoreNote(form: FormData) {
   await requireAuth();
   const slug = String(form.get("slug"));
-  await restoreNoteVersion(await getDb(), slug, Number(form.get("version")));
+  await restoreNoteVersion(await getDb(), slug, Number(form.get("version")), "web", undefined, await unlockedCodec());
   revalidatePath("/", "layout");
   redirect(`/notes/${slug}/history`);
 }
@@ -313,4 +335,156 @@ export async function setViewPreference(section: Section, view: View, goTo?: str
   (await cookies()).set(prefCookie("view", section), view, { path: "/", maxAge: 31_536_000, sameSite: "lax" });
   revalidatePath("/", "layout");
   if (goTo) redirect(goTo);
+}
+
+// --- Passkeys, and locked notes ---------------------------------------------------------------
+
+async function site() {
+  const h = await headers();
+  return siteFrom(h.get("x-forwarded-host") ?? h.get("host"), h.get("x-forwarded-proto"));
+}
+
+const shortCookie = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge,
+  path: "/",
+});
+
+async function rememberChallenge(challenge: string) {
+  (await cookies()).set(CHALLENGE_COOKIE, await makeChallengeCookie(challenge), shortCookie(CHALLENGE_SECONDS));
+}
+
+/** Reads the pending challenge and forgets it, so an answer can only be used once. */
+async function takeChallenge(): Promise<string | null> {
+  const store = await cookies();
+  const challenge = await readChallengeCookie(store.get(CHALLENGE_COOKIE)?.value);
+  store.delete(CHALLENGE_COOKIE);
+  return challenge;
+}
+
+export async function myPasskeys(): Promise<Passkey[]> {
+  await requireAuth();
+  return listPasskeys(await getDb());
+}
+
+/** Starts adding a passkey on this device (the Touch ID prompt follows in the browser). */
+export async function passkeySetupOptions() {
+  await requireAuth();
+  const options = await registrationOptions(await getDb(), await site());
+  await rememberChallenge(options.challenge);
+  return options;
+}
+
+export async function addPasskey(response: RegistrationResponseJSON, name: string): Promise<{ error?: string }> {
+  await requireAuth();
+  const challenge = await takeChallenge();
+  if (!challenge) return { error: "That took too long. Try again." };
+  try {
+    await savePasskey(await getDb(), await site(), response, challenge, String(name));
+  } catch (error) {
+    console.error("[jig] passkey setup failed", error);
+    return { error: "The passkey couldn't be added. Try again." };
+  }
+  return {};
+}
+
+export async function deletePasskey(id: string): Promise<void> {
+  await requireAuth();
+  await removePasskey(await getDb(), String(id));
+}
+
+/**
+ * Options for a passkey prompt. Public, because signing in uses it before there's a session; it
+ * reveals nothing (no list of passkeys: the device offers its own).
+ */
+export async function passkeyPromptOptions() {
+  const options = await authenticationOptions(await site());
+  await rememberChallenge(options.challenge);
+  return options;
+}
+
+/** Signs in with a passkey. Counted like a password attempt, so it can't be hammered either. */
+export async function loginWithPasskey(response: AuthenticationResponseJSON, next: string): Promise<{ error?: string }> {
+  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
+  try {
+    const db = await getDb();
+    await recordFailure(db, ip);
+    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
+    if (blocked) return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
+    const challenge = await takeChallenge();
+    if (!challenge || !(await verifyPasskey(db, await site(), response, challenge))) {
+      return { error: "That passkey didn't work. Try again, or use your password." };
+    }
+    await clearFailures(db, ip);
+  } catch (error) {
+    console.error("[jig] passkey login failed", error);
+    return { error: "Could not check the passkey right now. Try again." };
+  }
+  await startSession();
+  redirect(safeNext(next));
+}
+
+async function startUnlock() {
+  const { value, maxAge } = await makeUnlock();
+  (await cookies()).set(UNLOCK_COOKIE, value, shortCookie(maxAge));
+  revalidatePath("/notes", "layout");
+}
+
+/** Unlocks locked notes for a few minutes with a passkey. */
+export async function unlockWithPasskey(response: AuthenticationResponseJSON): Promise<{ error?: string }> {
+  await requireAuth();
+  const challenge = await takeChallenge();
+  if (!challenge || !(await verifyPasskey(await getDb(), await site(), response, challenge))) {
+    return { error: "That passkey didn't work. Try again, or use your password." };
+  }
+  await startUnlock();
+  return {};
+}
+
+/** Unlocks with the dashboard password instead, for a device without a passkey. Rate limited like login. */
+export async function unlockWithPassword(password: string): Promise<{ error?: string }> {
+  await requireAuth();
+  const ip = clientIpFrom((await headers()).get("x-forwarded-for"));
+  try {
+    const db = await getDb();
+    await recordFailure(db, ip);
+    const { blocked, retryAfterMinutes } = await checkLogin(db, ip);
+    if (blocked) return { error: `Too many attempts, try again in ${retryAfterMinutes} minute${retryAfterMinutes === 1 ? "" : "s"}.` };
+    if (!checkPassword(String(password))) return { error: "Wrong password." };
+    await clearFailures(db, ip);
+  } catch (error) {
+    console.error("[jig] unlock check failed", error);
+    return { error: "Could not check the password right now. Try again." };
+  }
+  await startUnlock();
+  return {};
+}
+
+/** Locks the notes again straight away, before the few minutes are up. */
+export async function relockNotes(): Promise<void> {
+  await requireAuth();
+  (await cookies()).delete(UNLOCK_COOKIE);
+  revalidatePath("/notes", "layout");
+}
+
+/**
+ * Locks a note (encrypting its whole history) or removes its lock. Removing a lock needs the notes
+ * unlocked first, so a stolen session alone can't strip one.
+ */
+export async function setNoteLock(slug: string, locked: boolean): Promise<{ error?: string }> {
+  await requireAuth();
+  if (!encryptionReady()) return { error: "Locking notes needs JIG_ENCRYPTION_KEY, the same key as Credentials." };
+  if (!locked && !(await notesUnlocked())) return { error: "Unlock the note first." };
+  try {
+    const db = await getDb();
+    await setNoteLocked(db, String(slug), Boolean(locked), noteCodec);
+  } catch (error) {
+    if (error instanceof SnippetError || error instanceof DecryptError) return { error: error.message };
+    console.error("[jig] lock failed", error);
+    return { error: "Could not change the lock. Try again." };
+  }
+  revalidatePath("/", "layout");
+  return {};
 }

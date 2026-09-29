@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { LockIcon } from "@/components/NavIcons";
 import { EmptyState } from "@/components/EmptyState";
 import { GridHead } from "@/components/GridHead";
 import { ItemMenu } from "@/components/ItemMenu";
@@ -80,10 +81,19 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {notes.map((n) => (
             <li key={n.slug}>
-              <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned}>
+              <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned} locked={n.locked}>
                 <Card
                   href={`/notes/${n.slug}`}
-                  kicker="Note"
+                  kicker={
+                    n.locked ? (
+                      <>
+                        <LockIcon className="size-3" />
+                        Note · Locked
+                      </>
+                    ) : (
+                      "Note"
+                    )
+                  }
                   pinned={n.pinned}
                   title={n.title}
                   body={n.excerpt}

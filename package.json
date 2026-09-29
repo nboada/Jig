@@ -38,6 +38,8 @@
     "@radix-ui/react-popover": "^1.1.23",
     "@radix-ui/react-select": "^2.3.7",
     "@shopify/prettier-plugin-liquid": "^1.11.1",
+    "@simplewebauthn/browser": "^14",
+    "@simplewebauthn/server": "^14",
     "@tailwindcss/typography": "^0.5.20",
     "@tiptap/extension-list": "^3.31.3",
     "@tiptap/extensions": "^3.31.3",

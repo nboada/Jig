@@ -85,6 +85,13 @@ function formatNoteSummary(n: NoteSummary) {
   return `- ${n.slug}: ${n.title} (v${n.version})${tags}${excerpt}`;
 }
 
+/** Agents never see locked notes: to them a locked note doesn't exist. */
+async function refuseLocked(db: Db, slug: string) {
+  if ((await getNote(db, slug))?.locked) {
+    throw new SnippetError(`No note with the slug "${slug}". Use search_notes to find it.`, "not_found");
+  }
+}
+
 export function formatNote(n: Note): string {
   const out = [
     `# ${n.title}`,
@@ -314,7 +321,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
     ({ query, tag, limit }) =>
       run(async () => {
         const db = await getDb();
-        const results = await listNotes(db, { query, tag, limit: limit ?? 50 });
+        const results = await listNotes(db, { query, tag, limit: limit ?? 50, hideLocked: true });
         if (results.length) return text(`${results.length} note(s):\n\n${results.map(formatNoteSummary).join("\n")}`);
         const tags = await listNoteTags(db);
         return text(
@@ -337,7 +344,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
     ({ slug, version }) =>
       run(async () => {
         const note = await getNote(await getDb(), slug, version);
-        if (note) return text(formatNote(note));
+        if (note && !note.locked) return text(formatNote(note));
         throw new SnippetError(
           version ? `Note "${slug}" has no version ${version}.` : `No note with the slug "${slug}". Use search_notes to find it.`,
           "not_found",
@@ -386,7 +393,9 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
     },
     ({ slug, ...patch }, ctx) =>
       run(async () => {
-        const { note, changed } = await updateNote(await getDb(), slug, patch, sourceOf(ctx));
+        const db = await getDb();
+        await refuseLocked(db, slug);
+        const { note, changed } = await updateNote(db, slug, patch, sourceOf(ctx));
         return text(
           changed ? `Saved ${note.slug} as version ${note.version}.` : `Nothing changed, ${note.slug} is still at version ${note.version}.`,
         );
@@ -403,7 +412,9 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
     },
     ({ slug }) =>
       run(async () => {
-        const versions = await listNoteVersions(await getDb(), slug);
+        const db = await getDb();
+        await refuseLocked(db, slug);
+        const versions = await listNoteVersions(db, slug);
         const lines = versions.map(
           (v, i) => `- v${v.version}${i === 0 ? " (latest)" : ""}, ${v.createdAt}, by ${v.source}: ${v.message || "(no message)"}`,
         );
@@ -424,7 +435,9 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
     },
     ({ slug, version, message }, ctx) =>
       run(async () => {
-        const note = await restoreNoteVersion(await getDb(), slug, version, sourceOf(ctx), message);
+        const db = await getDb();
+        await refuseLocked(db, slug);
+        const note = await restoreNoteVersion(db, slug, version, sourceOf(ctx), message);
         return text(`Restored ${slug} to the content of version ${version}. It is now version ${note.version}.`);
       }),
   );

@@ -54,6 +54,24 @@ describe("notes over MCP", () => {
     expect(missing.text).toContain("No note");
     expect((await call("search_notes", {})).text).toContain("There are no notes yet");
   });
+
+  test("locked notes don't exist as far as agents can tell", async () => {
+    await call("create_note", { title: "Plugin keys", body: "ACF: abc123" });
+    // Locked straight in the database: this test file must not reach the encryption key either.
+    await db.query(`UPDATE notes SET locked_at = now()`);
+    expect((await call("search_notes", { query: "plugin" })).text).not.toContain("plugin-keys");
+    expect((await call("search_notes", {})).text).not.toContain("plugin-keys");
+    for (const [tool, args] of [
+      ["get_note", {}],
+      ["update_note", { body: "changed" }],
+      ["list_note_versions", {}],
+      ["restore_note_version", { version: 1 }],
+    ] as const) {
+      const result = await call(tool, { slug: "plugin-keys", ...args });
+      expect(result.isError).toBe(true);
+      expect(result.text).toContain("No note");
+    }
+  });
 });
 
 describe("credentials stay out of MCP", () => {
@@ -91,5 +109,6 @@ describe("credentials stay out of MCP", () => {
     expect(seen.has("notes.ts")).toBe(true);
     expect(seen.has("credentials.ts")).toBe(false);
     expect(seen.has("crypto.ts")).toBe(false);
+    expect(seen.has("locked-notes.ts")).toBe(false);
   });
 });
