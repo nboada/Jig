@@ -40,6 +40,8 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
           <ViewToggle view={view} />
           <Link href="/snippets/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
             New snippet
+            <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
+             
           </Link>
         </div>
       </form>
@@ -95,11 +97,8 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
             <li key={s.slug}>
               <Link href={`/snippets/${s.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <h2 className="truncate font-medium">{s.title}</h2>
-                    <span className="hidden truncate font-mono text-xs text-muted sm:inline">{s.slug}</span>
-                  </div>
-                  {s.description && <p className="mt-0.5 truncate text-sm text-text/75">{s.description}</p>}
+                  <h2 className="truncate font-medium">{s.title}</h2>
+                  {s.description && <p className="mt-0.5 truncate text-[13px] text-text/70">{s.description}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
                   <span className="flex items-center gap-1.5 text-text/85">
@@ -130,8 +129,7 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                     {`v${s.version}`}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-xs text-muted">{s.slug}</p>
-                {s.description && <p className="mt-3 line-clamp-2 text-sm text-text/75">{s.description}</p>}
+                {s.description && <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-text/70">{s.description}</p>}
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
                   <span className="flex items-center gap-1.5 text-text/85">
                     <LanguageIcon language={s.language} className="size-3.5" />

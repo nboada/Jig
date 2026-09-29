@@ -6,6 +6,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
+import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
@@ -64,6 +65,10 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
   let target: string;
   try {
     const data = JSON.parse(String(form.get("payload") ?? "{}"));
+    // Files still on the generic snippet.* name take the title's, e.g. same-height-divs.js.
+    if (Array.isArray(data.files) && typeof data.title === "string") {
+      data.files = renameForTitle(data.files, "", data.title);
+    }
     const db = await getDb();
     if (slug) {
       const { snippet } = await updateSnippet(db, slug, data);

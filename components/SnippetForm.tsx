@@ -6,8 +6,9 @@ import { useActionState, useRef, useState } from "react";
 import { saveSnippet } from "@/app/actions";
 import { CodeEditor } from "@/components/CodeEditor";
 import { LanguageSelect } from "@/components/LanguageSelect";
-import { beautify, canBeautify, findSplit, type Split } from "@/lib/beautify";
-import { defaultFileName, languageForFile, languageLabel } from "@/lib/languages";
+import { beautify, canBeautify, detectLanguage, findSplit, type Split } from "@/lib/beautify";
+import { defaultFileName, languageFamily, languageForFile, languageLabel, withExtension } from "@/lib/languages";
+import { renameForTitle } from "@/lib/slug";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
 export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
@@ -38,8 +39,9 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
   const [dependencies, setDependencies] = useState(snippet?.dependencies.join("\n") ?? "");
   const [instructions, setInstructions] = useState(snippet?.instructions ?? "");
   const [message, setMessage] = useState("");
-  const [files, setFiles] = useState<SnippetFile[]>(
-    snippet?.files ?? [{ name: defaultFileName("javascript"), content: "" }],
+  // Saved files still called snippet.* take the title's name straight away, so the next save keeps it.
+  const [files, setFiles] = useState<SnippetFile[]>(() =>
+    snippet ? renameForTitle(snippet.files, "", snippet.title) : [{ name: defaultFileName("javascript"), content: "" }],
   );
   // The optional fields start folded away unless the snippet already uses them.
   const hasDetails = Boolean(
@@ -51,7 +53,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
 
   const editors = useRef<(EditorView | undefined)[]>([]);
   const [formatting, setFormatting] = useState<number | null>(null);
-  const [formatError, setFormatError] = useState<{ index: number; message: string; split?: Split } | null>(null);
+  const [formatError, setFormatError] = useState<{ index: number; message: string; split?: Split; rename?: string } | null>(null);
   async function format(index: number, fileLanguage: string) {
     setFormatting(index);
     setFormatError(null);
@@ -65,13 +67,19 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
       // Parser messages read like "Unexpected token (15:16)" followed by a code frame; keep the line number.
       const where = error instanceof Error ? error.message.match(/\((\d+):\d+\)/) : null;
       const kind = languageLabel(fileLanguage);
-      const split = (await findSplit(files[index].content, fileLanguage)) ?? undefined;
+      const content = files[index].content;
+      // Either the whole file is another language (wrong extension), or a block at the end is.
+      const actual = await detectLanguage(content, fileLanguage, [language]);
+      const split = actual ? undefined : ((await findSplit(content, fileLanguage)) ?? undefined);
       setFormatError({
         index,
-        message: split
-          ? `Lines ${split.line}–${split.line + split.tail.trimEnd().split("\n").length - 1} look like ${languageLabel(split.tailLanguage)}, which can't be formatted as ${kind}.`
-          : `${where ? `Line ${where[1]} isn't valid ${kind}` : `This isn't valid ${kind}`}, so nothing was changed.`,
+        message: actual
+          ? `This looks like ${languageLabel(actual)}, but ${files[index].name} is formatted as ${kind} because of its extension.`
+          : split
+            ? `Lines ${split.line}–${split.line + split.tail.trimEnd().split("\n").length - 1} look like ${languageLabel(split.tailLanguage)}, which can't be formatted as ${kind}.`
+            : `${where ? `Line ${where[1]} isn't valid ${kind}` : `This isn't valid ${kind}`}, so nothing was changed.`,
         split,
+        rename: actual ? withExtension(files[index].name, actual) : undefined,
       });
     } finally {
       setFormatting(null);
@@ -80,11 +88,9 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
 
   /** Moves a stray block out of a file into a new file named for its language, e.g. snippet.css. */
   function moveSplit(index: number, split: Split) {
-    const base = files[index].name.replace(/\.[^.]+$/, "");
-    const ext = defaultFileName(split.tailLanguage).split(".").pop();
     const taken = new Set(files.map((f) => f.name));
-    let name = `${base}.${ext}`;
-    for (let n = 2; taken.has(name); n++) name = `${base}-${n}.${ext}`;
+    let name = withExtension(files[index].name, split.tailLanguage);
+    for (let n = 2; taken.has(name); n++) name = withExtension(`${files[index].name.replace(/\.[^.]+$/, "")}-${n}`, split.tailLanguage);
     // Trim the original through its editor, as Format does; its onChange updates the file.
     const view = editors.current[index];
     if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: split.head } });
@@ -116,7 +122,11 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
           <input
             className={field}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setFiles((list) => renameForTitle(list, title, next));
+              setTitle(next);
+            }}
             placeholder="GSAP ScrollTrigger setup"
             required
             autoFocus={!snippet}
@@ -128,9 +138,9 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
             className="w-full"
             value={language}
             onChange={(next) => {
-              // Rename the untouched starter file so highlighting follows the language.
-              if (!snippet && files.length === 1 && files[0].name === defaultFileName(language)) {
-                updateFile(0, { name: defaultFileName(next) });
+              // A lone file whose extension followed the old language follows the new one too.
+              if (files.length === 1 && languageFamily(languageForFile(files[0].name, "")) === languageFamily(language)) {
+                updateFile(0, { name: withExtension(files[0].name, next) });
               }
               setLanguage(next);
             }}
@@ -181,6 +191,18 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
               {formatError?.index === index && (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-danger/10 px-4 py-2 text-xs text-danger">
                   <p className="flex-1">{formatError.message}</p>
+                  {formatError.rename && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateFile(index, { name: formatError.rename! });
+                        setFormatError(null);
+                      }}
+                      className="shrink-0 rounded-md bg-accent px-2.5 py-1 font-medium text-accent-ink hover:brightness-110"
+                    >
+                      {`Rename to ${formatError.rename}`}
+                    </button>
+                  )}
                   {formatError.split && (
                     <button
                       type="button"

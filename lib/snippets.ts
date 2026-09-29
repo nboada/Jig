@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { Db, Row } from "./db";
 import { familyMembers } from "./languages";
+import { slugify } from "./slug";
 import {
   slugSchema,
   snippetInputSchema,
@@ -61,17 +62,7 @@ export class SnippetError extends Error {
 
 const iso = (value: unknown) => new Date(value as string).toISOString();
 
-export function slugify(text: string): string {
-  const slug = text
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60)
-    .replace(/-+$/g, "");
-  return slug || "snippet";
-}
+export { slugify };
 
 function toSummary(row: Row): SnippetSummary {
   return {

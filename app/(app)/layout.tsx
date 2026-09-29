@@ -3,6 +3,7 @@ import { logout } from "@/app/actions";
 import { Logo } from "@/components/Logo";
 import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
 import { NewMenu } from "@/components/NewMenu";
+import { NewShortcut } from "@/components/NewShortcut";
 import { SidebarNav } from "@/components/SidebarNav";
 import { requireAuth } from "@/lib/auth";
 
@@ -60,6 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8 md:px-8">{children}</main>
+      <NewShortcut />
     </div>
   );
 }

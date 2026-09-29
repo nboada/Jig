@@ -66,3 +66,8 @@ export function defaultFileName(language: string): string {
   const ext = LANGUAGES.find((l) => l.id === language)?.extensions[0] ?? "txt";
   return `snippet.${ext}`;
 }
+
+/** A file name with its extension swapped for the language's own, e.g. snippet.js → snippet.html. */
+export function withExtension(name: string, language: string): string {
+  return `${name.replace(/\.[^./]+$/, "")}.${defaultFileName(language).split(".").pop()}`;
+}

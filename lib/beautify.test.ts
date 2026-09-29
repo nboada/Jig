@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { beautify, canBeautify, findSplit } from "./beautify";
+import { beautify, canBeautify, detectLanguage, findSplit } from "./beautify";
 
 describe("beautify", () => {
   const cases: [string, string, string][] = [
@@ -55,5 +55,21 @@ describe("findSplit", () => {
   test("nothing to split when the file is just broken", async () => {
     expect(await findSplit("const = ;\n\nconst b = 2;", "javascript")).toBeNull();
     expect(await findSplit("echo hi", "bash")).toBeNull();
+  });
+});
+
+describe("detectLanguage", () => {
+  const page = "<script>\nfunction a() {}\n</script>\n\n<style>\n.hero { height: 1px }\n</style>";
+
+  test("markup in a .js file is HTML", async () => {
+    expect(await detectLanguage(page, "javascript", [])).toBe("html");
+  });
+
+  test("the snippet's own language is tried first", async () => {
+    expect(await detectLanguage("<?php echo 1;", "javascript", ["php"])).toBe("php");
+  });
+
+  test("nothing when no candidate fits", async () => {
+    expect(await detectLanguage("const = ;", "javascript", ["javascript"])).toBeNull();
   });
 });

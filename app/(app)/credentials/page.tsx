@@ -44,6 +44,8 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
         <ViewToggle view={view} />
         <Link href="/credentials/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
           New credential
+          <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
+           
         </Link>
       </form>
 

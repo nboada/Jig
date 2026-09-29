@@ -89,3 +89,17 @@ export async function findSplit(code: string, language: string): Promise<Split |
   }
   return null;
 }
+
+/**
+ * For a file that does not format, the language its content actually is, when that is clear:
+ * one of `candidates` (the snippet's language first), or HTML for markup. Null otherwise.
+ */
+export async function detectLanguage(code: string, fileLanguage: string, candidates: string[]): Promise<string | null> {
+  const tries = [...candidates, ...(code.trimStart().startsWith("<") ? ["html"] : [])];
+  for (const language of new Set(tries)) {
+    if (language === fileLanguage || !canBeautify(language)) continue;
+    // CSS and JSON parsers accept a lot; only trust them for the snippet's own language.
+    if (await beautify(code, language).then(() => true, () => false)) return language;
+  }
+  return null;
+}
