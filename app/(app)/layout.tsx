@@ -14,10 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/" className="mb-6 px-3">
           <Logo />
         </Link>
-        <SidebarNav />
-        <form action={logout} className="mt-auto px-3">
-          <button className="text-sm text-muted hover:text-text">Log out</button>
-        </form>
+        <SidebarNav>
+          <form action={logout} className="px-3">
+            <button className="text-sm text-muted hover:text-text">Log out</button>
+          </form>
+        </SidebarNav>
       </aside>
 
       <header className="sticky top-0 z-10 border-b border-line bg-ink/85 backdrop-blur md:hidden">

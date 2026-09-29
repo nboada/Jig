@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { saveSnippet } from "@/app/actions";
-import { defaultFileName, languageForFile, LANGUAGES } from "@/lib/languages";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { defaultFileName, languageForFile } from "@/lib/languages";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
 export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
@@ -74,27 +75,20 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
             autoFocus={!snippet}
           />
         </label>
-        <label>
+        <div>
           <span className={label}>Language</span>
-          <select
-            className={field}
+          <LanguageSelect
+            className="w-full"
             value={language}
-            onChange={(e) => {
-              const next = e.target.value;
+            onChange={(next) => {
               // Rename the untouched starter file so highlighting follows the language.
               if (!snippet && files.length === 1 && files[0].name === defaultFileName(language)) {
                 updateFile(0, { name: defaultFileName(next) });
               }
               setLanguage(next);
             }}
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </div>
       </div>
 
       <div className="space-y-4">

@@ -42,6 +42,9 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
         <SearchInput placeholder="Search titles, URLs and labels" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
         <ViewToggle view={view} />
+        <Link href="/credentials/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
+          New credential
+        </Link>
       </form>
 
       {tags.length > 0 && (

@@ -138,7 +138,9 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
         "Find snippets by keyword, language or tag. Matches titles, slugs, descriptions, tags and file contents. Call with no arguments to list everything.",
       inputSchema: z.object({
         query: z.string().optional().describe("Keywords, e.g. \"gsap scroll\" or \"lenis\"."),
-        language: languageSchema.optional(),
+        language: languageSchema
+          .optional()
+          .describe("javascript also matches typescript, jsx and tsx; css also matches scss."),
         tag: z.string().optional(),
         limit: z.number().int().min(1).max(200).optional(),
       }),

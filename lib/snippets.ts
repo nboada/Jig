@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { Db, Row } from "./db";
+import { familyMembers } from "./languages";
 import {
   slugSchema,
   snippetInputSchema,
@@ -123,7 +124,9 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
       `(s.title ILIKE ${p} OR s.slug ILIKE ${p} OR s.description ILIKE ${p} OR s.tags::text ILIKE ${p} OR v.files::text ILIKE ${p})`,
     );
   }
-  if (options.language) where.push(`s.language = ${param(options.language)}`);
+  if (options.language) {
+    where.push(`s.language IN (${familyMembers(options.language).map((l) => param(l)).join(", ")})`);
+  }
   if (options.tag) where.push(`s.tags @> jsonb_build_array(${param(options.tag.toLowerCase())}::text)`);
 
   const order = termParams.map((p) => `(s.title ILIKE ${p} OR s.slug ILIKE ${p})::int`);

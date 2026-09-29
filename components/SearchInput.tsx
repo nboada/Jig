@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { LanguageSelect } from "@/components/LanguageSelect";
 
 /** Replaces one search param in the current URL without a full page load, keeping the others. */
 function useSetParam() {
@@ -66,25 +67,15 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
   );
 }
 
-/** A select that applies its filter as soon as the choice changes. */
-export function FilterSelect({
-  name,
-  className,
-  children,
-}: {
-  name: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
+/** The language filter: applies as soon as the choice changes. */
+export function LanguageFilter({ className }: { className?: string }) {
   const { params, setParam } = useSetParam();
   return (
-    <select
-      name={name}
-      value={params.get(name) ?? ""}
-      onChange={(event) => setParam(name, event.target.value)}
+    <LanguageSelect
+      value={params.get("lang") ?? ""}
+      onChange={(value) => setParam("lang", value)}
+      allLabel="All languages"
       className={className}
-    >
-      {children}
-    </select>
+    />
   );
 }

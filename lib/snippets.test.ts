@@ -141,6 +141,17 @@ describe("snippets", () => {
     ]);
   });
 
+  test("a family filter matches every member, an exact one only itself", async () => {
+    await createSnippet(db, { title: "Plain JS", language: "javascript", files: [{ name: "a.js", content: "1" }] });
+    await createSnippet(db, { title: "Button", language: "tsx", files: [{ name: "Button.tsx", content: "2" }] });
+    await createSnippet(db, { title: "Mixins", language: "scss", files: [{ name: "m.scss", content: "3" }] });
+
+    const slugs = async (language: string) => (await listSnippets(db, { language })).map((s) => s.slug).sort();
+    expect(await slugs("javascript")).toEqual(["button", "plain-js"]);
+    expect(await slugs("tsx")).toEqual(["button"]);
+    expect(await slugs("css")).toEqual(["mixins"]);
+  });
+
   test("delete removes the snippet and its history", async () => {
     await createSnippet(db, gsap);
     await deleteSnippet(db, "gsap-scrolltrigger-setup");

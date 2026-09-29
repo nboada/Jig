@@ -24,6 +24,33 @@ export type LanguageId = (typeof LANGUAGES)[number]["id"];
 
 export const LANGUAGE_IDS = LANGUAGES.map((l) => l.id) as [LanguageId, ...LanguageId[]];
 
+/**
+ * Close relatives the pickers show as one entry, keyed by the lead language. Snippets keep
+ * their exact language (it still picks the grammar); a filter on the lead matches every member.
+ */
+const FAMILIES: Record<string, readonly LanguageId[]> = {
+  javascript: ["javascript", "typescript", "jsx", "tsx"],
+  css: ["css", "scss"],
+};
+
+/** The picker's entries: every language except the non-lead members of a family. */
+export const LANGUAGE_CHOICES = LANGUAGES.filter(
+  (l) => !Object.values(FAMILIES).some((members) => members.includes(l.id) && members[0] !== l.id),
+);
+
+/** The picker entry a language falls under, e.g. "tsx" → "javascript". */
+export function languageFamily(id: string): string {
+  for (const [lead, members] of Object.entries(FAMILIES)) {
+    if ((members as readonly string[]).includes(id)) return lead;
+  }
+  return id;
+}
+
+/** Every language a filter on `id` should match: a family's members, or just itself. */
+export function familyMembers(id: string): string[] {
+  return [...(FAMILIES[id] ?? [id])];
+}
+
 export function languageLabel(id: string): string {
   return LANGUAGES.find((l) => l.id === id)?.label ?? id;
 }

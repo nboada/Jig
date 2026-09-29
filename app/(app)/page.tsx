@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { FilterSelect, SearchInput } from "@/components/SearchInput";
+import { LanguageIcon } from "@/components/LanguageIcon";
+import { LanguageFilter, SearchInput } from "@/components/SearchInput";
 import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
-import { LANGUAGES, languageLabel } from "@/lib/languages";
+import { languageLabel } from "@/lib/languages";
 import { listSnippets, listTags } from "@/lib/snippets";
 import { timeAgo } from "@/lib/format";
 import { getView } from "@/lib/view";
@@ -31,19 +32,12 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
       <form className="flex flex-col gap-3 sm:flex-row" action="/">
         <SearchInput placeholder="Search titles, tags and code" />
         <div className="flex gap-3">
-          <FilterSelect
-            name="lang"
-            className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent sm:flex-none"
-          >
-            <option value="">All languages</option>
-            {LANGUAGES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </FilterSelect>
+          <LanguageFilter className="min-w-0 flex-1 sm:w-48 sm:flex-none" />
           {search.tag && <input type="hidden" name="tag" value={search.tag} />}
           <ViewToggle view={view} />
+          <Link href="/snippets/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
+            New snippet
+          </Link>
         </div>
       </form>
 
@@ -105,7 +99,10 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                   {s.description && <p className="mt-0.5 truncate text-sm text-text/75">{s.description}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
-                  <span className="text-accent">{languageLabel(s.language)}</span>
+                  <span className="flex items-center gap-1.5 text-text/85">
+                    <LanguageIcon language={s.language} className="size-3.5" />
+                    {languageLabel(s.language)}
+                  </span>
                   <span className="hidden sm:inline">
                     {`${s.fileNames.length} file${s.fileNames.length === 1 ? "" : "s"}`}
                   </span>
@@ -133,7 +130,10 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                 <p className="mt-1 font-mono text-xs text-muted">{s.slug}</p>
                 {s.description && <p className="mt-3 line-clamp-2 text-sm text-text/75">{s.description}</p>}
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
-                  <span className="text-accent">{languageLabel(s.language)}</span>
+                  <span className="flex items-center gap-1.5 text-text/85">
+                    <LanguageIcon language={s.language} className="size-3.5" />
+                    {languageLabel(s.language)}
+                  </span>
                   <span>
                     {`${s.fileNames.length} file${s.fileNames.length === 1 ? "" : "s"}`}
                   </span>

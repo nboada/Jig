@@ -34,6 +34,9 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <SearchInput placeholder="Search notes" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
         <ViewToggle view={view} />
+        <Link href="/notes/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
+          New note
+        </Link>
       </form>
 
       {tags.length > 0 && (
