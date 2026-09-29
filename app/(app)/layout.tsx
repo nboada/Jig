@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { logout } from "@/app/actions";
 import { Logo } from "@/components/Logo";
+import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
 import { NewMenu } from "@/components/NewMenu";
 import { SidebarNav } from "@/components/SidebarNav";
 import { requireAuth } from "@/lib/auth";
@@ -38,16 +39,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         <nav className="flex gap-5 px-4 pb-2.5 text-sm text-muted">
-          <Link href="/" className="hover:text-text">
+          <Link href="/" className="flex items-center gap-1.5 hover:text-text">
+            <SnippetsIcon className="size-3.5" />
             Snippets
           </Link>
-          <Link href="/notes" className="hover:text-text">
+          <Link href="/notes" className="flex items-center gap-1.5 hover:text-text">
+            <NotesIcon className="size-3.5" />
             Notes
           </Link>
-          <Link href="/credentials" className="hover:text-text">
+          <Link href="/credentials" className="flex items-center gap-1.5 hover:text-text">
+            <CredentialsIcon className="size-3.5" />
             Credentials
           </Link>
-          <Link href="/connect" className="hover:text-text">
+          <Link href="/connect" className="flex items-center gap-1.5 hover:text-text">
+            <ConnectIcon className="size-3.5" />
             Connect
           </Link>
         </nav>

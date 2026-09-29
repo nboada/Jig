@@ -30,6 +30,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Tailwind 4 dropped the pointer cursor on buttons; restore it app-wide. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select {
+    cursor: pointer;
+  }
+}
+
 ::selection {
   background: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }

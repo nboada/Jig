@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyMissing } from "@/components/KeyMissing";
+import { SearchInput } from "@/components/SearchInput";
+import { ViewToggle } from "@/components/ViewToggle";
 import { listCredentials, listCredentialTags } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
+import { getView } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Credentials" };
 
@@ -21,9 +24,10 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
   if (!encryptionReady()) return <KeyMissing />;
   const search = await searchParams;
   const db = await getDb();
-  const [credentials, tags] = await Promise.all([
+  const [credentials, tags, view] = await Promise.all([
     listCredentials(db, { query: search.q, tag: search.tag }),
     listCredentialTags(db),
+    getView(),
   ]);
   const filtered = Boolean(search.q || search.tag);
 
@@ -35,15 +39,9 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
       </div>
 
       <form className="flex gap-3" action="/credentials">
-        <input
-          type="search"
-          name="q"
-          defaultValue={search.q}
-          placeholder="Search titles, URLs and labels"
-          className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent"
-        />
+        <SearchInput placeholder="Search titles, URLs and labels" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <button className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted">Search</button>
+        <ViewToggle view={view} />
       </form>
 
       {tags.length > 0 && (
@@ -86,6 +84,23 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
             </>
           )}
         </div>
+      ) : view === "list" ? (
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+          {credentials.map((c) => (
+            <li key={c.slug}>
+              <Link href={`/credentials/${c.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate font-medium">{c.title}</h2>
+                  {c.url && <p className="mt-0.5 truncate font-mono text-xs text-muted">{c.url}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
+                  <span className="hidden max-w-60 truncate text-sm text-text/75 sm:inline">{c.labels.join(" · ")}</span>
+                  <span className="hidden md:inline">{timeAgo(c.updatedAt)}</span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {credentials.map((c) => (

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SearchInput } from "@/components/SearchInput";
+import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
 import { listNotes, listNoteTags } from "@/lib/notes";
+import { getView } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Notes" };
 
@@ -18,21 +21,19 @@ function href(current: Search, change: Search) {
 export default async function NotesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
   const db = await getDb();
-  const [notes, tags] = await Promise.all([listNotes(db, { query: search.q, tag: search.tag }), listNoteTags(db)]);
+  const [notes, tags, view] = await Promise.all([
+    listNotes(db, { query: search.q, tag: search.tag }),
+    listNoteTags(db),
+    getView(),
+  ]);
   const filtered = Boolean(search.q || search.tag);
 
   return (
     <div className="space-y-6">
       <form className="flex gap-3" action="/notes">
-        <input
-          type="search"
-          name="q"
-          defaultValue={search.q}
-          placeholder="Search notes"
-          className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent"
-        />
+        <SearchInput placeholder="Search notes" />
         {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <button className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted">Search</button>
+        <ViewToggle view={view} />
       </form>
 
       {tags.length > 0 && (
@@ -76,6 +77,26 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
             </>
           )}
         </div>
+      ) : view === "list" ? (
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+          {notes.map((n) => (
+            <li key={n.slug}>
+              <Link href={`/notes/${n.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="truncate font-medium">{n.title}</h2>
+                    <span className="hidden truncate font-mono text-xs text-muted sm:inline">{n.slug}</span>
+                  </div>
+                  {n.excerpt && <p className="mt-0.5 truncate text-sm text-text/75">{n.excerpt}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
+                  <span className="hidden sm:inline">{timeAgo(n.updatedAt)}</span>
+                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">v{n.version}</span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {notes.map((n) => (

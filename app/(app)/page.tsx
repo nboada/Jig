@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { FilterSelect, SearchInput } from "@/components/SearchInput";
+import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
 import { LANGUAGES, languageLabel } from "@/lib/languages";
 import { listSnippets, listTags } from "@/lib/snippets";
 import { timeAgo } from "@/lib/format";
+import { getView } from "@/lib/view";
 
 type Search = { q?: string; lang?: string; tag?: string };
 
@@ -16,26 +19,20 @@ function href(current: Search, change: Search) {
 export default async function SnippetsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
   const db = await getDb();
-  const [snippets, tags] = await Promise.all([
+  const [snippets, tags, view] = await Promise.all([
     listSnippets(db, { query: search.q, language: search.lang, tag: search.tag }),
     listTags(db),
+    getView(),
   ]);
   const filtered = Boolean(search.q || search.lang || search.tag);
 
   return (
     <div className="space-y-6">
       <form className="flex flex-col gap-3 sm:flex-row" action="/">
-        <input
-          type="search"
-          name="q"
-          defaultValue={search.q}
-          placeholder="Search titles, tags and code"
-          className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent"
-        />
+        <SearchInput placeholder="Search titles, tags and code" />
         <div className="flex gap-3">
-          <select
+          <FilterSelect
             name="lang"
-            defaultValue={search.lang ?? ""}
             className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent sm:flex-none"
           >
             <option value="">All languages</option>
@@ -44,9 +41,9 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                 {l.label}
               </option>
             ))}
-          </select>
+          </FilterSelect>
           {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-          <button className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted">Search</button>
+          <ViewToggle view={view} />
         </div>
       </form>
 
@@ -95,6 +92,30 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
             </>
           )}
         </div>
+      ) : view === "list" ? (
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+          {snippets.map((s) => (
+            <li key={s.slug}>
+              <Link href={`/snippets/${s.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="truncate font-medium">{s.title}</h2>
+                    <span className="hidden truncate font-mono text-xs text-muted sm:inline">{s.slug}</span>
+                  </div>
+                  {s.description && <p className="mt-0.5 truncate text-sm text-text/75">{s.description}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
+                  <span className="text-accent">{languageLabel(s.language)}</span>
+                  <span className="hidden sm:inline">
+                    {s.fileNames.length} file{s.fileNames.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="hidden md:inline">{timeAgo(s.updatedAt)}</span>
+                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">v{s.version}</span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {snippets.map((s) => (
