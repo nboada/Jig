@@ -1,5 +1,7 @@
 "use server";
 
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -10,7 +12,8 @@ import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ra
 import { createSnippet, deleteSnippet, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
 import { createNote, deleteNote, restoreNoteVersion, updateNote } from "@/lib/notes";
 import { createCredential, deleteCredential, revealField, updateCredential } from "@/lib/credentials";
-import { CredentialsUnavailable, DecryptError } from "@/lib/crypto";
+import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
+import { withEncryptionKey } from "@/lib/envfile";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
@@ -174,4 +177,40 @@ export async function revealSecret(slug: string, fieldId: string): Promise<{ val
     console.error("[snippeta] reveal failed", error);
     return { error: "Could not reveal this value. Try again." };
   }
+}
+
+/**
+ * Local development only: writes a new encryption key into .env.local and
+ * starts using it straight away. A deployed server can't change its own
+ * environment, so there the page generates a key for the user to add instead.
+ */
+export async function createEncryptionKey(): Promise<{ error?: string }> {
+  await requireAuth();
+  if (process.env.NODE_ENV === "production") {
+    return { error: "A deployed server can't change its own settings. Add the key to your host's environment variables." };
+  }
+  if (encryptionReady()) return {};
+  const key = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
+  const file = join(process.cwd(), ".env.local");
+  try {
+    let current = "";
+    try {
+      current = await readFile(file, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const next = withEncryptionKey(current, key);
+    if (next === null) {
+      return {
+        error: ".env.local already sets SNIPPETA_ENCRYPTION_KEY, but it isn't a valid key. Fix or remove that line, then restart the server.",
+      };
+    }
+    await writeFile(file, next, { mode: 0o600 });
+  } catch (error) {
+    console.error("[snippeta] could not write .env.local", error);
+    return { error: "Could not write .env.local. Add the key to it yourself, then restart the server." };
+  }
+  process.env.SNIPPETA_ENCRYPTION_KEY = key;
+  revalidatePath("/", "layout");
+  return {};
 }

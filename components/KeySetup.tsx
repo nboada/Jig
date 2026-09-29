@@ -1,0 +1,66 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { createEncryptionKey } from "@/app/actions";
+import { CopyButton } from "./CopyButton";
+
+const primary =
+  "rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition hover:brightness-110 disabled:opacity-60";
+
+/**
+ * Sets up the encryption key. Locally the server writes it into .env.local;
+ * on a deployed server the key is generated in the browser for the user to add.
+ */
+export function KeySetup({ local }: { local: boolean }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const [generated, setGenerated] = useState<string | null>(null);
+
+  if (local) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          className={primary}
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              const result = await createEncryptionKey();
+              setError(result.error ?? "");
+            })
+          }
+        >
+          {pending ? "Creating" : "Create encryption key"}
+        </button>
+        <p className="text-muted">It is saved to .env.local in this project and used straight away.</p>
+        {error && <p className="text-danger">{error}</p>}
+      </div>
+    );
+  }
+
+  if (!generated) {
+    return (
+      <button
+        type="button"
+        className={primary}
+        onClick={() => setGenerated(btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))))}
+      >
+        Generate a key
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2">
+        <code className="min-w-0 flex-1 break-all font-mono text-xs">SNIPPETA_ENCRYPTION_KEY={generated}</code>
+        <CopyButton value={generated} />
+      </div>
+      <ol className="list-decimal space-y-1 pl-5 text-text/75">
+        <li>In Vercel, open the project, then Settings and Environment Variables.</li>
+        <li>Add SNIPPETA_ENCRYPTION_KEY with this value.</li>
+        <li>Redeploy, then reload this page.</li>
+      </ol>
+    </div>
+  );
+}
