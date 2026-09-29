@@ -129,6 +129,17 @@ const SCHEMA = [
     value text NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  // Recently deleted items (lib/trash.ts): the item's row and every version, kept for 30 days.
+  `CREATE TABLE IF NOT EXISTS trash (
+    id text PRIMARY KEY,
+    kind text NOT NULL,
+    slug text NOT NULL,
+    title text NOT NULL,
+    item jsonb NOT NULL,
+    versions jsonb NOT NULL DEFAULT '[]'::jsonb,
+    deleted_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS trash_deleted_at_idx ON trash (deleted_at)`,
   // Secrets the app makes for itself: the random part of the signing key, and when sessions were
   // last ended everywhere. Never shown anywhere.
   `CREATE TABLE IF NOT EXISTS app_secrets (

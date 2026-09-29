@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { cloneItem, deleteItem, relockNotes, setNoteLock, setPinned } from "@/app/actions";
+import { cloneItem, deleteItem, relockNotes, restoreDeleted, setNoteLock, setPinned } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { useOptionalList } from "@/components/ListContext";
 import { AgentIcon, CloneIcon, ExternalIcon, InfoIcon, LinkIcon, LockIcon, PinIcon, PinOffIcon, ShareIcon, TrashIcon, UnlockIcon } from "@/components/NavIcons";
@@ -97,10 +97,26 @@ export function useItemActions({
     if (leaving) router.push(base);
     startDelete(async () => {
       const result = await deleteItem(kind, slug);
-      if (!result.error) return void toast.success(`${capitalise(noun)} deleted`);
+      const { id } = result;
+      if (id) {
+        toast.success(`${capitalise(noun)} deleted`, { action: { label: "Undo", onClick: () => undo(id, leaving) } });
+        return;
+      }
       list?.unhide(slug);
       if (leaving) router.push(`${base}/${slug}`);
-      toast.error(result.error);
+      toast.error(result.error ?? "Could not delete it. Try again.");
+    });
+  }
+
+  /** Brings a deleted item back from Recently deleted, and returns to it if we'd left its page. */
+  function undo(id: string, leaving: boolean) {
+    startAction(async () => {
+      const result = await restoreDeleted(id);
+      if (result.error || !result.slug) return void toast.error(result.error ?? "Could not restore it. Try again.");
+      list?.unhide(slug);
+      if (leaving) router.push(`${base}/${result.slug}`);
+      else router.refresh();
+      toast.success(`${capitalise(noun)} restored`);
     });
   }
 
@@ -219,10 +235,10 @@ export function useItemActions({
         title={`Delete ${noun}?`}
         message={
           !versioned
-            ? `Delete "${title}"? This cannot be undone.`
+            ? `"${title}" moves to Recently deleted, where you can restore it for 30 days.`
             : versions
-              ? `Delete "${title}" and all ${versions} version${versions === 1 ? "" : "s"}? This cannot be undone.`
-              : `Delete "${title}" and all its versions? This cannot be undone.`
+              ? `"${title}" and its ${versions} version${versions === 1 ? "" : "s"} move to Recently deleted, where you can restore them for 30 days.`
+              : `"${title}" and all its versions move to Recently deleted, where you can restore them for 30 days.`
         }
         action={<DialogAction label={`Delete ${noun}`} tone="danger" pending={deleting} onClick={remove} />}
       />

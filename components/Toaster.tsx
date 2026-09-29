@@ -9,10 +9,32 @@ import { FLASH_COOKIE } from "@/lib/flash";
 
 const manager = Toast.createToastManager();
 
+type ToastOptions = {
+  /** A button in the toast, like Undo. The toast closes when it's pressed. */
+  action?: { label: string; onClick: () => void };
+};
+
+function actionProps(id: () => string, action?: ToastOptions["action"]) {
+  if (!action) return undefined;
+  return {
+    children: action.label,
+    onClick: () => {
+      manager.close(id());
+      action.onClick();
+    },
+  };
+}
+
+function add(title: string, type: "success" | "error", { action }: ToastOptions = {}) {
+  let id = "";
+  id = manager.add({ title, type, priority: type === "error" ? "high" : "low", actionProps: actionProps(() => id, action) });
+  return id;
+}
+
 /** Shows a toast from anywhere in client code: `toast.success("Note saved")`. */
 export const toast = {
-  success: (title: string) => manager.add({ title, type: "success" }),
-  error: (title: string) => manager.add({ title, type: "error", priority: "high" }),
+  success: (title: string, options?: ToastOptions) => add(title, "success", options),
+  error: (title: string, options?: ToastOptions) => add(title, "error", options),
 };
 
 /** A circle with a tick or a cross, as in shadcn's toast. */
@@ -66,6 +88,7 @@ function ToastList() {
           <Toast.Title className="text-ui font-medium" />
           <Toast.Description className="text-ui text-muted" />
         </div>
+        <Toast.Action className="h-7 shrink-0 rounded-md border border-line-strong px-2.5 text-ui font-medium text-text transition hover:bg-raised" />
         <Toast.Close aria-label="Close" className={iconButton()}>
           <CloseIcon className="size-4" />
         </Toast.Close>

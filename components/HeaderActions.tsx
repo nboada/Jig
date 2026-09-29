@@ -9,7 +9,7 @@ import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { menuContentClass, menuItemClass } from "@/components/ItemActions";
 import { Kbd } from "@/components/Kbd";
 import { Modal } from "@/components/Modal";
-import { ConnectIcon, FingerprintIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon } from "@/components/NavIcons";
+import { ConnectIcon, FingerprintIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon, TrashIcon } from "@/components/NavIcons";
 import { PasskeysDialog } from "@/components/Passkeys";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";
@@ -77,6 +77,12 @@ export function HeaderActions() {
               <Link href="/connect">
                 <ConnectIcon className="size-4 text-muted" />
                 Connect an agent
+              </Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild className={menuItemClass()}>
+              <Link href="/deleted">
+                <TrashIcon className="size-4 text-muted" />
+                Recently deleted
               </Link>
             </DropdownMenu.Item>
             <DropdownMenu.Item onSelect={() => setShortcuts(true)} className={menuItemClass()}>

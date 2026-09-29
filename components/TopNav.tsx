@@ -95,8 +95,8 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
             aria-current={active ? "page" : undefined}
             aria-keyshortcuts={key}
             title={`${label} (${key}) · drag to reorder`}
-            className={`relative flex h-10 shrink-0 items-center gap-2 rounded-xl pr-3.5 pl-4 transition-colors duration-300 ${
-              active ? "text-accent-ink" : "text-muted hover:text-text-2"
+            className={`relative flex h-10 shrink-0 items-center gap-2 rounded-xl pr-3.5 pl-4 transition-colors duration-200 ${
+              active ? "text-accent-ink" : "text-muted hover:bg-raised/70 hover:text-text"
             } ${dragging === id ? "opacity-50" : ""}`}
           >
             <Icon className="size-4" />
@@ -162,7 +162,11 @@ export function SectionTitle({ order, className = "" }: { order: Section[]; clas
   const pathname = usePathname();
   const sections = sectionsIn(order);
   const index = sections.findIndex(({ href }) => pathname.startsWith(href));
-  const title = pathname.startsWith("/connect") ? "Connect" : sections[index]?.label;
+  const title = pathname.startsWith("/connect")
+    ? "Connect"
+    : pathname.startsWith("/deleted")
+      ? "Recently deleted"
+      : sections[index]?.label;
   // Where the last name sat, to tell which way the new one arrives from; to or from a page that
   // isn't a tab (home, Connect) it just fades. Nothing moves on first load.
   const [last, setLast] = useState({ title, index, from: 0, changed: false });

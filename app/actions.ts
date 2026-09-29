@@ -13,8 +13,8 @@ import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
 import { checkPassword, endAllSessions, passwordProblem, SESSION_COOKIE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
-import { cloneSnippet, createSnippet, deleteSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
-import { cloneNote, createNote, deleteNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
+import { cloneSnippet, createSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
+import { cloneNote, createNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
 import { isUnlocked, makeUnlock, noteCodec, UNLOCK_COOKIE, unlockedCodec } from "@/lib/locked-notes";
 import {
   authenticationOptions,
@@ -32,12 +32,13 @@ import {
   type Passkey,
 } from "@/lib/passkeys";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
-import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
+import { createCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
 import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealShare, revokeShare, type Share } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
 import { FLASH_COOKIE } from "@/lib/flash";
+import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
 
 export type FormState = { error?: string };
 export type Result = { error?: string };
@@ -224,14 +225,6 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
   redirect(`/snippets/${target}`);
 }
 
-export async function removeSnippet(form: FormData) {
-  await requireAuth();
-  await deleteSnippet(await getDb(), String(form.get("slug")));
-  await flash("Snippet deleted");
-  revalidatePath("/", "layout");
-  redirect("/snippets");
-}
-
 export async function restore(form: FormData) {
   await requireAuth();
   const slug = String(form.get("slug"));
@@ -277,14 +270,6 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
   redirect(`/notes/${target}`);
 }
 
-export async function removeNote(form: FormData) {
-  await requireAuth();
-  await deleteNote(await getDb(), String(form.get("slug")));
-  await flash("Note deleted");
-  revalidatePath("/", "layout");
-  redirect("/notes");
-}
-
 export async function restoreNote(form: FormData) {
   await requireAuth();
   const slug = String(form.get("slug"));
@@ -308,14 +293,6 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
   }
   revalidatePath("/", "layout");
   redirect(`/credentials/${target}`);
-}
-
-export async function removeCredential(form: FormData) {
-  await requireAuth();
-  await deleteCredential(await getDb(), String(form.get("slug")));
-  await flash("Credential deleted");
-  revalidatePath("/", "layout");
-  redirect("/credentials");
 }
 
 /** What a secret-revealing action says while this browser hasn't unlocked. */
@@ -414,15 +391,40 @@ export async function cloneItem(kind: "snippets" | "notes", slug: string): Promi
  * Deletes an item from the list's right-click menu. Unlike the item page's delete, it does not
  * redirect: the menu decides where to go (nowhere, unless the deleted item was open).
  */
-export async function deleteItem(kind: "snippets" | "notes" | "credentials", slug: string): Promise<Result> {
+/**
+ * Moves an item to Recently deleted, where it stays for 30 days. Returns its id, so the toast
+ * can offer to undo it.
+ */
+export async function deleteItem(kind: TrashKind, slug: string): Promise<Result & { id?: string }> {
+  await requireAuth();
+  let id: string;
+  try {
+    id = await trashItem(await getDb(), parse(Section, kind), parse(Slug, slug));
+  } catch (error) {
+    return failure(error, "Could not delete it. Try again.");
+  }
+  revalidatePath("/", "layout");
+  return { id };
+}
+
+/** Puts a deleted item back. Returns where it is now (its slug changes if the old one was taken). */
+export async function restoreDeleted(id: string): Promise<Result & { kind?: TrashKind; slug?: string }> {
+  await requireAuth();
+  let restored: { kind: TrashKind; slug: string };
+  try {
+    restored = await restoreItem(await getDb(), parse(Id, id));
+  } catch (error) {
+    return failure(error, "Could not restore it. Try again.");
+  }
+  revalidatePath("/", "layout");
+  return restored;
+}
+
+/** Deletes an item in Recently deleted for good. */
+export async function purgeDeleted(id: string): Promise<Result> {
   await requireAuth();
   try {
-    const db = await getDb();
-    const section = parse(Section, kind);
-    const target = parse(Slug, slug);
-    if (section === "snippets") await deleteSnippet(db, target);
-    else if (section === "notes") await deleteNote(db, target);
-    else await deleteCredential(db, target);
+    await purgeItem(await getDb(), parse(Id, id));
   } catch (error) {
     return failure(error, "Could not delete it. Try again.");
   }
