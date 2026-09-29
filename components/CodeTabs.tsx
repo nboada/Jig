@@ -42,7 +42,7 @@ export function CodeTabs({ files }: { files: RenderedFile[] }) {
           role={files.length > 1 ? "tablist" : undefined}
           aria-label={files.length > 1 ? "Files" : undefined}
           onKeyDown={files.length > 1 ? onKeyDown : undefined}
-          className="flex min-w-0 flex-1 items-stretch overflow-x-auto"
+          className="flex min-w-0 flex-1 items-stretch overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
         >
           {files.map((f, i) => {
             const active = f === file;
@@ -62,7 +62,7 @@ export function CodeTabs({ files }: { files: RenderedFile[] }) {
                 className={`relative h-10 shrink-0 px-3.5 font-mono text-[12.5px] transition ${active ? "text-text" : "text-muted hover:text-text"}`}
               >
                 {f.name}
-                {active && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-accent" />}
+                {active && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />}
               </button>
             ) : (
               <span key={f.name} className="flex h-10 items-center truncate px-3.5 font-mono text-[12.5px] text-text">
