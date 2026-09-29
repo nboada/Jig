@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
+import { EnterOnReturn } from "@/components/EnterOnReturn";
 import { CopyButton } from "@/components/CopyButton";
 import { ActionDivider, DetailRow, EditLink, ItemHeader } from "@/components/ItemHeader";
 import { KeyMissing } from "@/components/KeyMissing";
@@ -39,7 +40,7 @@ export default async function CredentialPage({ params }: Props) {
   const where = credential.url ? host(link ?? "") : "";
 
   return (
-    <article className="min-w-0 space-y-6">
+    <EnterOnReturn className="min-w-0 space-y-6">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/credentials" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Credentials
@@ -127,6 +128,6 @@ export default async function CredentialPage({ params }: Props) {
           <p className="max-w-[68ch] text-body whitespace-pre-wrap text-text-2">{credential.note}</p>
         </section>
       )}
-    </article>
+    </EnterOnReturn>
   );
 }

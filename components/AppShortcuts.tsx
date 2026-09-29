@@ -5,6 +5,9 @@ import { useEffect } from "react";
 import { isPlainKey, type Section } from "@/lib/prefs";
 
 
+/** A snippet, note or credential's own page (not its history, and not a new one), where E edits. */
+const ITEM_PAGE = /^\/(snippets|notes|credentials)\/(?!new$)[^/]+$/;
+
 /** Where N leads from a given page: a new item of the kind being looked at, snippets by default. */
 function newHref(pathname: string) {
   if (pathname.startsWith("/notes")) return "/notes/new";
@@ -13,7 +16,7 @@ function newHref(pathname: string) {
 }
 
 /**
- * App-wide keys: N for a new item, 1–3 for the sections in the header's order. Browsers keep Cmd+N for a new window,
+ * App-wide keys: N for a new item, E to edit the item that's open, 1–3 for the sections in the header's order. Browsers keep Cmd+N for a new window,
  * so these are bare keys, ignored while typing and on forms (new and edit pages) so they can
  * never discard unsaved work.
  */
@@ -32,6 +35,9 @@ export function AppShortcuts({ order }: { order: Section[] }) {
       } else if (isPlainKey(event, "n")) {
         event.preventDefault();
         router.push(newHref(pathname));
+      } else if (isPlainKey(event, "e") && ITEM_PAGE.test(pathname)) {
+        event.preventDefault();
+        router.push(`${pathname}/edit`);
       }
     }
     window.addEventListener("keydown", onKeyDown);

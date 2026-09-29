@@ -27,7 +27,7 @@ export function MarkdownEditor({
     contentType: "markdown",
     // Rendered on the server first; the editor mounts in the browser.
     immediatelyRender: false,
-    editorProps: { attributes: { class: `${readProseClass} min-h-96 px-5 py-4 outline-none sm:px-7 sm:py-6 [&>*]:max-w-[68ch]`, "aria-label": "Note" } },
+    editorProps: { attributes: { class: `${readProseClass} min-h-96 px-5 py-4 outline-none sm:px-7 sm:py-6 [&>*]:max-w-[42rem]`, "aria-label": "Note" } },
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
   });
 

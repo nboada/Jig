@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { restore } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
+import { EnterOnReturn } from "@/components/EnterOnReturn";
 import { button, iconButton } from "@/components/Button";
 import { CodeFiles } from "@/components/CodeBlock";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -50,7 +51,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
   const files = snippet.files.length;
 
   return (
-    <article className="min-w-0 space-y-6">
+    <EnterOnReturn className="min-w-0 space-y-6">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/snippets" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Snippets
@@ -170,6 +171,6 @@ export default async function SnippetPage({ params, searchParams }: Props) {
       />
 
       <CodeFiles files={snippet.files} fallback={snippet.language} />
-    </article>
+    </EnterOnReturn>
   );
 }

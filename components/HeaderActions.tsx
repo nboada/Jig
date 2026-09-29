@@ -143,15 +143,15 @@ function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
 }
 
 const SHORTCUTS: [string[], string][] = [
-  [["1"], "Snippets"],
-  [["2"], "Notes"],
-  [["3"], "Credentials"],
+  [["1", "2", "3"], "Sections, in the header's order"],
   [["N"], "New item in this section"],
+  [["E"], "Edit the item that's open"],
   [["G"], "Grid layout"],
   [["L"], "List layout"],
   [["↑", "↓"], "Move through the list"],
   [["⌘", "K"], "Search everything"],
   [["⌘", "S"], "Save, on new and edit pages"],
+  [["Esc"], "Cancel, on new and edit pages"],
   [["?"], "This list"],
 ];
 

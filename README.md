@@ -212,11 +212,13 @@ Snippets and notes can only be deleted from the dashboard, never by an agent. Cr
 
 | Key | What it does |
 | --- | --- |
-| `1` `2` `3` | Snippets, Notes, Credentials |
+| `1` `2` `3` | The sections, in the header's order (drag the tabs to reorder) |
 | `N` | New item in the current section |
+| `E` | Edit the snippet, note or credential that's open |
 | `G` / `L` | Grid or list layout |
 | `↑` `↓` | Move through the list |
 | `⌘S` | Save, on new and edit pages |
+| `Esc` | Cancel, on new and edit pages (twice if you changed something) |
 
 The others are ignored while you type, and on new and edit pages, so they can't throw away unsaved work.
 

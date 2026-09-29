@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { restoreNote } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
+import { EnterOnReturn } from "@/components/EnterOnReturn";
 import { button, iconButton } from "@/components/Button";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/CopyButton";
@@ -56,7 +57,7 @@ export default async function NotePage({ params, searchParams }: Props) {
   const passkey = note.unreadable ? await hasPasskeys(await getDb()) : false;
 
   return (
-    <article className="min-w-0 space-y-7">
+    <EnterOnReturn className="min-w-0 space-y-7">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/notes" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Notes
@@ -176,13 +177,13 @@ export default async function NotePage({ params, searchParams }: Props) {
         <UnlockPanel hasPasskey={passkey} />
       ) : note.body ? (
         <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
-          <div className="max-w-[68ch]">
+          <div className="max-w-[42rem]">
             <Markdown size="read">{note.body}</Markdown>
           </div>
         </div>
       ) : (
         <p className="text-body text-muted">This note is empty.</p>
       )}
-    </article>
+    </EnterOnReturn>
   );
 }

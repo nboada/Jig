@@ -194,6 +194,21 @@ input:-webkit-autofill:focus {
   pointer-events: none;
 }
 
+/*
+ * The editor keeps each list item's text in a paragraph, which the reading view doesn't have; drop
+ * the paragraph's spacing so list items sit as close together in both.
+ */
+.tiptap li > p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* A note that opens with a list starts at the same height in the editor and the reading view. */
+.tiptap > :is(ul, ol):first-child > li:first-child,
+.prose > :is(ul, ol):first-child > li:first-child {
+  margin-top: 0;
+}
+
 /* Checklists, in the editor (Tiptap's task list) and on the rendered note (GFM task list). */
 .tiptap ul[data-type="taskList"],
 .prose ul.contains-task-list {
@@ -205,8 +220,11 @@ input:-webkit-autofill:focus {
   align-items: flex-start;
   gap: 0.5rem;
 }
+/* Exactly one line tall with the box centred, so a checklist item is no taller than in the reading view. */
 .tiptap ul[data-type="taskList"] li > label {
-  margin-top: 0.3em;
+  display: flex;
+  align-items: center;
+  height: 1.8em;
   user-select: none;
 }
 .tiptap ul[data-type="taskList"] li > div {

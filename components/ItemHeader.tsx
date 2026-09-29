@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Kbd } from "@/components/Kbd";
 import { button } from "@/components/Button";
 
 /**
@@ -48,8 +49,11 @@ export function ActionDivider() {
 /** The page's one primary action. */
 export function EditLink({ href }: { href: string }) {
   return (
-    <Link href={href} className={button({ variant: "primary" })}>
+    <Link href={href} className={button({ variant: "primary" })} title="Edit (E)">
       Edit
+      <Kbd onAccent className="hidden sm:inline">
+        E
+      </Kbd>
     </Link>
   );
 }
