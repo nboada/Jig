@@ -56,7 +56,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
                   active ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-text"
                 }`}
               >
-                {tag} <span className="opacity-60">{count}</span>
+                {`${tag} `}<span className="opacity-60">{count}</span>
               </Link>
             );
           })}
@@ -115,7 +115,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
                   <span>{timeAgo(c.updatedAt)}</span>
                   {c.tags.slice(0, 3).map((t) => (
-                    <span key={t}>#{t}</span>
+                    <span key={t}>{`#${t}`}</span>
                   ))}
                 </div>
               </Link>

@@ -33,7 +33,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         {!isLatest && (
           <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
             <p className="flex-1">
-              You are viewing version {snippet.version}. The latest is version {snippet.currentVersion}.
+              {`You are viewing version ${snippet.version}. The latest is version ${snippet.currentVersion}.`}
             </p>
             <div className="flex gap-3">
               <Link href={`/snippets/${slug}`} className="rounded-md border border-line px-3 py-1.5 hover:border-muted">
@@ -58,10 +58,10 @@ export default async function SnippetPage({ params, searchParams }: Props) {
             <span className="rounded bg-accent/15 px-2 py-0.5 font-medium text-accent">
               {languageLabel(snippet.language)}
             </span>
-            <span className="rounded bg-raised px-2 py-0.5 font-mono text-muted">v{snippet.version}</span>
+            <span className="rounded bg-raised px-2 py-0.5 font-mono text-muted">{`v${snippet.version}`}</span>
             {snippet.tags.map((tag) => (
               <Link key={tag} href={`/?tag=${encodeURIComponent(tag)}`} className="text-muted hover:text-text">
-                #{tag}
+                {`#${tag}`}
               </Link>
             ))}
           </div>

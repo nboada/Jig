@@ -31,12 +31,11 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
     <div className="space-y-6">
       <div>
         <Link href={`/notes/${slug}`} className="text-sm text-muted hover:text-text">
-          Back to {note.title}
+          {`Back to ${note.title}`}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">History</h1>
         <p className="mt-1 text-sm text-muted">
-          {versions.length} version{versions.length === 1 ? "" : "s"}. Restoring saves the old content as a new
-          version, so a rollback can be undone too.
+          {`${versions.length} version${versions.length === 1 ? "" : "s"}. Restoring saves the old content as a new version, so a rollback can be undone too.`}
         </p>
       </div>
 
@@ -52,7 +51,7 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-medium">
-                    v{v.version}
+                    {`v${v.version}`}
                     {latest && <span className="ml-2 font-sans text-xs font-normal text-accent">latest</span>}
                   </span>
                   <span className="text-xs text-muted">{formatDate(v.createdAt)}</span>
@@ -101,7 +100,7 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
                 >
                   {versions.map((v) => (
                     <option key={v.version} value={v.version}>
-                      Version {v.version}
+                      {`Version ${v.version}`}
                     </option>
                   ))}
                 </select>

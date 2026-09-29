@@ -38,8 +38,8 @@ export function DiffView({ diff }: { diff: VersionDiff }) {
             <span className="truncate font-mono">{file.name}</span>
             <span className="shrink-0 font-mono text-xs">
               {file.status !== "modified" && <span className="mr-2 text-muted">{file.status}</span>}
-              <span className="text-add-text">+{file.additions}</span>{" "}
-              <span className="text-del-text">-{file.deletions}</span>
+              <span className="text-add-text">{`+${file.additions}`}</span>{" "}
+              <span className="text-del-text">{`-${file.deletions}`}</span>
             </span>
           </div>
           <pre className="overflow-x-auto font-mono text-[13px] leading-6">

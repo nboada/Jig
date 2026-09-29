@@ -59,7 +59,7 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                   active ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-text"
                 }`}
               >
-                {tag} <span className="opacity-60">{count}</span>
+                {`${tag} `}<span className="opacity-60">{count}</span>
               </Link>
             );
           })}
@@ -107,10 +107,10 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                 <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
                   <span className="text-accent">{languageLabel(s.language)}</span>
                   <span className="hidden sm:inline">
-                    {s.fileNames.length} file{s.fileNames.length === 1 ? "" : "s"}
+                    {`${s.fileNames.length} file${s.fileNames.length === 1 ? "" : "s"}`}
                   </span>
                   <span className="hidden md:inline">{timeAgo(s.updatedAt)}</span>
-                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">v{s.version}</span>
+                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">{`v${s.version}`}</span>
                 </div>
               </Link>
             </li>
@@ -127,7 +127,7 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-medium leading-snug">{s.title}</h2>
                   <span className="shrink-0 rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">
-                    v{s.version}
+                    {`v${s.version}`}
                   </span>
                 </div>
                 <p className="mt-1 font-mono text-xs text-muted">{s.slug}</p>
@@ -135,11 +135,11 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
                   <span className="text-accent">{languageLabel(s.language)}</span>
                   <span>
-                    {s.fileNames.length} file{s.fileNames.length === 1 ? "" : "s"}
+                    {`${s.fileNames.length} file${s.fileNames.length === 1 ? "" : "s"}`}
                   </span>
                   <span>{timeAgo(s.updatedAt)}</span>
                   {s.tags.slice(0, 3).map((t) => (
-                    <span key={t}>#{t}</span>
+                    <span key={t}>{`#${t}`}</span>
                   ))}
                 </div>
               </Link>

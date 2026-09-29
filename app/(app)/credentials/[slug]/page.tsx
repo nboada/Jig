@@ -30,7 +30,7 @@ export default async function CredentialPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {credential.tags.map((tag) => (
                 <Link key={tag} href={`/credentials?tag=${encodeURIComponent(tag)}`} className="text-muted hover:text-text">
-                  #{tag}
+                  {`#${tag}`}
                 </Link>
               ))}
             </div>

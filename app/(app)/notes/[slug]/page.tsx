@@ -32,7 +32,7 @@ export default async function NotePage({ params, searchParams }: Props) {
         {!isLatest && (
           <div className="flex flex-col gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
             <p className="flex-1">
-              You are viewing version {note.version}. The latest is version {note.currentVersion}.
+              {`You are viewing version ${note.version}. The latest is version ${note.currentVersion}.`}
             </p>
             <div className="flex gap-3">
               <Link href={`/notes/${slug}`} className="rounded-md border border-line px-3 py-1.5 hover:border-muted">
@@ -54,10 +54,10 @@ export default async function NotePage({ params, searchParams }: Props) {
 
         <header className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded bg-raised px-2 py-0.5 font-mono text-muted">v{note.version}</span>
+            <span className="rounded bg-raised px-2 py-0.5 font-mono text-muted">{`v${note.version}`}</span>
             {note.tags.map((tag) => (
               <Link key={tag} href={`/notes?tag=${encodeURIComponent(tag)}`} className="text-muted hover:text-text">
-                #{tag}
+                {`#${tag}`}
               </Link>
             ))}
           </div>

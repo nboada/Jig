@@ -40,8 +40,8 @@ export default async function ConnectPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{t.name}</p>
                   <p className="text-xs text-muted">
-                    <span className="font-mono">{t.prefix}...</span> created {formatDate(t.createdAt)},{" "}
-                    {t.lastUsedAt ? `last used ${timeAgo(t.lastUsedAt)}` : "never used"}
+                    <span className="font-mono">{`${t.prefix}...`}</span>
+                    {` created ${formatDate(t.createdAt)}, ${t.lastUsedAt ? `last used ${timeAgo(t.lastUsedAt)}` : "never used"}`}
                   </p>
                 </div>
                 <form action={deleteToken}>

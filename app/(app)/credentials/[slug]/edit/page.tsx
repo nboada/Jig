@@ -18,7 +18,7 @@ export default async function EditCredentialPage({ params }: { params: Promise<{
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <Link href={`/credentials/${slug}`} className="text-sm text-muted hover:text-text">
-          Back to {credential.title}
+          {`Back to ${credential.title}`}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit credential</h1>
       </div>

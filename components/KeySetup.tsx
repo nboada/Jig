@@ -53,7 +53,7 @@ export function KeySetup({ local }: { local: boolean }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2">
-        <code className="min-w-0 flex-1 break-all font-mono text-xs">JIG_ENCRYPTION_KEY={generated}</code>
+        <code className="min-w-0 flex-1 break-all font-mono text-xs">{`JIG_ENCRYPTION_KEY=${generated}`}</code>
         <CopyButton value={generated} />
       </div>
       <ol className="list-decimal space-y-1 pl-5 text-text/75">
