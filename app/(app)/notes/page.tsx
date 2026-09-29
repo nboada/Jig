@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchInput } from "@/components/SearchInput";
+import { ItemMenu } from "@/components/ItemMenu";
+import { PinIcon } from "@/components/NavIcons";
 import { PickPane } from "@/components/PickPane";
 import { SortSelect } from "@/components/SortSelect";
 import { countLabel } from "@/lib/format";
@@ -98,14 +100,16 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {notes.map((n) => (
             <li key={n.slug}>
-              <Link
+              <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned}>
+<Link
                 href={`/notes/${n.slug}`}
                 className="flex h-full flex-col rounded-lg border border-line bg-panel p-4 transition hover:border-muted"
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-medium leading-snug">{n.title}</h2>
-                  <span className="shrink-0 rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">
-                    {`v${n.version}`}
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {n.pinned && <PinIcon className="size-3.5 text-accent" />}
+                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{`v${n.version}`}</span>
                   </span>
                 </div>
                 {n.excerpt && <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-text/70">{n.excerpt}</p>}
@@ -116,6 +120,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                   ))}
                 </div>
               </Link>
+              </ItemMenu>
             </li>
           ))}
         </ul>

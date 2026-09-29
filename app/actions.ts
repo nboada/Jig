@@ -6,15 +6,17 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
+import { prefCookie, type Section, type View } from "@/lib/prefs";
 import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
-import { createSnippet, deleteSnippet, listSnippets, restoreVersion, SnippetError, updateSnippet } from "@/lib/snippets";
-import { createNote, deleteNote, listNotes, restoreNoteVersion, updateNote } from "@/lib/notes";
+import { cloneSnippet, createSnippet, deleteSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
+import { cloneNote, createNote, deleteNote, listNotes, restoreNoteVersion, setNotePinned, updateNote } from "@/lib/notes";
 import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
+import { createShare, listShares, revokeShare, type Share, type ShareKind, type ShareOptions } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
@@ -242,4 +244,73 @@ export async function searchCredentialSlugs(query: string): Promise<string[]> {
   await requireAuth();
   const found = await listCredentials(await getDb(), { query, limit: 500 });
   return found.map((c) => c.slug);
+}
+
+/** Copies a snippet or note from the list's right-click menu; returns the copy's slug to open. */
+export async function cloneItem(kind: "snippets" | "notes", slug: string): Promise<string> {
+  await requireAuth();
+  const db = await getDb();
+  const copy = kind === "snippets" ? await cloneSnippet(db, slug) : await cloneNote(db, slug);
+  revalidatePath("/", "layout");
+  return copy.slug;
+}
+
+/**
+ * Deletes an item from the list's right-click menu. Unlike the item page's delete, it does not
+ * redirect: the menu decides where to go (nowhere, unless the deleted item was open).
+ */
+export async function deleteItem(kind: "snippets" | "notes" | "credentials", slug: string): Promise<void> {
+  await requireAuth();
+  const db = await getDb();
+  if (kind === "snippets") await deleteSnippet(db, slug);
+  else if (kind === "notes") await deleteNote(db, slug);
+  else await deleteCredential(db, slug);
+  revalidatePath("/", "layout");
+}
+
+/** Pins a snippet or note to the top of its list, or unpins it. */
+export async function setPinned(kind: "snippets" | "notes", slug: string, pinned: boolean): Promise<void> {
+  await requireAuth();
+  const db = await getDb();
+  if (kind === "snippets") await setSnippetPinned(db, slug, pinned);
+  else await setNotePinned(db, slug, pinned);
+  revalidatePath("/", "layout");
+}
+
+/** Makes a share link for an item. The token and passcode come back once; only hashes are kept. */
+export async function createShareLink(
+  kind: ShareKind,
+  slug: string,
+  options: ShareOptions,
+): Promise<{ token: string; passcode?: string } | { error: string }> {
+  await requireAuth();
+  try {
+    const { token, passcode } = await createShare(await getDb(), kind, slug, options);
+    return { token, passcode };
+  } catch (error) {
+    if (error instanceof SnippetError) return { error: error.message };
+    throw error;
+  }
+}
+
+/** An item's share links, for the share dialog. */
+export async function listItemShares(kind: ShareKind, slug: string): Promise<Share[]> {
+  await requireAuth();
+  return listShares(await getDb(), kind, slug);
+}
+
+export async function revokeShareLink(id: string): Promise<void> {
+  await requireAuth();
+  await revokeShare(await getDb(), id);
+}
+
+/**
+ * Saves a list page's grid/list choice and redraws its layout (the split view lives in the
+ * section's layout, which a plain navigation doesn't re-render). With `goTo`, lands there too.
+ */
+export async function setViewPreference(section: Section, view: View, goTo?: string): Promise<void> {
+  await requireAuth();
+  (await cookies()).set(prefCookie("view", section), view, { path: "/", maxAge: 31_536_000, sameSite: "lax" });
+  revalidatePath("/", "layout");
+  if (goTo) redirect(goTo);
 }

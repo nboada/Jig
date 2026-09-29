@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { Db, Row } from "./db";
 import { orderBy, parseSort, type Sort } from "./sort";
 import { familyMembers } from "./languages";
-import { slugify } from "./slug";
+import { renameForTitle, slugify } from "./slug";
 import {
   slugSchema,
   snippetInputSchema,
@@ -22,6 +22,7 @@ export type SnippetSummary = {
   tags: string[];
   version: number;
   fileNames: string[];
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -44,6 +45,7 @@ export type SnippetVersion = {
 
 export type Snippet = SnippetVersion & {
   currentVersion: number;
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
   versionCreatedAt: string;
@@ -75,6 +77,7 @@ function toSummary(row: Row): SnippetSummary {
     tags: row.tags as string[],
     version: row.current_version as number,
     fileNames: (row.files as SnippetFile[]).map((f) => f.name),
+    pinned: row.pinned_at != null,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -127,11 +130,11 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, v.files
+    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, s.pinned_at, v.files
      FROM snippets s
      JOIN snippet_versions v ON v.snippet_id = s.id AND v.version = s.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY ${orderBy("s", parseSort(options.sort), order)}
+     ORDER BY ${orderBy("s", parseSort(options.sort), order, true)}
      LIMIT ${limit}`,
     params,
   );
@@ -150,7 +153,7 @@ export async function listTags(db: Db): Promise<{ tag: string; count: number }[]
 /** Returns the latest version of a snippet, or a specific one when `version` is given. */
 export async function getSnippet(db: Db, slug: string, version?: number): Promise<Snippet | null> {
   const rows = await db.query(
-    `SELECT s.slug, s.current_version, s.created_at AS snippet_created_at, s.updated_at,
+    `SELECT s.slug, s.current_version, s.created_at AS snippet_created_at, s.updated_at, s.pinned_at,
             v.version, v.title, v.description, v.language, v.tags, v.instructions,
             v.dependencies, v.files, v.message, v.source, v.created_at
      FROM snippets s
@@ -163,6 +166,7 @@ export async function getSnippet(db: Db, slug: string, version?: number): Promis
   return {
     ...toVersion(row),
     currentVersion: row.current_version as number,
+    pinned: row.pinned_at != null,
     createdAt: iso(row.snippet_created_at),
     updatedAt: iso(row.updated_at),
     versionCreatedAt: iso(row.created_at),
@@ -370,4 +374,42 @@ export async function restoreVersion(
 export async function deleteSnippet(db: Db, slug: string): Promise<void> {
   const rows = await db.query(`DELETE FROM snippets WHERE slug = $1 RETURNING id`, [slugSchema.parse(slug)]);
   if (!rows.length) throw new SnippetError(`No snippet with the slug "${slug}"`, "not_found");
+}
+
+/** The title a copy gets: "Lenis defaults" → "Lenis defaults copy", kept within the title limit. */
+export function copyTitle(title: string): string {
+  return `${title.slice(0, 115)} copy`;
+}
+
+/**
+ * Saves a copy of a snippet's latest version as a new snippet, with its own slug and history.
+ * Files named after the old title take the new one (lenis-defaults.js → lenis-defaults-copy.js).
+ */
+export async function cloneSnippet(db: Db, slug: string, source = "web"): Promise<Snippet> {
+  const original = await getSnippet(db, slug);
+  if (!original) throw new SnippetError(`No snippet called "${slug}".`, "not_found");
+  const title = copyTitle(original.title);
+  return createSnippet(
+    db,
+    {
+      title,
+      description: original.description,
+      language: original.language as SnippetInput["language"],
+      tags: original.tags,
+      instructions: original.instructions,
+      dependencies: original.dependencies,
+      files: renameForTitle(original.files, original.title, title),
+      message: `Copied from ${original.slug}`,
+    },
+    source,
+  );
+}
+
+/** Pins a snippet to the top of the list, or unpins it. Not a new version: nothing in it changes. */
+export async function setSnippetPinned(db: Db, slug: string, pinned: boolean): Promise<void> {
+  const rows = await db.query(
+    `UPDATE snippets SET pinned_at = CASE WHEN $2 THEN coalesce(pinned_at, now()) END WHERE slug = $1 RETURNING slug`,
+    [slug, pinned],
+  );
+  if (rows.length === 0) throw new SnippetError(`No snippet called "${slug}".`, "not_found");
 }

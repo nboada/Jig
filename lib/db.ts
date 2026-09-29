@@ -88,6 +88,25 @@ const SCHEMA = [
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  // Pinned items sit at the top of their list. Not part of any version: pinning edits nothing.
+  `ALTER TABLE snippets ADD COLUMN IF NOT EXISTS pinned_at timestamptz`,
+  `ALTER TABLE notes ADD COLUMN IF NOT EXISTS pinned_at timestamptz`,
+  // Share links: only the token's hash is kept, so a link is shown once, when it is made.
+  `CREATE TABLE IF NOT EXISTS shares (
+    id text PRIMARY KEY,
+    token_hash text NOT NULL UNIQUE,
+    kind text NOT NULL,
+    item_id text NOT NULL,
+    label text NOT NULL DEFAULT '',
+    passcode_hash text,
+    max_views integer,
+    views integer NOT NULL DEFAULT 0,
+    failed_attempts integer NOT NULL DEFAULT 0,
+    expires_at timestamptz,
+    revoked_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS shares_item_idx ON shares (kind, item_id)`,
 ];
 
 async function migrate(db: Db) {

@@ -15,7 +15,7 @@ export default async function EditCredentialPage({ params }: { params: Promise<{
   const credential = await getCredential(await getDb(), slug);
   if (!credential) notFound();
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6 @6xl:mx-auto">
       <div>
         <BackLink href={`/credentials/${slug}`}>{credential.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit credential</h1>

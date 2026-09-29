@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { pgliteDb, prepare, type Db } from "./db";
 import { compareNotes } from "./diff";
 import {
+  cloneNote,
   createNote,
   deleteNote,
   getNote,
@@ -10,6 +11,7 @@ import {
   listNoteTags,
   listNoteVersions,
   restoreNoteVersion,
+  setNotePinned,
   updateNote,
 } from "./notes";
 import { createSnippet } from "./snippets";
@@ -138,4 +140,29 @@ describe("notes", () => {
     expect(diff.fields).toEqual([{ field: "title", from: "Shopify theme deploys", to: "Theme deploys" }]);
     expect(diff.files.map((f) => [f.name, f.status, f.additions, f.deletions])).toEqual([["Body", "modified", 1, 0]]);
   });
+});
+
+test("cloning a note copies its latest text into a new note", async () => {
+  await createNote(db, { title: "Hosting", tags: ["acme"], body: "Plesk" });
+  await updateNote(db, "hosting", { body: "Plesk, then Vercel" });
+  const copy = await cloneNote(db, "hosting");
+  expect([copy.slug, copy.title, copy.body, copy.tags, copy.currentVersion]).toEqual([
+    "hosting-copy",
+    "Hosting copy",
+    "Plesk, then Vercel",
+    ["acme"],
+    1,
+  ]);
+});
+
+test("a pinned note lists first", async () => {
+  await createNote(db, { title: "Older", body: "a" });
+  await createNote(db, { title: "Newer", body: "b" });
+  await setNotePinned(db, "older", true);
+  const notes = await listNotes(db, { sort: "title" });
+  expect(notes.map((n) => [n.slug, n.pinned])).toEqual([
+    ["older", true],
+    ["newer", false],
+  ]);
+  expect((await getNote(db, "older"))?.pinned).toBe(true);
 });

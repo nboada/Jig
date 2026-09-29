@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ItemMenu } from "@/components/ItemMenu";
+import { ListContext, useList, type Item } from "@/components/ListContext";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { SortSelect } from "@/components/SortSelect";
 import { ViewToggle } from "@/components/ViewToggle";
@@ -17,36 +19,6 @@ import { sortItems, type Sort } from "@/lib/sort";
  * layout and search text (functions can't be passed in from a server component).
  */
 
-type Item = { slug: string; title: string; tags: string[]; language?: string; createdAt: string; updatedAt: string };
-
-type ListState = {
-  query: string;
-  setQuery: (value: string) => void;
-  language: string;
-  setLanguage: (value: string) => void;
-  tag: string;
-  setTag: (value: string) => void;
-  visible: Item[];
-  sort: Sort;
-  setSort: (sort: Sort) => void;
-  /** Takes an item out of the list at once, ahead of the server (after confirming a delete). */
-  hide: (slug: string) => void;
-  section: Section;
-  base: string;
-};
-
-const ListContext = createContext<ListState | null>(null);
-
-function useList() {
-  const list = useContext(ListContext);
-  if (!list) throw new Error("ListToolbar and ListColumn need a ListFilters around them");
-  return list;
-}
-
-/** The split view's list when there is one around, for pieces that also render outside it. */
-export function useOptionalList() {
-  return useContext(ListContext);
-}
 
 /**
  * Holds every item (sorted on the server) and the filters. Filtering happens in the browser as
@@ -70,17 +42,26 @@ export function ListFilters<T extends Item>({
   search: (query: string) => Promise<string[]>;
   children: React.ReactNode;
 }) {
-  const params = useSearchParams();
+  const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState("");
+  const [tag, setTag] = useState("");
   // Links from elsewhere (home's "See all", a tag on an item) arrive with ?q=, ?lang= or ?tag=.
-  const [query, setQuery] = useState(params.get("q") ?? "");
-  const [language, setLanguage] = useState(params.get("lang") ?? "");
-  const [tag, setTag] = useState(params.get("tag") ?? "");
+  // Read once from the address after mounting, not with useSearchParams: that needs a Suspense
+  // boundary around the layout, and pages inside one never finished mounting (their effects,
+  // like the code editor's, never ran).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setQuery(params.get("q") ?? "");
+    setLanguage(params.get("lang") ?? "");
+    setTag(params.get("tag") ?? "");
+  }, []);
   const [contentHits, setContentHits] = useState<Set<string>>();
-  // Sorting and hiding happen here first, so the column changes the moment you ask.
+  // Sorting, hiding and pinning happen here first, so the column changes the moment you ask.
   const [sort, setSort] = useState(initialSort);
-  const [hidden, setHidden] = useState<{ items: T[]; slugs: Set<string> }>({ items, slugs: new Set() });
-  // Fresh items from the server supersede anything hidden ahead of it.
-  const hiddenSlugs = hidden.items === items ? hidden.slugs : null;
+  type Edits = { items: T[]; hidden: Set<string>; pins: Map<string, boolean> };
+  const [edits, setEdits] = useState<Edits>({ items, hidden: new Set(), pins: new Map() });
+  // Fresh items from the server supersede any edits made ahead of it.
+  const current = edits.items === items ? edits : null;
 
   useEffect(() => {
     const q = query.trim();
@@ -97,22 +78,32 @@ export function ListFilters<T extends Item>({
   }, [query, search]);
 
   const visible = useMemo(() => {
-    const shown = hiddenSlugs ? items.filter((item) => !hiddenSlugs.has(item.slug)) : items;
+    const shown = current
+      ? items
+          .filter((item) => !current.hidden.has(item.slug))
+          .map((item) => (current.pins.has(item.slug) ? { ...item, pinned: current.pins.get(item.slug) } : item))
+      : items;
     return sortItems(filterItems(shown, { query, language, tag }, text, contentHits), sort);
-  }, [items, hiddenSlugs, query, language, tag, text, contentHits, sort]);
+  }, [items, current, query, language, tag, text, contentHits, sort]);
 
-  const hide = useCallback(
-    (slug: string) =>
-      setHidden((current) => ({
-        items,
-        slugs: new Set([...(current.items === items ? current.slugs : []), slug]),
-      })),
+  const edit = useCallback(
+    (change: (edits: Edits) => void) =>
+      setEdits((previous) => {
+        const next: Edits =
+          previous.items === items
+            ? { items, hidden: new Set(previous.hidden), pins: new Map(previous.pins) }
+            : { items, hidden: new Set(), pins: new Map() };
+        change(next);
+        return next;
+      }),
     [items],
   );
+  const hide = useCallback((slug: string) => edit((e) => void e.hidden.add(slug)), [edit]);
+  const pin = useCallback((slug: string, pinned: boolean) => edit((e) => void e.pins.set(slug, pinned)), [edit]);
 
   return (
     <ListContext.Provider
-      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, section, base }}
+      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, pin, section, base }}
     >
       {children}
     </ListContext.Provider>
@@ -210,10 +201,13 @@ export function ListColumn<T extends Item>({
       </div>
 
       <ul ref={listRef} className="flex-1 space-y-0.5 overflow-y-auto p-1.5">
-        {visible.map((item) => {
+        {visible.map((item, index) => {
           const active = item.slug === selected;
+          // A thin line under the pinned group, where the rest of the list begins.
+          const afterPins = index > 0 && visible[index - 1].pinned && !item.pinned;
           return (
-            <li key={item.slug}>
+            <li key={item.slug} className={afterPins ? "mt-1.5 border-t border-line pt-1.5" : ""}>
+              <ItemMenu kind={section} slug={item.slug} title={item.title} url={item.url} pinned={item.pinned}>
               <Link
                 href={`${base}/${item.slug}`}
                 aria-current={active ? "page" : undefined}
@@ -221,6 +215,7 @@ export function ListColumn<T extends Item>({
               >
                 {renderRow(item as T)}
               </Link>
+              </ItemMenu>
             </li>
           );
         })}

@@ -2,7 +2,7 @@
 
 Your own cloud library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) that your AI agents can reach over MCP. Ask Claude Code, Codex or Kimi to "add the GSAP snippet from Jig" and they fetch it, install its dependencies and wire it into the project.
 
-Every edit is saved as a new version, so when a snippet stops working you can see exactly what changed and roll it back, from the dashboard or from an agent. Jig also keeps versioned notes, and a private list of logins and API keys that agents can never read.
+Every edit is saved as a new version, so when a snippet stops working you can see exactly what changed and roll it back, from the dashboard or from an agent. Jig also keeps versioned notes, and a private list of logins and API keys that agents can never read. Anything can be shared with someone outside through a secret link that expires.
 
 Each person runs their own copy, with their own database. Nothing is shared with anyone else.
 
@@ -15,12 +15,16 @@ Each person runs their own copy, with their own database. Nothing is shared with
 3. **Open your new site and log in.**
 4. **Connect your agents.** Open **Connect**, create a token for each agent and run the setup command it shows.
 5. **Optional: turn on credentials.** The first time you open **Credentials**, click **Generate a key**, add it to Vercel as `JIG_ENCRYPTION_KEY` and redeploy. Keep a copy in your password manager.
+6. **Recommended: run it next to your database.** In Vercel, open your project's **Settings → Functions → Function Region** and pick the region of your Neon database (shown under **Storage**), then redeploy. Every page makes a few database queries, and with both in the same region each one takes milliseconds instead of a trip across an ocean.
 
 ## What you get
 
-- **Snippets**: title, language, one or more files, and optionally dependencies to install and instructions for agents. Every save is a new version with a diff and one-click restore.
-- **Notes**: free-form markdown with the same version history. Agents can search, read and save them.
+- **Snippets**: title, language, one or more files, and optionally dependencies to install and instructions for agents. Files are edited in a code editor with syntax colours, and a **Format** button tidies each file (Prettier for JS/TS, CSS/SCSS, HTML, Vue, JSON, YAML and Markdown, plus PHP, Liquid and SQL). File names follow the snippet's title. Every save is a new version with a diff and one-click restore.
+- **Notes**: a rich editor (headings, bold, lists, checklists, quotes, code blocks, links) that saves plain markdown, with the same version history. Agents can search, read and save them.
 - **Credentials**: logins and API keys for your own reference, with any field marked secret. Secret values are encrypted and only shown when you click Reveal or Copy. They are never available over MCP.
+- **Organising**: each section opens as a list beside the item you're viewing, or as a grid of cards. Sort by recently edited, newest or title; each section remembers its own layout and order. Pin items to keep them at the top, search as you type (code included), and right-click any item to pin, clone, copy the prompt for your agent, share or delete it.
+- **Sharing**: send a snippet, note or credential to someone without an account through a secret read-only link. Links can expire (1 hour to never), stop after a number of views, and be turned off at any time. Credential links always need a passcode, sent separately, and lock after 5 wrong tries. Only a hash of each link is stored, so a link is shown once, when you make it.
+- **Installable**: in Chrome or Edge, **Install Jig** from the address bar gives it its own window and Dock icon.
 - **MCP endpoint** at `/api/mcp` (Streamable HTTP, bearer token auth) with these tools:
 
 | Tool | What it does |
@@ -37,7 +41,18 @@ Each person runs their own copy, with their own database. Nothing is shared with
 | `create_note` / `update_note` | Save a note or a new version of one. `baseVersion` works as for snippets. |
 | `list_note_versions` / `restore_note_version` | Note history and rollback. |
 
-Snippets and notes can only be deleted from the dashboard, never by an agent.
+Snippets and notes can only be deleted from the dashboard, never by an agent. When filtering by language, `javascript` also finds TypeScript, JSX and TSX, and `css` also finds SCSS.
+
+## Keyboard shortcuts
+
+| Key | What it does |
+| --- | --- |
+| `1` `2` `3` | Snippets, Notes, Credentials |
+| `N` | New item in the current section |
+| `G` / `L` | Grid or list layout |
+| `↑` `↓` | Move through the list |
+
+They're ignored while you type, and on new and edit pages, so they can't throw away unsaved work.
 
 ## Connect an agent
 
@@ -74,6 +89,16 @@ Tokens are stored as SHA-256 hashes, shown once, and can be revoked on the Conne
 
 Changing a variable in Vercel only takes effect after a redeploy.
 
+### Forgot your password?
+
+Your password is the `ADMIN_PASSWORD` environment variable, so anyone who can sign in to your Vercel account can recover it:
+
+1. Open your project on [vercel.com](https://vercel.com/dashboard) and go to **Settings → Environment Variables**.
+2. Find `ADMIN_PASSWORD`. Reveal it to see it, or edit it to set a new one.
+3. If you changed it, redeploy (**Deployments → ⋯ → Redeploy**). New values only apply to new deployments.
+
+Changing it signs out every open session, unless you set `SESSION_SECRET`. Your snippets, notes and credentials are not affected; credentials are encrypted with `JIG_ENCRYPTION_KEY`, not the password.
+
 ## Updating your copy
 
 The Deploy button makes an independent copy, not a fork, so it doesn't update itself. To pull in new versions:
@@ -99,13 +124,12 @@ Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`
 ## Scripts
 
 - `bun run dev`, `bun run build`, `bun run start`
-- `bun run test`: data layer, encryption, rate limiting and MCP tools against an in-memory PGlite
+- `bun run test`: data layer, encryption, sharing, rate limiting and MCP tools against an in-memory PGlite
 - `bun run typecheck`
 
 ## Not built yet
 
 - OAuth, which the claude.ai web and desktop connectors need. CLI agents work with bearer tokens today.
-- A syntax-highlighting code editor (the editor is a plain textarea with tab indenting).
 
 ## License
 

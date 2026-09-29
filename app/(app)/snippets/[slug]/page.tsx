@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { removeSnippet, restore } from "@/app/actions";
+import { restore } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
 import { CodeBlock } from "@/components/CodeBlock";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { MoreMenu } from "@/components/MoreMenu";
+import { ClockIcon } from "@/components/NavIcons";
 import { Markdown } from "@/components/Markdown";
+import { PinButton } from "@/components/PinButton";
+import { ShareButton } from "@/components/ShareButton";
 import { CopyButton } from "@/components/CopyButton";
 import { getDb } from "@/lib/db";
+import { agentPrompt } from "@/lib/prompts";
 import { formatDate, formatSource } from "@/lib/format";
 import { languageLabel } from "@/lib/languages";
 import { getSnippet } from "@/lib/snippets";
@@ -36,10 +41,10 @@ export default async function SnippetPage({ params, searchParams }: Props) {
 
   const isLatest = snippet.version === snippet.currentVersion;
   const { view } = await getListPrefs("snippets");
-  const prompt = `Add the "${snippet.slug}" snippet from Jig to this project.`;
+  const prompt = agentPrompt("snippets", snippet.slug);
 
   return (
-    <article className="grid gap-8 @5xl:grid-cols-[minmax(0,1fr)_220px]">
+    <article>
       <div className="min-w-0 space-y-6">
         {/* In the split view the list is right there; keep the link for phones and the grid view. */}
         <BackLink href="/snippets" className={view === "list" ? "md:hidden" : ""}>
@@ -80,24 +85,79 @@ export default async function SnippetPage({ params, searchParams }: Props) {
               </Link>
             ))}
           </div>
-          <div className="flex items-start justify-between gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{snippet.title}</h1>
-            {isLatest && (
-              <div className="flex shrink-0 gap-2 text-sm">
-                <Link
-                  href={`/snippets/${slug}/history`}
-                  className="rounded-md border border-line px-3 py-1.5 hover:border-muted"
-                >
-                  History
-                </Link>
-                <Link
-                  href={`/snippets/${slug}/edit`}
-                  className="rounded-md bg-accent px-3 py-1.5 font-medium text-accent-ink hover:brightness-110"
-                >
-                  Edit
-                </Link>
-              </div>
-            )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{snippet.title}</h1>
+              {isLatest && <PinButton kind="snippets" slug={slug} pinned={snippet.pinned} />}
+            </div>
+            <div className="flex shrink-0 gap-2 text-sm">
+              {isLatest && (
+                <>
+                  <Link
+                    href={`/snippets/${slug}/history`}
+                    aria-label="History"
+                    title="History"
+                    className="grid size-[34px] place-items-center rounded-md border border-line text-muted transition hover:border-muted hover:text-text"
+                  >
+                    <ClockIcon className="size-4" />
+                  </Link>
+                  <ShareButton kind="snippets" slug={slug} title={snippet.title} />
+                  <Link
+                    href={`/snippets/${slug}/edit`}
+                    className="inline-flex h-[34px] items-center rounded-md bg-accent px-3 font-medium text-accent-ink hover:brightness-110"
+                  >
+                    Edit
+                  </Link>
+                </>
+              )}
+              <MoreMenu
+                kind="snippets"
+                slug={slug}
+                title={snippet.title}
+                latest={isLatest}
+                versions={snippet.currentVersion}
+                details={
+                  <div className="space-y-5 text-xs">
+                  <div className="space-y-2">
+                    <h2 className="text-muted">Ask your agent</h2>
+                    <div className="flex items-start gap-2 rounded-md border border-line bg-ink p-2.5">
+                      <p className="flex-1 font-mono text-[11px] leading-relaxed">{prompt}</p>
+                      <CopyButton value={prompt} />
+                    </div>
+                  </div>
+
+                  {snippet.dependencies.length > 0 && (
+                    <div className="space-y-2">
+                      <h2 className="text-muted">Dependencies</h2>
+                      <ul className="space-y-1 font-mono text-[11px]">
+                        {snippet.dependencies.map((d) => (
+                          <li key={d}>{d}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <dt className="text-muted">Slug</dt>
+                    <dd className="truncate font-mono text-[11px] leading-4">{snippet.slug}</dd>
+                    <dt className="text-muted">Saved</dt>
+                    <dd>{formatDate(snippet.versionCreatedAt)}</dd>
+                    <dt className="text-muted">By</dt>
+                    <dd>{formatSource(snippet.source)}</dd>
+                    {snippet.message && (
+                      <>
+                        <dt className="text-muted">Note</dt>
+                        <dd>{snippet.message}</dd>
+                      </>
+                    )}
+                    <dt className="text-muted">Created</dt>
+                    <dd>{formatDate(snippet.createdAt)}</dd>
+                  </dl>
+
+                  </div>
+                }
+              />
+            </div>
           </div>
           {snippet.description && <p className="max-w-2xl text-sm leading-6 text-text/75">{snippet.description}</p>}
         </header>
@@ -116,57 +176,6 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         </section>
       </div>
 
-      <aside className="space-y-5 text-xs @5xl:sticky @5xl:top-22 @5xl:self-start">
-        <div className="space-y-2">
-          <h2 className="text-muted">Ask your agent</h2>
-          <div className="flex items-start gap-2 rounded-md border border-line bg-panel p-2.5">
-            <p className="flex-1 font-mono text-[11px] leading-relaxed">{prompt}</p>
-            <CopyButton value={prompt} />
-          </div>
-        </div>
-
-        {snippet.dependencies.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-muted">Dependencies</h2>
-            <ul className="space-y-1 font-mono text-[11px]">
-              {snippet.dependencies.map((d) => (
-                <li key={d}>{d}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-          <dt className="text-muted">Slug</dt>
-          <dd className="truncate font-mono text-[11px] leading-4">{snippet.slug}</dd>
-          <dt className="text-muted">Saved</dt>
-          <dd>{formatDate(snippet.versionCreatedAt)}</dd>
-          <dt className="text-muted">By</dt>
-          <dd>{formatSource(snippet.source)}</dd>
-          {snippet.message && (
-            <>
-              <dt className="text-muted">Note</dt>
-              <dd>{snippet.message}</dd>
-            </>
-          )}
-          <dt className="text-muted">Created</dt>
-          <dd>{formatDate(snippet.createdAt)}</dd>
-        </dl>
-
-        {isLatest && (
-          <form action={removeSnippet} className="border-t border-line pt-4">
-            <input type="hidden" name="slug" value={slug} />
-            <ConfirmButton
-              message={`Delete "${snippet.title}" and all ${snippet.currentVersion} version(s)? This cannot be undone.`}
-              tone="danger"
-              hides={slug}
-              className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10"
-            >
-              Delete snippet
-            </ConfirmButton>
-          </form>
-        )}
-      </aside>
     </article>
   );
 }

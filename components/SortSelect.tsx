@@ -38,7 +38,7 @@ export function SortSelect({ sort, section, onChange }: { sort: Sort; section: S
           position="popper"
           sideOffset={6}
           align="end"
-          className="z-50 min-w-44 overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
+          className="menu-content z-50 min-w-44 overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
         >
           <Select.Viewport className="p-1">
             {SORTS.map((s) => (

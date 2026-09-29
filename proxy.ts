@@ -10,5 +10,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except the login page, the MCP endpoint (token auth) and static files.
-  matcher: ["/((?!login|api/mcp|_next/|favicon.ico|icon.svg).*)"],
+  // Public without a session: the app manifest and icons (fetched without cookies) and share
+  // links under /s/, which guard themselves with their token and passcode.
+  matcher: ["/((?!login|api/mcp|_next/|favicon.ico|icon.svg|apple-icon|manifest.webmanifest|app-icons/|s/).*)"],
 };

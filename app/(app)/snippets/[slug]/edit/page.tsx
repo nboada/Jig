@@ -12,7 +12,7 @@ export default async function EditSnippetPage({ params }: { params: Promise<{ sl
   const snippet = await getSnippet(await getDb(), slug);
   if (!snippet) notFound();
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6 @6xl:mx-auto">
       <div>
         <BackLink href={`/snippets/${slug}`}>{snippet.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit snippet</h1>

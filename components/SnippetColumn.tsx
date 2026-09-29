@@ -2,6 +2,7 @@
 
 import { searchSnippetSlugs } from "@/app/actions";
 import { LanguageIcon } from "@/components/LanguageIcon";
+import { PinIcon } from "@/components/NavIcons";
 import { ListColumn, ListFilters, ListToolbar } from "@/components/SplitList";
 import { timeAgo } from "@/lib/format";
 import type { SnippetSummary } from "@/lib/snippets";
@@ -28,7 +29,10 @@ export function SnippetColumn() {
       noun="snippet"
       renderRow={(s) => (
         <>
-          <span className="block truncate text-sm font-medium group-aria-[current=page]:text-accent">{s.title}</span>
+          <span className="flex items-center gap-1.5 text-sm font-medium group-aria-[current=page]:text-accent">
+            <span className="truncate">{s.title}</span>
+            {s.pinned && <PinIcon className="size-3 shrink-0 text-muted" />}
+          </span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             <LanguageIcon language={s.language} className="size-3" />
             {/* Relative times can tick over between the server render and the browser's. */}

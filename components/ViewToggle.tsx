@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useOptimistic, useTransition } from "react";
 import { GridIcon, ListIcon } from "@/components/NavIcons";
-import { isPlainKey, savePref, type Section, type View } from "@/lib/prefs";
+import { setViewPreference } from "@/app/actions";
+import { isPlainKey, type Section, type View } from "@/lib/prefs";
 
 const OPTIONS = [
   { view: "grid", label: "Grid view", key: "g", Icon: GridIcon },
@@ -15,17 +16,17 @@ const OPTIONS = [
  * its own choice in a cookie, so the server renders it directly.
  */
 export function ViewToggle({ view, section }: { view: View; section: Section }) {
-  const router = useRouter();
+  const pathname = usePathname();
   // The pressed button moves at once; the page follows when the refresh lands.
   const [shown, setShown] = useOptimistic(view);
   const [, startTransition] = useTransition();
 
   function choose(next: View) {
     if (next === shown) return;
-    savePref("view", section, next);
-    startTransition(() => {
+    startTransition(async () => {
       setShown(next);
-      router.refresh();
+      // On an item, the grid has nothing to show beside it: go back to the list, now as cards.
+      await setViewPreference(section, next, next === "grid" && pathname !== `/${section}` ? `/${section}` : undefined);
     });
   }
 

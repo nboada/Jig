@@ -1,7 +1,7 @@
 import type { Db, Row } from "./db";
 import { plainText } from "./format";
 import { orderBy, parseSort, type Sort } from "./sort";
-import { availableSlug, parse, slugify, SnippetError } from "./snippets";
+import { availableSlug, copyTitle, parse, slugify, SnippetError } from "./snippets";
 import { noteInputSchema, notePatchSchema, slugSchema, type NoteInput, type NotePatch } from "./validation";
 
 /** The listing view of a note: its latest title and tags plus the start of its text. */
@@ -11,6 +11,7 @@ export type NoteSummary = {
   tags: string[];
   version: number;
   excerpt: string;
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,6 +30,7 @@ export type NoteVersion = {
 
 export type Note = NoteVersion & {
   currentVersion: number;
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
   versionCreatedAt: string;
@@ -76,11 +78,11 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT n.slug, n.title, n.tags, n.current_version, n.created_at, n.updated_at, left(v.body, 400) AS excerpt
+    `SELECT n.slug, n.title, n.tags, n.current_version, n.created_at, n.updated_at, n.pinned_at, left(v.body, 400) AS excerpt
      FROM notes n
      JOIN note_versions v ON v.note_id = n.id AND v.version = n.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY ${orderBy("n", parseSort(options.sort), order)}
+     ORDER BY ${orderBy("n", parseSort(options.sort), order, true)}
      LIMIT ${limit}`,
     params,
   );
@@ -90,6 +92,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
     tags: r.tags as string[],
     version: r.current_version as number,
     excerpt: plainText(r.excerpt as string),
+    pinned: r.pinned_at != null,
     createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   }));
@@ -107,7 +110,7 @@ export async function listNoteTags(db: Db): Promise<{ tag: string; count: number
 /** Returns the latest version of a note, or a specific one when `version` is given. */
 export async function getNote(db: Db, slug: string, version?: number): Promise<Note | null> {
   const rows = await db.query(
-    `SELECT n.slug, n.current_version, n.created_at AS note_created_at, n.updated_at,
+    `SELECT n.slug, n.current_version, n.created_at AS note_created_at, n.updated_at, n.pinned_at,
             v.version, v.title, v.tags, v.body, v.message, v.source, v.created_at
      FROM notes n
      JOIN note_versions v ON v.note_id = n.id AND v.version = COALESCE($2::int, n.current_version)
@@ -119,6 +122,7 @@ export async function getNote(db: Db, slug: string, version?: number): Promise<N
   return {
     ...toVersion(row),
     currentVersion: row.current_version as number,
+    pinned: row.pinned_at != null,
     createdAt: iso(row.note_created_at),
     updatedAt: iso(row.updated_at),
     versionCreatedAt: iso(row.created_at),
@@ -258,4 +262,24 @@ export async function restoreNoteVersion(
 export async function deleteNote(db: Db, slug: string): Promise<void> {
   const rows = await db.query(`DELETE FROM notes WHERE slug = $1 RETURNING id`, [slugSchema.parse(slug)]);
   if (!rows.length) throw new SnippetError(`No note with the slug "${slug}"`, "not_found");
+}
+
+/** Saves a copy of a note's latest version as a new note, with its own slug and history. */
+export async function cloneNote(db: Db, slug: string, source = "web"): Promise<Note> {
+  const original = await getNote(db, slug);
+  if (!original) throw new SnippetError(`No note called "${slug}".`, "not_found");
+  return createNote(
+    db,
+    { title: copyTitle(original.title), tags: original.tags, body: original.body, message: `Copied from ${original.slug}` },
+    source,
+  );
+}
+
+/** Pins a note to the top of the list, or unpins it. Not a new version: nothing in it changes. */
+export async function setNotePinned(db: Db, slug: string, pinned: boolean): Promise<void> {
+  const rows = await db.query(
+    `UPDATE notes SET pinned_at = CASE WHEN $2 THEN coalesce(pinned_at, now()) END WHERE slug = $1 RETURNING slug`,
+    [slug, pinned],
+  );
+  if (rows.length === 0) throw new SnippetError(`No note called "${slug}".`, "not_found");
 }

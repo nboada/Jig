@@ -27,6 +27,13 @@ export function formatDate(iso: string): string {
   return dateTime.format(new Date(iso));
 }
 
+const shortDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
+/** "3 Oct, 1:04 pm", in the viewer's own time zone (for places rendered in the browser). */
+export function formatDateShort(iso: string): string {
+  return shortDate.format(new Date(iso));
+}
+
 /** "mcp:Claude Code" -> "Claude Code (MCP)", "web" -> "Dashboard". */
 export function formatSource(source: string): string {
   if (source === "web") return "Dashboard";

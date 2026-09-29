@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import { SnippetColumn, SnippetFilters, SnippetToolbar } from "@/components/SnippetColumn";
+import { GridToolbar } from "@/components/GridToolbar";
 import { SplitView } from "@/components/SplitView";
 import { getDb } from "@/lib/db";
 import { listSnippets } from "@/lib/snippets";
@@ -11,16 +11,20 @@ import { getListPrefs } from "@/lib/view";
  */
 export default async function SnippetsLayout({ children }: { children: React.ReactNode }) {
   const { view, sort } = await getListPrefs("snippets");
-  if (view === "grid") return <div className="@container">{children}</div>;
+  if (view === "grid") {
+    return (
+      <div className="@container">
+        <GridToolbar section="snippets" placeholder="Search titles, tags and code" newLabel="New snippet" languageFilter />
+        {children}
+      </div>
+    );
+  }
   const snippets = await listSnippets(await getDb(), { sort, limit: 500 });
   return (
-    // The filters read ?q= and friends from the URL, which needs a Suspense boundary.
-    <Suspense>
-      <SnippetFilters snippets={snippets} sort={sort}>
-        <SplitView base="/snippets" toolbar={<SnippetToolbar />} column={<SnippetColumn />}>
-          {children}
-        </SplitView>
-      </SnippetFilters>
-    </Suspense>
+    <SnippetFilters snippets={snippets} sort={sort}>
+      <SplitView base="/snippets" toolbar={<SnippetToolbar />} column={<SnippetColumn />}>
+        {children}
+      </SplitView>
+    </SnippetFilters>
   );
 }

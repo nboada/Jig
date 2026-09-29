@@ -25,3 +25,9 @@ test("parseSort falls back to the default", () => {
   expect(parseSort("nonsense")).toBe("updated");
   expect(parseSort(undefined)).toBe("updated");
 });
+
+test("pinned items come first, sorted among themselves", () => {
+  const withPins = items.map((i) => ({ ...i, pinned: i.slug !== "bravo" }));
+  expect(slugs(sortItems(withPins, "title"))).toEqual(["alpha", "charlie", "bravo"]);
+  expect(slugs(sortItems(withPins, "updated"))).toEqual(["charlie", "alpha", "bravo"]);
+});

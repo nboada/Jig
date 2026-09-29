@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyMissing } from "@/components/KeyMissing";
 import { SearchInput } from "@/components/SearchInput";
+import { ItemMenu } from "@/components/ItemMenu";
 import { PickPane } from "@/components/PickPane";
 import { SortSelect } from "@/components/SortSelect";
 import { countLabel } from "@/lib/format";
@@ -105,7 +106,8 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {credentials.map((c) => (
             <li key={c.slug}>
-              <Link
+              <ItemMenu kind="credentials" slug={c.slug} title={c.title} url={c.url}>
+<Link
                 href={`/credentials/${c.slug}`}
                 className="flex h-full flex-col rounded-lg border border-line bg-panel p-4 transition hover:border-muted"
               >
@@ -119,6 +121,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
                   ))}
                 </div>
               </Link>
+              </ItemMenu>
             </li>
           ))}
         </ul>

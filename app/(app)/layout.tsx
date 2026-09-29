@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <TopNav withConnect className="mt-2 flex w-fit max-w-full overflow-x-auto md:hidden" />
       </header>
 
-      <main className="mx-auto w-full min-w-0 max-w-[88rem] px-4 py-8 md:px-8">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-[88rem] px-6 py-8 md:px-16">{children}</main>
       <AppShortcuts />
     </div>
   );

@@ -3,7 +3,71 @@
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { useOptionalList } from "@/components/SplitList";
+import { useOptionalList } from "@/components/ListContext";
+
+type Tone = "default" | "danger";
+
+/**
+ * The app's confirmation modal, controlled by whoever opens it. `action` is the confirm button,
+ * usually a DialogAction.
+ */
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  message,
+  action,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  message: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className="modal-overlay fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
+        <AlertDialog.Content className="modal-content fixed top-1/2 left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-panel p-5 shadow-2xl shadow-black/50 outline-none">
+          <AlertDialog.Title className="font-semibold">{title}</AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-sm leading-6 text-text/75">{message}</AlertDialog.Description>
+          <div className="mt-5 flex justify-end gap-2">
+            <AlertDialog.Cancel className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-muted">
+              Cancel
+            </AlertDialog.Cancel>
+            {action}
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
+  );
+}
+
+/** The confirm button of a ConfirmDialog. */
+export function DialogAction({
+  label,
+  tone = "default",
+  pending = false,
+  onClick,
+}: {
+  label: string;
+  tone?: Tone;
+  pending?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={onClick}
+      className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-60 ${
+        tone === "danger" ? "bg-danger text-ink hover:brightness-110" : "bg-accent text-accent-ink hover:brightness-110"
+      }`}
+    >
+      {pending ? "Working…" : label}
+    </button>
+  );
+}
 
 /**
  * A button that asks in a modal before sending its form. Put it inside the <form> it submits.
@@ -25,7 +89,7 @@ export function ConfirmButton({
   title?: string;
   /** The confirm button's label; the button's own label when left out. */
   confirmLabel?: string;
-  tone?: "default" | "danger";
+  tone?: Tone;
   /** A slug to take out of the split view's list the moment this is confirmed (for deletes). */
   hides?: string;
 }) {
@@ -35,46 +99,40 @@ export function ConfirmButton({
   const label = typeof children === "string" ? children : "Confirm";
 
   return (
-    <AlertDialog.Root open={open} onOpenChange={setOpen}>
-      <AlertDialog.Trigger asChild>
-        <button ref={trigger} type="button" className={className}>
-          {children}
-        </button>
-      </AlertDialog.Trigger>
-      <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
-        <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-panel p-5 shadow-2xl shadow-black/50 outline-none">
-          <AlertDialog.Title className="font-semibold">{title ?? `${label}?`}</AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-sm leading-6 text-text/75">{message}</AlertDialog.Description>
-          <div className="mt-5 flex justify-end gap-2">
-            <AlertDialog.Cancel className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-muted">
-              Cancel
-            </AlertDialog.Cancel>
-            {/* The dialog is portaled out of the page but stays inside the form in React's tree. */}
-            <SubmitButton
-              label={confirmLabel ?? label}
-              tone={tone}
-              onConfirm={() => {
-                if (hides) list?.hide(hides);
-                trigger.current?.form?.requestSubmit();
-              }}
-              onDone={() => setOpen(false)}
-            />
-          </div>
-        </AlertDialog.Content>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+    <>
+      <button ref={trigger} type="button" className={className} onClick={() => setOpen(true)}>
+        {children}
+      </button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={title ?? `${label}?`}
+        message={message}
+        action={
+          // The dialog is portaled out of the page but stays inside the form in React's tree.
+          <FormAction
+            label={confirmLabel ?? label}
+            tone={tone}
+            onConfirm={() => {
+              if (hides) list?.hide(hides);
+              trigger.current?.form?.requestSubmit();
+            }}
+            onDone={() => setOpen(false)}
+          />
+        }
+      />
+    </>
   );
 }
 
-function SubmitButton({
+function FormAction({
   label,
   tone,
   onConfirm,
   onDone,
 }: {
   label: string;
-  tone: "default" | "danger";
+  tone: Tone;
   onConfirm: () => void;
   onDone: () => void;
 }) {
@@ -86,16 +144,5 @@ function SubmitButton({
     if (pending) setWasPending(true);
     else if (wasPending) onDone();
   }, [pending, wasPending, onDone]);
-  return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={onConfirm}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-60 ${
-        tone === "danger" ? "bg-danger text-ink hover:brightness-110" : "bg-accent text-accent-ink hover:brightness-110"
-      }`}
-    >
-      {pending ? "Working…" : label}
-    </button>
-  );
+  return <DialogAction label={label} tone={tone} pending={pending} onClick={onConfirm} />;
 }

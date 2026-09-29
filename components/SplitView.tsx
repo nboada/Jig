@@ -4,8 +4,9 @@ import { usePathname } from "next/navigation";
 
 /**
  * A toolbar over a list column beside the open item, for a section like /snippets. They show on the
- * section's index and item pages; new, edit and history pages get the full width. On phones only
- * one side shows: the list on the index, the item once one is open.
+ * section's index, item, new and edit pages, so writing happens beside the list; history pages
+ * (which have their own list of versions) get the full width. On phones only one side shows: the
+ * list on the index, the page once one is open.
  */
 export function SplitView({
   base,
@@ -21,8 +22,9 @@ export function SplitView({
   const pathname = usePathname();
   const rest = pathname.slice(base.length).split("/").filter(Boolean);
   const atIndex = rest.length === 0;
-  const atItem = rest.length === 1 && rest[0] !== "new";
-  if (!atIndex && !atItem) return <div className="@container">{children}</div>;
+  // /new, /<slug> and /<slug>/edit sit beside the list.
+  const inPane = rest.length === 1 || (rest.length === 2 && rest[1] === "edit");
+  if (!atIndex && !inPane) return <div className="@container">{children}</div>;
   return (
     <div className="space-y-6">
       {/* The toolbar spans both columns; on phones it goes with the list. */}

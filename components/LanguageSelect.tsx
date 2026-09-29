@@ -41,7 +41,7 @@ export function LanguageSelect({
         <Select.Content
           position="popper"
           sideOffset={6}
-          className="z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
+          className="menu-content z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
         >
           <Select.Viewport className="p-1">
             {allLabel && <Option value={ALL} label={allLabel} />}

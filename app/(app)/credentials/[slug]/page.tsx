@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { removeCredential } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
-import { ConfirmButton } from "@/components/ConfirmButton";
+import { ShareButton } from "@/components/ShareButton";
+import { MoreMenu } from "@/components/MoreMenu";
 import { CopyButton } from "@/components/CopyButton";
 import { KeyMissing } from "@/components/KeyMissing";
 import { SecretValue } from "@/components/SecretValue";
@@ -26,7 +26,7 @@ export default async function CredentialPage({ params }: Props) {
   const { view } = await getListPrefs("credentials");
 
   return (
-    <article className="grid gap-8 @5xl:grid-cols-[minmax(0,1fr)_220px]">
+    <article>
       <div className="min-w-0 space-y-6">
         {/* In the split view the list is right there; keep the link for phones and the grid view. */}
         <BackLink href="/credentials" className={view === "list" ? "md:hidden" : ""}>
@@ -42,14 +42,34 @@ export default async function CredentialPage({ params }: Props) {
               ))}
             </div>
           )}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{credential.title}</h1>
-            <Link
-              href={`/credentials/${slug}/edit`}
-              className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110"
-            >
-              Edit
-            </Link>
+            <div className="flex shrink-0 gap-2 text-sm">
+              <ShareButton kind="credentials" slug={slug} title={credential.title} />
+              <Link
+                href={`/credentials/${slug}/edit`}
+                className="inline-flex h-[34px] items-center rounded-md bg-accent px-3 font-medium text-accent-ink hover:brightness-110"
+              >
+                Edit
+              </Link>
+              <MoreMenu
+                kind="credentials"
+                slug={slug}
+                title={credential.title}
+                url={credential.url}
+                details={
+                  <div className="space-y-5 text-xs">
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <dt className="text-muted">Updated</dt>
+                    <dd>{formatDate(credential.updatedAt)}</dd>
+                    <dt className="text-muted">Created</dt>
+                    <dd>{formatDate(credential.createdAt)}</dd>
+                  </dl>
+
+                  </div>
+                }
+              />
+            </div>
           </div>
           {credential.url &&
             (link ? (
@@ -89,22 +109,6 @@ export default async function CredentialPage({ params }: Props) {
         )}
       </div>
 
-      <aside className="space-y-5 text-xs @5xl:sticky @5xl:top-22 @5xl:self-start">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-          <dt className="text-muted">Updated</dt>
-          <dd>{formatDate(credential.updatedAt)}</dd>
-          <dt className="text-muted">Created</dt>
-          <dd>{formatDate(credential.createdAt)}</dd>
-        </dl>
-        <form action={removeCredential} className="border-t border-line pt-4">
-          <input type="hidden" name="slug" value={slug} />
-          <ConfirmButton message={`Delete "${credential.title}"? This cannot be undone.`} tone="danger"
-              hides={slug}
-              className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10">
-            Delete credential
-          </ConfirmButton>
-        </form>
-      </aside>
     </article>
   );
 }

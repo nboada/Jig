@@ -12,7 +12,7 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
   const note = await getNote(await getDb(), slug);
   if (!note) notFound();
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6 @6xl:mx-auto">
       <div>
         <BackLink href={`/notes/${slug}`}>{note.title}</BackLink>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Edit note</h1>

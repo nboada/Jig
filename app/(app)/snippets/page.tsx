@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LanguageIcon } from "@/components/LanguageIcon";
+import { ItemMenu } from "@/components/ItemMenu";
+import { PinIcon } from "@/components/NavIcons";
 import { PickPane } from "@/components/PickPane";
 import { LanguageFilter, SearchInput } from "@/components/SearchInput";
 import { SortSelect } from "@/components/SortSelect";
@@ -106,14 +108,16 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {snippets.map((s) => (
             <li key={s.slug}>
-              <Link
+              <ItemMenu kind="snippets" slug={s.slug} title={s.title} pinned={s.pinned}>
+<Link
                 href={`/snippets/${s.slug}`}
                 className="flex h-full flex-col rounded-lg border border-line bg-panel p-4 transition hover:border-muted"
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-medium leading-snug">{s.title}</h2>
-                  <span className="shrink-0 rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">
-                    {`v${s.version}`}
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {s.pinned && <PinIcon className="size-3.5 text-accent" />}
+                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{`v${s.version}`}</span>
                   </span>
                 </div>
                 {s.description && <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-text/70">{s.description}</p>}
@@ -131,6 +135,7 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
                   ))}
                 </div>
               </Link>
+              </ItemMenu>
             </li>
           ))}
         </ul>

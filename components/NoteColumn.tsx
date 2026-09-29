@@ -1,6 +1,7 @@
 "use client";
 
 import { searchNoteSlugs } from "@/app/actions";
+import { PinIcon } from "@/components/NavIcons";
 import { ListColumn, ListFilters, ListToolbar } from "@/components/SplitList";
 import { timeAgo } from "@/lib/format";
 import type { NoteSummary } from "@/lib/notes";
@@ -27,7 +28,10 @@ export function NoteColumn() {
       noun="note"
       renderRow={(n) => (
         <>
-          <span className="block truncate text-sm font-medium group-aria-[current=page]:text-accent">{n.title}</span>
+          <span className="flex items-center gap-1.5 text-sm font-medium group-aria-[current=page]:text-accent">
+            <span className="truncate">{n.title}</span>
+            {n.pinned && <PinIcon className="size-3 shrink-0 text-muted" />}
+          </span>
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             {/* Relative times can tick over between the server render and the browser's. */}
             <span className="shrink-0" suppressHydrationWarning>

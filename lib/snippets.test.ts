@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { pgliteDb, prepare, type Db } from "./db";
 import { compareVersions, formatDiff } from "./diff";
 import {
+  cloneSnippet,
   createSnippet,
   deleteSnippet,
   getSnippet,
@@ -10,6 +11,7 @@ import {
   listTags,
   listVersions,
   restoreVersion,
+  setSnippetPinned,
   slugify,
   updateSnippet,
 } from "./snippets";
@@ -227,5 +229,68 @@ describe("sorting", () => {
     expect(await order("created")).toEqual(["charlie", "alpha", "bravo"]);
     // Case-insensitive: "alpha" sorts before "Bravo".
     expect(await order("title")).toEqual(["alpha", "bravo", "charlie"]);
+  });
+});
+
+describe("cloning", () => {
+  test("a copy gets its own slug and history, and files named after the title follow it", async () => {
+    await createSnippet(db, {
+      title: "Lenis defaults",
+      language: "javascript",
+      tags: ["scroll"],
+      dependencies: ["lenis"],
+      instructions: "Import once.",
+      files: [
+        { name: "lenis-defaults.js", content: "init()" },
+        { name: "setup.css", content: "html{}" },
+      ],
+    });
+    await updateSnippet(db, "lenis-defaults", { description: "Smooth scroll" });
+
+    const copy = await cloneSnippet(db, "lenis-defaults");
+    expect(copy.slug).toBe("lenis-defaults-copy");
+    expect(copy.title).toBe("Lenis defaults copy");
+    expect(copy.currentVersion).toBe(1);
+    expect(copy.message).toBe("Copied from lenis-defaults");
+    expect(copy.files.map((f) => f.name)).toEqual(["lenis-defaults-copy.js", "setup.css"]);
+    expect([copy.description, copy.tags, copy.dependencies, copy.instructions]).toEqual([
+      "Smooth scroll",
+      ["scroll"],
+      ["lenis"],
+      "Import once.",
+    ]);
+
+    // The original is untouched, and a second copy gets the next free slug.
+    expect((await getSnippet(db, "lenis-defaults"))?.currentVersion).toBe(2);
+    expect((await cloneSnippet(db, "lenis-defaults")).slug).toBe("lenis-defaults-copy-2");
+  });
+
+  test("cloning something that is not there says so", async () => {
+    await expect(cloneSnippet(db, "missing")).rejects.toThrow('No snippet called "missing".');
+  });
+});
+
+describe("pinning", () => {
+  test("pinned snippets come first in every order, and pinning makes no new version", async () => {
+    const file = [{ name: "a.css", content: "a{}" }];
+    for (const title of ["Alpha", "Bravo", "Charlie"]) await createSnippet(db, { title, language: "css", files: file });
+    await setSnippetPinned(db, "charlie", true);
+
+    const order = async (sort: "updated" | "created" | "title") => (await listSnippets(db, { sort })).map((s) => s.slug);
+    expect((await order("title"))[0]).toBe("charlie");
+    expect(await order("title")).toEqual(["charlie", "alpha", "bravo"]);
+    expect((await listSnippets(db, { sort: "title" })).map((s) => s.pinned)).toEqual([true, false, false]);
+
+    const charlie = await getSnippet(db, "charlie");
+    expect([charlie?.pinned, charlie?.currentVersion]).toEqual([true, 1]);
+
+    // Pinning again keeps it pinned; unpinning puts it back in the normal order.
+    await setSnippetPinned(db, "charlie", true);
+    await setSnippetPinned(db, "charlie", false);
+    expect(await order("title")).toEqual(["alpha", "bravo", "charlie"]);
+  });
+
+  test("pinning something that is not there says so", async () => {
+    await expect(setSnippetPinned(db, "missing", true)).rejects.toThrow('No snippet called "missing".');
   });
 });

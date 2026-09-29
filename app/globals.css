@@ -3,14 +3,16 @@
 
 @theme {
   --color-ink: #0c0d0f;
+  /* Panels (cards, fields, the list column) and the floating header share one colour. */
   --color-panel: #141518;
+  /* A step lighter than panels, for hovers and selected states on them. */
   --color-raised: #1b1d21;
   --color-line: #2a2d33;
   --color-muted: #8b909a;
   --color-text: #e8e9ec;
   --color-accent: #cefd53;
-  /* The floating header bar. */
-  --color-bar: #1d1d1d;
+  /* The floating header bar; the panel colour, kept as its own name so it can diverge. */
+  --color-bar: var(--color-panel);
   --color-accent-ink: #1a2106;
   --color-danger: #ff7a70;
   --color-add: #122a1a;
@@ -120,4 +122,36 @@ body {
 }
 .prose ul.contains-task-list li {
   padding-left: 0;
+}
+
+/*
+ * Opening and closing motion for modals and menus. Radix marks them data-state="open"/"closed"
+ * and waits for the closing animation before removing them. Tailwind's translate utilities use
+ * the separate `translate` property, so animating `transform` here composes with the centring.
+ */
+@keyframes jig-fade-in {
+  from { opacity: 0; }
+}
+@keyframes jig-fade-out {
+  to { opacity: 0; }
+}
+@keyframes jig-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+@keyframes jig-modal-out {
+  to { opacity: 0; transform: translateY(4px) scale(0.98); }
+}
+@keyframes jig-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+
+.modal-overlay[data-state="open"] { animation: jig-fade-in 180ms ease-out; }
+.modal-overlay[data-state="closed"] { animation: jig-fade-out 140ms ease-in forwards; }
+.modal-content[data-state="open"] { animation: jig-modal-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-content[data-state="closed"] { animation: jig-modal-out 140ms ease-in forwards; }
+.menu-content[data-state="open"] { animation: jig-pop-in 140ms cubic-bezier(0.16, 1, 0.3, 1); }
+.menu-content[data-state="closed"] { animation: jig-fade-out 100ms ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .modal-content, .menu-content { animation: none !important; }
 }

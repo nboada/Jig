@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { restoreNote } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
+import { Markdown } from "@/components/Markdown";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { DiffView } from "@/components/DiffView";
 import { getDb } from "@/lib/db";
@@ -26,6 +27,8 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   const pick = (value: string | undefined, fallback: number) => (numbers.has(Number(value)) ? Number(value) : fallback);
   const to = pick(search.to, note.currentVersion);
   const from = pick(search.from, Math.max(1, to - 1));
+  // One version picked (the first, which has nothing before it): show it as it was saved.
+  const shown = from === to ? await getNote(db, slug, to) : null;
   const diff = from !== to ? compareNotes(...(await getNoteVersionPair(db, slug, from, to))) : null;
 
   return (
@@ -46,8 +49,15 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
             return (
               <li
                 key={v.version}
-                className={`rounded-lg border p-3 text-sm ${selected ? "border-accent/60 bg-accent/5" : "border-line bg-panel"}`}
+                className={`relative rounded-lg border p-3 text-sm transition ${selected ? "border-accent/60 bg-accent/5" : "border-line bg-panel hover:border-muted"}`}
               >
+                {/* The whole card shows what changed in this version; the links inside sit above it. */}
+                <Link
+                  href={`/notes/${slug}/history?from=${Math.max(1, v.version - 1)}&to=${v.version}`}
+                  scroll={false}
+                  aria-label={`Show version ${v.version}`}
+                  className="absolute inset-0 rounded-lg"
+                />
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-medium">
                     {`v${v.version}`}
@@ -57,18 +67,10 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
                 </div>
                 <p className="mt-1">{v.message || <span className="text-muted">No note</span>}</p>
                 <p className="mt-0.5 text-xs text-muted">{formatSource(v.source)}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <div className="relative z-10 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <Link href={`/notes/${slug}?v=${v.version}`} className="text-muted hover:text-text">
                     View
                   </Link>
-                  {v.version > 1 && (
-                    <Link
-                      href={`/notes/${slug}/history?from=${v.version - 1}&to=${v.version}`}
-                      className="text-muted hover:text-text"
-                    >
-                      Changes
-                    </Link>
-                  )}
                   {!latest && (
                     <form action={restoreNote}>
                       <input type="hidden" name="slug" value={slug} />
@@ -109,13 +111,18 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
           </form>
           {diff ? (
             <DiffView diff={diff} />
-          ) : (
-            <p className="rounded-lg border border-line bg-panel p-6 text-sm text-muted">
-              {versions.length === 1
-                ? "There is only one version so far. Edits will show up here."
-                : "Pick two different versions to compare."}
-            </p>
-          )}
+          ) : shown ? (
+            <section className="space-y-3">
+              <p className="text-sm text-muted">
+                {versions.length === 1
+                  ? "The only version so far. Edits will show up here as changes."
+                  : `Version ${shown.version}, as it was saved.`}
+              </p>
+              <div className="rounded-lg border border-line bg-panel p-6">
+              <Markdown>{shown.body || "This version is empty."}</Markdown>
+            </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

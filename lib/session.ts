@@ -24,6 +24,14 @@ async function sign(payload: string): Promise<string> {
   return Buffer.from(signature).toString("base64url");
 }
 
+/**
+ * Signs a value for a purpose other than the session (e.g. a share's "already viewed" pass).
+ * Callers prefix the payload with their purpose, so no signed value can pass as a session.
+ */
+export async function signValue(payload: string): Promise<string> {
+  return sign(payload);
+}
+
 /** Compares two strings in constant time for equal lengths. */
 export function safeEqual(a: string, b: string): boolean {
   const x = new TextEncoder().encode(a);
