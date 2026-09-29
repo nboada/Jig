@@ -86,11 +86,8 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
             <li key={n.slug}>
               <Link href={`/notes/${n.slug}`} className="flex items-center gap-4 px-4 py-3 transition hover:bg-raised">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <h2 className="truncate font-medium">{n.title}</h2>
-                    <span className="hidden truncate font-mono text-xs text-muted sm:inline">{n.slug}</span>
-                  </div>
-                  {n.excerpt && <p className="mt-0.5 truncate text-sm text-text/75">{n.excerpt}</p>}
+                  <h2 className="truncate font-medium">{n.title}</h2>
+                  {n.excerpt && <p className="mt-0.5 truncate text-[13px] text-text/70">{n.excerpt}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
                   <span className="hidden sm:inline">{timeAgo(n.updatedAt)}</span>
@@ -114,8 +111,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                     {`v${n.version}`}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-xs text-muted">{n.slug}</p>
-                {n.excerpt && <p className="mt-3 line-clamp-3 text-sm text-text/75">{n.excerpt}</p>}
+                {n.excerpt && <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-text/70">{n.excerpt}</p>}
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
                   <span>{timeAgo(n.updatedAt)}</span>
                   {n.tags.slice(0, 3).map((t) => (
