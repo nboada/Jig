@@ -2,12 +2,13 @@
 
 import { useOptimistic, useTransition } from "react";
 import { setPinned } from "@/app/actions";
+import { iconButton } from "@/components/Button";
 import { useOptionalList } from "@/components/ListContext";
 import { PinIcon } from "@/components/NavIcons";
 
 /**
- * The pin beside an item's title: a state of the item, so it sits with its name. Filled in the
- * accent colour when pinned; changes at once, moves the item in the list, then saves.
+ * The pin among an item's actions. Filled in the accent colour when pinned; changes at once,
+ * moves the item in the list, then saves.
  */
 export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; slug: string; pinned: boolean }) {
   const list = useOptionalList();
@@ -27,9 +28,7 @@ export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; 
           await setPinned(kind, slug, !shown);
         })
       }
-      className={`grid size-[34px] shrink-0 place-items-center rounded-md border transition ${
-        shown ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/15" : "border-line text-muted hover:border-muted hover:text-text"
-      }`}
+      className={iconButton({ className: shown ? "text-accent hover:text-accent" : "" })}
     >
       <PinIcon className={`size-4 ${shown ? "fill-current" : ""}`} />
     </button>

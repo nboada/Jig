@@ -3,7 +3,9 @@
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { button } from "@/components/Button";
 import { useOptionalList } from "@/components/ListContext";
+import { overlayClass, panelClass } from "@/components/Modal";
 
 type Tone = "default" | "danger";
 
@@ -27,12 +29,12 @@ export function ConfirmDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="modal-overlay fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
-        <AlertDialog.Content className="modal-content fixed top-1/2 left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-panel p-5 shadow-2xl shadow-black/50 outline-none">
-          <AlertDialog.Title className="font-semibold">{title}</AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-sm leading-6 text-text/75">{message}</AlertDialog.Description>
-          <div className="mt-5 flex justify-end gap-2">
-            <AlertDialog.Cancel className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-muted">
+        <AlertDialog.Overlay className={overlayClass} />
+        <AlertDialog.Content className={`${panelClass} w-[min(26rem,calc(100vw-2rem))]`}>
+          <AlertDialog.Title className="text-[17px] leading-6 font-semibold">{title}</AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-body text-text-2">{message}</AlertDialog.Description>
+          <div className="mt-6 flex justify-end gap-2">
+            <AlertDialog.Cancel className={button({ variant: "ghost" })}>
               Cancel
             </AlertDialog.Cancel>
             {action}
@@ -60,11 +62,11 @@ export function DialogAction({
       type="button"
       disabled={pending}
       onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-60 ${
-        tone === "danger" ? "bg-danger text-ink hover:brightness-110" : "bg-accent text-accent-ink hover:brightness-110"
-      }`}
+      className={button({ variant: tone === "danger" ? "danger" : "primary" })}
     >
-      {pending ? "Working…" : label}
+      {/* The label stays while working, so the button keeps its width; a spinner shows progress. */}
+      {pending && <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+      {label}
     </button>
   );
 }

@@ -17,6 +17,24 @@ export function timeAgo(iso: string, now = Date.now()): string {
   return "just now";
 }
 
+const SHORT: [string, number][] = [
+  ["y", 31_536_000],
+  ["mo", 2_592_000],
+  ["w", 604_800],
+  ["d", 86_400],
+  ["h", 3_600],
+  ["m", 60],
+];
+
+/** A compact relative time for dense rows: "2h", "3d", "1w", "2mo". "now" under a minute. */
+export function timeAgoShort(iso: string, now = Date.now()): string {
+  const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  for (const [unit, size] of SHORT) {
+    if (seconds >= size) return `${Math.floor(seconds / size)}${unit}`;
+  }
+  return "now";
+}
+
 const dateTime = new Intl.DateTimeFormat("en-AU", {
   dateStyle: "medium",
   timeStyle: "short",

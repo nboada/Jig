@@ -4,10 +4,11 @@ import { KeySetup } from "./KeySetup";
 export function KeyMissing() {
   const local = process.env.NODE_ENV !== "production";
   return (
-    <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-accent/40 bg-accent/10 p-6 text-sm">
+    <div className="mx-auto max-w-2xl space-y-4 rounded-xl border border-line bg-panel p-6 text-body">
       <div className="space-y-2">
-        <p className="text-base font-medium">Credentials need an encryption key</p>
-        <p className="text-text/75">
+        <p className="engraved">Encryption key required</p>
+        <p className="text-[17px] font-semibold">Credentials need an encryption key</p>
+        <p className="text-text-2">
           Saved passwords and API keys are encrypted with a key that lives in the server&apos;s settings, never in the
           database. Snippets and notes work without it.
         </p>

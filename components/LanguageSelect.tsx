@@ -16,11 +16,14 @@ export function LanguageSelect({
   value,
   onChange,
   allLabel,
+  size = "md",
   className = "",
 }: {
   value: string;
   onChange: (value: string) => void;
   allLabel?: string;
+  /** "sm" for toolbars (32px, on the well); "md" for forms. */
+  size?: "sm" | "md";
   className?: string;
 }) {
   const current = value ? languageFamily(value) : allLabel ? ALL : "";
@@ -28,11 +31,13 @@ export function LanguageSelect({
     <Select.Root value={current} onValueChange={(next) => onChange(next === ALL ? "" : next)}>
       <Select.Trigger
         aria-label="Language"
-        className={`flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2 text-left outline-none transition hover:border-muted focus-visible:border-accent data-[state=open]:border-accent ${className}`}
+        className={`flex items-center gap-2 border border-line text-left outline-none transition hover:border-line-strong focus-visible:border-accent data-[state=open]:border-accent ${
+          size === "sm" ? "h-8 rounded-lg bg-well px-2.5 text-ui" : "rounded-md bg-panel px-3 py-2"
+        } ${className}`}
       >
         <LanguageIcon language={current} />
         <span className="min-w-0 flex-1 truncate">{current === ALL ? allLabel : languageLabel(current)}</span>
-        <Select.Icon className="text-muted">
+        <Select.Icon className="text-faint">
           <Chevron />
         </Select.Icon>
       </Select.Trigger>
@@ -41,7 +46,7 @@ export function LanguageSelect({
         <Select.Content
           position="popper"
           sideOffset={6}
-          className="menu-content z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
+          className="menu-content z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[max(var(--radix-select-trigger-width),12rem)] overflow-hidden rounded-lg border border-line-strong bg-overlay shadow-xl shadow-black/40"
         >
           <Select.Viewport className="p-1">
             {allLabel && <Option value={ALL} label={allLabel} />}
@@ -60,7 +65,7 @@ function Option({ value, label }: { value: string; label: string }) {
   return (
     <Select.Item
       value={value}
-      className="flex cursor-pointer items-center gap-2.5 rounded-md py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[highlighted]:bg-raised data-[state=checked]:text-text relative text-text/85"
+      className="relative flex h-8 cursor-pointer select-none items-center gap-2.5 rounded-md pr-8 pl-2.5 text-ui text-text-2 outline-none data-[highlighted]:bg-raised data-[state=checked]:text-text"
     >
       <LanguageIcon language={value} />
       <Select.ItemText>{label}</Select.ItemText>

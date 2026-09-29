@@ -1,18 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import type { EditorView } from "@codemirror/view";
 import { useActionState, useRef, useState } from "react";
 import { saveSnippet } from "@/app/actions";
 import { CodeEditor } from "@/components/CodeEditor";
+import { FormBar, type FormHeader } from "@/components/FormBar";
+import { button } from "@/components/Button";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { beautify, canBeautify, detectLanguage, findSplit, type Split } from "@/lib/beautify";
 import { defaultFileName, languageFamily, languageForFile, languageLabel, withExtension } from "@/lib/languages";
 import { renameForTitle } from "@/lib/slug";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
-export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
-export const label = "mb-1.5 block text-sm text-muted";
+export const field =
+  "w-full rounded-lg border border-line bg-well px-3 py-2 text-body text-text outline-none transition placeholder:text-faint hover:border-line-strong focus:border-accent";
+export const label = "mb-1.5 block text-meta text-muted";
 
 const splitList = (value: string) =>
   value
@@ -20,7 +22,7 @@ const splitList = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-export function SnippetForm({ snippet }: { snippet?: Snippet }) {
+export function SnippetForm({ snippet, header }: { snippet?: Snippet; header: FormHeader }) {
   const [state, action, pending] = useActionState(saveSnippet, {});
   const [title, setTitle] = useState(snippet?.title ?? "");
   const [description, setDescription] = useState(snippet?.description ?? "");
@@ -102,9 +104,15 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
   });
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} className="form-enter space-y-6">
       <input type="hidden" name="slug" value={snippet?.slug ?? ""} />
       <input type="hidden" name="payload" value={payload} />
+      <FormBar
+        cancelHref={snippet ? `/snippets/${snippet.slug}` : "/snippets"}
+        pending={pending}
+        label={snippet ? "Save" : "Create"}
+        {...header}
+      />
 
       <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
         <label>
@@ -125,7 +133,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
         <div>
           <span className={label}>Language</span>
           <LanguageSelect
-            className="w-full"
+            className="w-full bg-well text-body"
             value={language}
             onChange={(next) => {
               // A lone file whose extension followed the old language follows the new one too.
@@ -143,11 +151,11 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
           const fileLanguage = languageForFile(file.name, language);
           const formattable = canBeautify(fileLanguage);
           return (
-            <div key={index} className="overflow-hidden rounded-lg border border-line bg-panel focus-within:border-muted">
-              <div className="flex items-center gap-2 border-b border-line px-2 py-1.5">
+            <div key={index} className="overflow-hidden rounded-xl border border-line bg-well transition focus-within:border-line-strong">
+              <div className="flex h-11 items-center gap-1.5 border-b border-raised bg-[#0e0f11] pr-2 pl-1.5">
                 <input
                   aria-label="File name"
-                  className="min-w-0 flex-1 rounded bg-transparent px-2 py-1 font-mono text-[13px] outline-none focus:bg-raised"
+                  className="h-8 min-w-0 flex-1 rounded-md bg-transparent px-2 font-mono text-[12.5px] text-text outline-none transition hover:bg-raised/60 focus:bg-raised"
                   value={file.name}
                   onChange={(e) => {
                     const name = e.target.value;
@@ -163,7 +171,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                   disabled={!formattable || !file.content.trim() || formatting === index}
                   title={formattable ? `Format as ${languageLabel(fileLanguage)}` : `No formatter for ${languageLabel(fileLanguage)}`}
                   onClick={() => format(index, fileLanguage)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-text/85 transition hover:border-muted hover:text-text disabled:cursor-default disabled:opacity-40 disabled:hover:border-line"
+                  className={button({ variant: "ghost", size: "sm", className: "disabled:opacity-40" })}
                 >
                   <FormatIcon />
                   {formatting === index ? "Formatting" : "Format"}
@@ -172,14 +180,14 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                   <button
                     type="button"
                     onClick={() => setFiles((list) => list.filter((_, i) => i !== index))}
-                    className="rounded px-2 py-1 text-xs text-muted hover:text-danger"
+                    className={button({ variant: "ghost", size: "sm", className: "hover:text-danger" })}
                   >
                     Remove
                   </button>
                 )}
               </div>
               {formatError?.index === index && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-danger/10 px-4 py-2 text-xs text-danger">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-danger/10 px-4 py-2 text-meta text-danger">
                   <p className="flex-1">{formatError.message}</p>
                   {formatError.rename && (
                     <button
@@ -188,7 +196,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                         updateFile(index, { name: formatError.rename! });
                         setFormatError(null);
                       }}
-                      className="shrink-0 rounded-md bg-accent px-2.5 py-1 font-medium text-accent-ink hover:brightness-110"
+                      className={button({ variant: "primary", size: "sm" })}
                     >
                       {`Rename to ${formatError.rename}`}
                     </button>
@@ -197,7 +205,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
                     <button
                       type="button"
                       onClick={() => moveSplit(index, formatError.split!)}
-                      className="shrink-0 rounded-md bg-accent px-2.5 py-1 font-medium text-accent-ink hover:brightness-110"
+                      className={button({ variant: "primary", size: "sm" })}
                     >
                       {`Move them to their own ${languageLabel(formatError.split.tailLanguage)} file`}
                     </button>
@@ -223,14 +231,14 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
         <button
           type="button"
           onClick={() => setFiles((list) => [...list, { name: `file-${list.length + 1}.${defaultFileName(language).split(".").pop()}`, content: "" }])}
-          className="text-sm text-muted hover:text-text"
+          className={button({ variant: "ghost", size: "sm" })}
         >
           + Add another file
         </button>
       </div>
 
-      <details open={hasDetails} className="group rounded-lg border border-line">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-muted hover:text-text [&::-webkit-details-marker]:hidden">
+      <details open={hasDetails} className="group rounded-xl border border-line">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-ui text-muted transition hover:text-text [&::-webkit-details-marker]:hidden">
           <span>More details: description, tags, dependencies, agent instructions</span>
           <span className="transition group-open:rotate-90" aria-hidden>
             ›
@@ -255,7 +263,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
             <label>
               <span className={label}>Dependencies (one per line)</span>
               <textarea
-                className={`${field} min-h-[42px] font-mono text-sm`}
+                className={`${field} min-h-[42px] font-mono text-ui`}
                 rows={Math.max(1, dependencies.split("\n").length)}
                 value={dependencies}
                 onChange={(e) => setDependencies(e.target.value)}
@@ -267,7 +275,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
           <label className="block">
             <span className={label}>Instructions for agents</span>
             <textarea
-              className={`${field} min-h-24 text-sm`}
+              className={`${field} min-h-24`}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Where the files go, how to wire them up, anything to watch out for."
@@ -291,21 +299,15 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
           <div className="flex-1" />
         )}
         <div className="flex gap-3">
-          <Link
-            href={snippet ? `/snippets/${snippet.slug}` : "/snippets"}
-            className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted"
-          >
-            Cancel
-          </Link>
           <button
             disabled={pending}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60"
+            className={button({ variant: "primary" })}
           >
             {pending ? "Saving" : snippet ? `Save as version ${snippet.currentVersion + 1}` : "Create snippet"}
           </button>
         </div>
       </div>
-      {state.error && <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>}
+      {state.error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-ui text-danger">{state.error}</p>}
     </form>
   );
 }

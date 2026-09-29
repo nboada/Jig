@@ -51,8 +51,9 @@ Snippets and notes can only be deleted from the dashboard, never by an agent. Wh
 | `N` | New item in the current section |
 | `G` / `L` | Grid or list layout |
 | `↑` `↓` | Move through the list |
+| `⌘S` | Save, on new and edit pages |
 
-They're ignored while you type, and on new and edit pages, so they can't throw away unsaved work.
+The others are ignored while you type, and on new and edit pages, so they can't throw away unsaved work.
 
 ## Connect an agent
 
@@ -134,3 +135,5 @@ Without `DATABASE_URL` the app uses PGlite (Postgres in WASM) stored in `.data/`
 ## License
 
 [MIT](LICENSE)
+
+Built by [TALKK](https://talkk.com.au).

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { unlockShare } from "@/app/share-actions";
+import { button } from "@/components/Button";
 
 export function PasscodeForm({ token }: { token: string }) {
   const [state, action, pending] = useActionState(unlockShare, {});
@@ -14,15 +15,17 @@ export function PasscodeForm({ token }: { token: string }) {
         autoComplete="off"
         spellCheck={false}
         placeholder="ABCD-EFGH"
-        className="w-full rounded-md border border-line bg-panel px-3 py-2 font-mono uppercase tracking-widest outline-none focus:border-accent"
+        aria-label="Passcode"
+        className="h-10 w-full rounded-lg border border-line-strong bg-well px-3 font-mono text-body tracking-widest uppercase outline-none transition placeholder:text-faint focus:border-accent"
       />
       <button
         disabled={pending}
-        className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60"
+        className={button({ variant: "primary", size: "lg", className: "w-full" })}
       >
-        {pending ? "Checking" : "Unlock"}
+        {pending && <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+        Unlock
       </button>
-      {state.error && <p className="text-sm text-danger">{state.error}</p>}
+      {state.error && <p className="text-ui text-danger">{state.error}</p>}
     </form>
   );
 }

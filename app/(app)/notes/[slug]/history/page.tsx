@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { restoreNote } from "@/app/actions";
 import { BackLink } from "@/components/BackLink";
 import { Markdown } from "@/components/Markdown";
+import { button } from "@/components/Button";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { DiffView } from "@/components/DiffView";
 import { getDb } from "@/lib/db";
@@ -35,39 +36,39 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
     <div className="space-y-6">
       <div>
         <BackLink href={`/notes/${slug}`}>{note.title}</BackLink>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">History</h1>
-        <p className="mt-1 text-sm text-muted">
+        <h1 className="mt-2 text-title font-semibold">History</h1>
+        <p className="mt-1 text-body text-muted">
           {`${versions.length} version${versions.length === 1 ? "" : "s"}. Restoring saves the old content as a new version, so a rollback can be undone too.`}
         </p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-        <ol className="space-y-2 lg:sticky lg:top-22 lg:max-h-[calc(100dvh-7.5rem)] lg:self-start lg:overflow-y-auto">
+        <ol className="space-y-2 lg:sticky lg:top-(--pane-top) lg:max-h-[calc(100dvh-var(--pane-top)-1.5rem)] lg:self-start lg:overflow-y-auto">
           {versions.map((v) => {
             const selected = v.version === to;
             const latest = v.version === note.currentVersion;
             return (
               <li
                 key={v.version}
-                className={`relative rounded-lg border p-3 text-sm transition ${selected ? "border-accent/60 bg-accent/5" : "border-line bg-panel hover:border-muted"}`}
+                className={`relative rounded-xl border p-3 text-ui transition ${selected ? "border-accent-line bg-accent-soft" : "border-line bg-panel hover:border-line-strong"}`}
               >
                 {/* The whole card shows what changed in this version; the links inside sit above it. */}
                 <Link
                   href={`/notes/${slug}/history?from=${Math.max(1, v.version - 1)}&to=${v.version}`}
                   scroll={false}
                   aria-label={`Show version ${v.version}`}
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-xl"
                 />
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-medium">
                     {`v${v.version}`}
-                    {latest && <span className="ml-2 font-sans text-xs font-normal text-accent">latest</span>}
+                    {latest && <span className="engraved ml-2 text-accent">latest</span>}
                   </span>
-                  <span className="text-xs text-muted">{formatDate(v.createdAt)}</span>
+                  <span className="font-mono text-meta text-muted">{formatDate(v.createdAt)}</span>
                 </div>
                 <p className="mt-1">{v.message || <span className="text-muted">No note</span>}</p>
-                <p className="mt-0.5 text-xs text-muted">{formatSource(v.source)}</p>
-                <div className="relative z-10 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <p className="mt-0.5 font-mono text-meta text-muted">{formatSource(v.source)}</p>
+                <div className="relative z-10 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
                   <Link href={`/notes/${slug}?v=${v.version}`} className="text-muted hover:text-text">
                     View
                   </Link>
@@ -90,14 +91,14 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
         </ol>
 
         <div className="min-w-0 space-y-4">
-          <form className="flex flex-wrap items-end gap-3 text-sm">
+          <form className="flex flex-wrap items-end gap-3 text-ui">
             {(["from", "to"] as const).map((name) => (
               <label key={name}>
-                <span className="mb-1 block capitalize text-muted">{name}</span>
+                <span className="engraved mb-1.5 block">{name}</span>
                 <select
                   name={name}
                   defaultValue={name === "from" ? from : to}
-                  className="rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent"
+                  className="h-8 rounded-lg border border-line bg-well px-2.5 text-ui outline-none focus:border-accent"
                 >
                   {versions.map((v) => (
                     <option key={v.version} value={v.version}>
@@ -107,20 +108,20 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
                 </select>
               </label>
             ))}
-            <button className="rounded-md border border-line px-4 py-2 hover:border-muted">Compare</button>
+            <button className={button()}>Compare</button>
           </form>
           {diff ? (
             <DiffView diff={diff} />
           ) : shown ? (
             <section className="space-y-3">
-              <p className="text-sm text-muted">
+              <p className="text-ui text-muted">
                 {versions.length === 1
                   ? "The only version so far. Edits will show up here as changes."
                   : `Version ${shown.version}, as it was saved.`}
               </p>
-              <div className="rounded-lg border border-line bg-panel p-6">
-              <Markdown>{shown.body || "This version is empty."}</Markdown>
-            </div>
+              <div className="max-w-[68ch] rounded-xl border border-line bg-panel p-6">
+                <Markdown size="read">{shown.body || "This version is empty."}</Markdown>
+              </div>
             </section>
           ) : null}
         </div>

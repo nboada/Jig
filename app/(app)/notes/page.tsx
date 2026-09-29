@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchInput } from "@/components/SearchInput";
+import { button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
+import { GridHead } from "@/components/GridHead";
 import { ItemMenu } from "@/components/ItemMenu";
-import { PinIcon } from "@/components/NavIcons";
+import { Kbd } from "@/components/Kbd";
+import { Meta } from "@/components/Meta";
 import { PickPane } from "@/components/PickPane";
-import { SortSelect } from "@/components/SortSelect";
-import { countLabel } from "@/lib/format";
-import { ViewToggle } from "@/components/ViewToggle";
 import { getDb } from "@/lib/db";
-import { timeAgo } from "@/lib/format";
+import { timeAgoShort } from "@/lib/format";
 import { listNotes, listNoteTags } from "@/lib/notes";
 import { getListPrefs } from "@/lib/view";
 
@@ -37,89 +38,67 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-6">
-      <form className="flex gap-3" action="/notes">
-        <SearchInput placeholder="Search notes" />
-        {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <ViewToggle view={view} section="notes" />
-        <Link href="/notes/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
-          New note
-          <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
-           
-        </Link>
-      </form>
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {tags.map(({ tag, count }) => {
-            const active = search.tag === tag;
-            return (
-              <Link
-                key={tag}
-                href={href(search, { tag: active ? undefined : tag })}
-                className={`rounded-full border px-3 py-1 text-xs transition ${
-                  active ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-text"
-                }`}
-              >
-                {`${tag} `}<span className="opacity-60">{count}</span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      {notes.length > 0 && (
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">{countLabel(notes.length, "note")}</p>
-          <SortSelect sort={sort} section="notes" />
-        </div>
-      )}
+      <GridHead
+        section="notes"
+        label="Notes"
+        count={notes.length}
+        sort={sort}
+        placeholder="Search notes"
+        newLabel="New note"
+        tags={tags}
+        activeTag={search.tag}
+        tagHref={(tag) => href(search, { tag })}
+        hiddenTag={search.tag}
+      />
 
       {notes.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line px-6 py-16 text-center">
-          {filtered ? (
-            <>
-              <p className="text-muted">Nothing matches that search.</p>
-              <Link href="/notes" className="mt-3 inline-block text-sm text-accent hover:underline">
+        filtered ? (
+          <EmptyState
+            title={search.q ? `Nothing matches “${search.q}”` : "Nothing matches this tag"}
+            actions={
+              <Link href="/notes" className={button({ variant: "ghost" })}>
                 Clear filters
               </Link>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-medium">No notes yet</p>
-              <p className="mt-1 text-sm text-muted">Write one here, or ask an agent to save one.</p>
-              <Link
-                href="/notes/new"
-                className="mt-5 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
-              >
+            }
+          >
+            Search looks in titles, tags and the whole note.
+          </EmptyState>
+        ) : (
+          <EmptyState
+            title="No notes yet"
+            actions={
+              <Link href="/notes/new" className={button({ variant: "primary" })}>
                 New note
+                <Kbd onAccent>N</Kbd>
               </Link>
-            </>
-          )}
-        </div>
+            }
+          >
+            Write one here, or ask an agent to save one.
+          </EmptyState>
+        )
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {notes.map((n) => (
             <li key={n.slug}>
               <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned}>
-<Link
-                href={`/notes/${n.slug}`}
-                className="flex h-full flex-col rounded-lg border border-line bg-panel p-4 transition hover:border-muted"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-medium leading-snug">{n.title}</h2>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    {n.pinned && <PinIcon className="size-3.5 text-accent" />}
-                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{`v${n.version}`}</span>
-                  </span>
-                </div>
-                {n.excerpt && <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-text/70">{n.excerpt}</p>}
-                <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
-                  <span>{timeAgo(n.updatedAt)}</span>
-                  {n.tags.slice(0, 3).map((t) => (
-                    <span key={t}>{`#${t}`}</span>
-                  ))}
-                </div>
-              </Link>
+                <Card
+                  href={`/notes/${n.slug}`}
+                  kicker="Note"
+                  pinned={n.pinned}
+                  title={n.title}
+                  body={n.excerpt}
+                  meta={
+                    <Meta>
+                      {[
+                        <span key="v" className="text-text-2">{`v${n.version}`}</span>,
+                        <span key="t" suppressHydrationWarning>
+                          {timeAgoShort(n.updatedAt)}
+                        </span>,
+                        ...n.tags.slice(0, 2).map((t) => `#${t}`),
+                      ]}
+                    </Meta>
+                  }
+                />
               </ItemMenu>
             </li>
           ))}

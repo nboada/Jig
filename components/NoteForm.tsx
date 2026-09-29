@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { button } from "@/components/Button";
 import { useActionState, useState } from "react";
 import { saveNote } from "@/app/actions";
+import { FormBar, type FormHeader } from "@/components/FormBar";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { field, label } from "@/components/SnippetForm";
 import type { Note } from "@/lib/notes";
 
-export function NoteForm({ note }: { note?: Note }) {
+export function NoteForm({ note, header }: { note?: Note; header: FormHeader }) {
   const [state, action, pending] = useActionState(saveNote, {});
   const [title, setTitle] = useState(note?.title ?? "");
   const [tags, setTags] = useState(note?.tags.join(", ") ?? "");
@@ -23,9 +24,10 @@ export function NoteForm({ note }: { note?: Note }) {
   });
 
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} className="form-enter space-y-6">
       <input type="hidden" name="slug" value={note?.slug ?? ""} />
       <input type="hidden" name="payload" value={payload} />
+      <FormBar cancelHref={note ? `/notes/${note.slug}` : "/notes"} pending={pending} label={note ? "Save" : "Create"} {...header} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label>
@@ -65,21 +67,15 @@ export function NoteForm({ note }: { note?: Note }) {
           />
         </label>
         <div className="flex gap-3">
-          <Link
-            href={note ? `/notes/${note.slug}` : "/notes"}
-            className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted"
-          >
-            Cancel
-          </Link>
           <button
             disabled={pending}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-60"
+            className={button({ variant: "primary" })}
           >
             {pending ? "Saving" : note ? `Save as version ${note.currentVersion + 1}` : "Create note"}
           </button>
         </div>
       </div>
-      {state.error && <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>}
+      {state.error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-ui text-danger">{state.error}</p>}
     </form>
   );
 }

@@ -19,27 +19,27 @@ export default async function ConnectPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Connect an agent</h1>
+        <h1 className="text-title font-semibold">Connect an agent</h1>
         <p className="mt-2 text-muted">
           Jig is an MCP server. Any agent that speaks MCP over HTTP (Claude Code, Codex, Kimi, Cursor) can search,
           fetch, save and roll back snippets once it has a token.
         </p>
-        <p className="mt-4 rounded-md border border-line bg-panel px-3 py-2 font-mono text-sm break-all">{endpoint}</p>
+        <p className="mt-4 rounded-lg border border-line bg-well px-3 py-2 font-mono text-ui break-all">{endpoint}</p>
       </div>
 
       <ConnectPanel endpoint={endpoint} />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Tokens</h2>
+        <h2 className="text-[17px] font-medium">Tokens</h2>
         {tokens.length === 0 ? (
-          <p className="text-sm text-muted">No tokens yet. Create one above for each agent or machine.</p>
+          <p className="text-body text-muted">No tokens yet. Create one above for each agent or machine.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-panel">
+          <ul className="divide-y divide-line rounded-xl border border-line bg-panel">
             {tokens.map((t) => (
-              <li key={t.id} className="flex items-center gap-4 px-4 py-3 text-sm">
+              <li key={t.id} className="flex items-center gap-4 px-4 py-3 text-body">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{t.name}</p>
-                  <p className="text-xs text-muted">
+                  <p className="text-meta text-muted">
                     <span className="font-mono">{`${t.prefix}...`}</span>
                     {` created ${formatDate(t.createdAt)}, ${t.lastUsedAt ? `last used ${timeAgo(t.lastUsedAt)}` : "never used"}`}
                   </p>
@@ -49,7 +49,7 @@ export default async function ConnectPage() {
                   <ConfirmButton
                     message={`Revoke "${t.name}"? Agents using it lose access straight away.`}
                     tone="danger"
-                    className="rounded-md border border-danger/40 px-2.5 py-1 text-xs text-danger transition hover:bg-danger/10"
+                    className="h-7 rounded-md px-2.5 text-meta text-danger transition hover:bg-danger/10"
                   >
                     Revoke
                   </ConfirmButton>

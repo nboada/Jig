@@ -2,15 +2,27 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
+  /* Surfaces, darkest to lightest. Code and fields sit in the well, below the page. */
+  --color-well: #08090a;
   --color-ink: #0c0d0f;
-  /* Panels (cards, fields, the list column) and the floating header share one colour. */
+  /* Panels (cards, the list column) and the floating header share one colour. */
   --color-panel: #141518;
   /* A step lighter than panels, for hovers and selected states on them. */
   --color-raised: #1b1d21;
+  /* Menus and dialogs, a step above panels so they visibly lift. */
+  --color-overlay: #202328;
   --color-line: #2a2d33;
-  --color-muted: #8b909a;
+  /* Borders on hover, and the edge of a field being typed in. */
+  --color-line-strong: #3a3e46;
   --color-text: #e8e9ec;
+  /* Secondary text: descriptions, values beside labels. Solid, never an opacity of text. */
+  --color-text-2: #b6bac2;
+  --color-muted: #8b909a;
+  /* Placeholders, line numbers and separators; never for text you need to read. */
+  --color-faint: #5d626c;
   --color-accent: #cefd53;
+  --color-accent-soft: color-mix(in srgb, #cefd53 10%, transparent);
+  --color-accent-line: color-mix(in srgb, #cefd53 40%, transparent);
   /* The floating header bar; the panel colour, kept as its own name so it can diverge. */
   --color-bar: var(--color-panel);
   --color-accent-ink: #1a2106;
@@ -19,8 +31,48 @@
   --color-add-text: #8fe3a5;
   --color-del: #331618;
   --color-del-text: #ffa39b;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* The type scale. Every size in the app is one of these. */
+  --text-micro: 11px;
+  --text-micro--line-height: 16px;
+  --text-micro--letter-spacing: 0.06em;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-ui: 13px;
+  --text-ui--line-height: 20px;
+  --text-body: 14px;
+  --text-body--line-height: 22px;
+  --text-read: 16px;
+  --text-read--line-height: 28px;
+  --text-title: 26px;
+  --text-title--line-height: 32px;
+  --text-title--letter-spacing: -0.02em;
+  --text-display: 32px;
+  --text-display--line-height: 38px;
+  --text-display--letter-spacing: -0.025em;
+}
+
+/* The fonts come from next/font (app/layout.tsx), which sets these variables on <html>. */
+@theme inline {
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+:root {
+  /* The floating header's height and the gap above it. The list column and sticky bars sit below. */
+  --header-h: 56px;
+  --header-gap: 12px;
+  --pane-top: calc(var(--header-h) + var(--header-gap) * 2);
+}
+
+/* The small engraved labels: "SNIPPET · JAVASCRIPT", "PINNED". The only text set in capitals. */
+@utility engraved {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  letter-spacing: var(--text-micro--letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
 html {
@@ -75,10 +127,40 @@ body {
   background: transparent !important;
   font-family: var(--font-mono);
   font-size: 13px;
-  line-height: 1.6;
-  padding: 16px 20px;
+  line-height: 1.65;
+  padding: 14px 20px 14px 0;
   overflow-x: auto;
   tab-size: 2;
+  counter-reset: line;
+}
+/* Line numbers, out of the way of a text selection. */
+.shiki .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2.75rem;
+  margin-right: 1.25rem;
+  text-align: right;
+  color: #4a4f58;
+  user-select: none;
+}
+@media (max-width: 400px) {
+  .shiki { padding-left: 14px; }
+  .shiki .line::before { display: none; }
+}
+
+/*
+ * The workbench: a faint dotted grid behind the login and share pages, like a cutting mat,
+ * fading out towards the edges. The one piece of atmosphere in the app.
+ */
+.bench::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--color-line) 1px, transparent 1.2px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, black 20%, transparent 80%);
 }
 
 .prose-lite p + p {
@@ -115,10 +197,32 @@ body {
 .tiptap ul[data-type="taskList"] li > div > p {
   margin: 0;
 }
+/* The checkbox itself: a small square in the well, filled lime with a dark tick when done. */
 .tiptap ul[data-type="taskList"] input[type="checkbox"],
 .prose ul.contains-task-list input[type="checkbox"] {
-  accent-color: var(--color-accent);
-  margin-right: 0.5rem;
+  appearance: none;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0 0.625rem 0 0;
+  vertical-align: -3px;
+  border: 1.5px solid var(--color-line-strong);
+  border-radius: 4px;
+  background: var(--color-well) center / 12px no-repeat;
+  cursor: pointer;
+}
+.tiptap ul[data-type="taskList"] input[type="checkbox"]:checked,
+.prose ul.contains-task-list input[type="checkbox"]:checked {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a2106' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
+}
+/* A done item reads as done. */
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div,
+.prose ul.contains-task-list li:has(> input:checked) {
+  color: var(--color-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-faint);
 }
 .prose ul.contains-task-list li {
   padding-left: 0;
@@ -152,6 +256,20 @@ body {
 .menu-content[data-state="open"] { animation: jig-pop-in 140ms cubic-bezier(0.16, 1, 0.3, 1); }
 .menu-content[data-state="closed"] { animation: jig-fade-out 100ms ease-in forwards; }
 
+/*
+ * Opening a new or edit form: the title stays where the item page had it, Cancel and Save fade in
+ * where Edit was, and the fields slide up into place one after another.
+ */
+@keyframes jig-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+.form-enter > :not(header, input) { animation: jig-slide-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.form-enter > :nth-child(4) { animation-delay: 30ms; }
+.form-enter > :nth-child(5) { animation-delay: 60ms; }
+.form-enter > :nth-child(6) { animation-delay: 90ms; }
+.form-enter > :nth-child(n + 7) { animation-delay: 120ms; }
+.form-actions { animation: jig-fade-in 240ms ease-out both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .modal-overlay, .modal-content, .menu-content { animation: none !important; }
+  .modal-overlay, .modal-content, .menu-content, .form-enter > *, .form-actions { animation: none !important; }
 }

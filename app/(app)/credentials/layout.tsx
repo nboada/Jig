@@ -1,4 +1,4 @@
-import { CredentialColumn, CredentialFilters, CredentialToolbar } from "@/components/CredentialColumn";
+import { CredentialColumn, CredentialFilters } from "@/components/CredentialColumn";
 import { GridToolbar } from "@/components/GridToolbar";
 import { SplitView } from "@/components/SplitView";
 import { listCredentials } from "@/lib/credentials";
@@ -24,7 +24,7 @@ export default async function CredentialsLayout({ children }: { children: React.
   const credentials = await listCredentials(await getDb(), { sort, limit: 500 });
   return (
     <CredentialFilters credentials={credentials} sort={sort}>
-      <SplitView base="/credentials" toolbar={<CredentialToolbar />} column={<CredentialColumn />}>
+      <SplitView base="/credentials" column={<CredentialColumn />}>
         {children}
       </SplitView>
     </CredentialFilters>

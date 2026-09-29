@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KeyMissing } from "@/components/KeyMissing";
-import { SearchInput } from "@/components/SearchInput";
+import { button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
+import { GridHead } from "@/components/GridHead";
 import { ItemMenu } from "@/components/ItemMenu";
+import { Kbd } from "@/components/Kbd";
+import { Meta } from "@/components/Meta";
 import { PickPane } from "@/components/PickPane";
-import { SortSelect } from "@/components/SortSelect";
-import { countLabel } from "@/lib/format";
-import { ViewToggle } from "@/components/ViewToggle";
+import { KeyMissing } from "@/components/KeyMissing";
 import { listCredentials, listCredentialTags } from "@/lib/credentials";
 import { encryptionReady } from "@/lib/crypto";
 import { getDb } from "@/lib/db";
-import { timeAgo } from "@/lib/format";
+import { timeAgoShort } from "@/lib/format";
 import { getListPrefs } from "@/lib/view";
 
 export const metadata: Metadata = { title: "Credentials" };
@@ -39,88 +41,67 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Credentials</h1>
-        <p className="mt-1 text-sm text-muted">Only visible here. Agents connected over MCP can never read these.</p>
-      </div>
-
-      <form className="flex gap-3" action="/credentials">
-        <SearchInput placeholder="Search titles, URLs and labels" />
-        {search.tag && <input type="hidden" name="tag" value={search.tag} />}
-        <ViewToggle view={view} section="credentials" />
-        <Link href="/credentials/new" className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink">
-          New credential
-          <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
-           
-        </Link>
-      </form>
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {tags.map(({ tag, count }) => {
-            const active = search.tag === tag;
-            return (
-              <Link
-                key={tag}
-                href={href(search, { tag: active ? undefined : tag })}
-                className={`rounded-full border px-3 py-1 text-xs transition ${
-                  active ? "border-accent bg-accent text-accent-ink" : "border-line text-muted hover:text-text"
-                }`}
-              >
-                {`${tag} `}<span className="opacity-60">{count}</span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      {credentials.length > 0 && (
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">{countLabel(credentials.length, "credential")}</p>
-          <SortSelect sort={sort} section="credentials" />
-        </div>
-      )}
+      <GridHead
+        section="credentials"
+        label="Credentials"
+        count={credentials.length}
+        sort={sort}
+        placeholder="Search titles, URLs and labels"
+        newLabel="New credential"
+        note="Only visible here. Agents connected over MCP can never read these."
+        tags={tags}
+        activeTag={search.tag}
+        tagHref={(tag) => href(search, { tag })}
+        hiddenTag={search.tag}
+      />
 
       {credentials.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line px-6 py-16 text-center">
-          {filtered ? (
-            <>
-              <p className="text-muted">Nothing matches that search.</p>
-              <Link href="/credentials" className="mt-3 inline-block text-sm text-accent hover:underline">
+        filtered ? (
+          <EmptyState
+            title={search.q ? `Nothing matches “${search.q}”` : "Nothing matches this tag"}
+            actions={
+              <Link href="/credentials" className={button({ variant: "ghost" })}>
                 Clear filters
               </Link>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-medium">No credentials yet</p>
-              <Link
-                href="/credentials/new"
-                className="mt-5 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
-              >
+            }
+          >
+            Search looks in titles, URLs and field labels, never in the values.
+          </EmptyState>
+        ) : (
+          <EmptyState
+            title="No credentials yet"
+            actions={
+              <Link href="/credentials/new" className={button({ variant: "primary" })}>
                 New credential
+                <Kbd onAccent>N</Kbd>
               </Link>
-            </>
-          )}
-        </div>
+            }
+          >
+            Logins and API keys for your own reference. Secret fields are encrypted.
+          </EmptyState>
+        )
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {credentials.map((c) => (
             <li key={c.slug}>
               <ItemMenu kind="credentials" slug={c.slug} title={c.title} url={c.url}>
-<Link
-                href={`/credentials/${c.slug}`}
-                className="flex h-full flex-col rounded-lg border border-line bg-panel p-4 transition hover:border-muted"
-              >
-                <h2 className="font-medium leading-snug">{c.title}</h2>
-                {c.url && <p className="mt-1 truncate font-mono text-xs text-muted">{c.url}</p>}
-                <p className="mt-3 text-sm text-text/75">{c.labels.join(" · ")}</p>
-                <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-muted">
-                  <span>{timeAgo(c.updatedAt)}</span>
-                  {c.tags.slice(0, 3).map((t) => (
-                    <span key={t}>{`#${t}`}</span>
-                  ))}
-                </div>
-              </Link>
+                <Card
+                  href={`/credentials/${c.slug}`}
+                  kicker={c.url ? c.url.replace(/^https?:\/\//, "").split("/")[0] : "Credential"}
+                  title={c.title}
+                  body={c.labels.length > 0 && <span className="font-mono text-meta text-muted">{c.labels.join(" · ")}</span>}
+                  meta={
+                    <Meta>
+                      {[
+                        <span key="t" suppressHydrationWarning>
+                          {timeAgoShort(c.updatedAt)}
+                        </span>,
+                        `${c.labels.length} field${c.labels.length === 1 ? "" : "s"}`,
+                        ...c.tags.slice(0, 2).map((t) => `#${t}`),
+                      ]}
+                    </Meta>
+                  }
+                />
               </ItemMenu>
             </li>
           ))}

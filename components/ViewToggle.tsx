@@ -43,7 +43,7 @@ export function ViewToggle({ view, section }: { view: View; section: Section }) 
   });
 
   return (
-    <div className="flex shrink-0 rounded-md border border-line p-0.5">
+    <div className="flex shrink-0 rounded-lg border border-line bg-well p-0.5">
       {OPTIONS.map(({ view: v, label, key, Icon }) => (
         <button
           key={v}
@@ -53,14 +53,11 @@ export function ViewToggle({ view, section }: { view: View; section: Section }) 
           aria-pressed={shown === v}
           aria-keyshortcuts={key.toUpperCase()}
           title={`${label} (${key.toUpperCase()})`}
-          className={`flex min-w-8 items-center justify-center gap-1 rounded px-1.5 transition ${
-            shown === v ? "bg-raised text-text" : "text-muted hover:text-text"
+          className={`grid h-6 w-7 place-items-center rounded-md transition ${
+            shown === v ? "bg-overlay text-text" : "text-faint hover:text-text"
           }`}
         >
-          <Icon />
-          <kbd className="hidden rounded border border-line px-1 font-sans text-[10px] leading-4 text-muted sm:inline">
-            {key.toUpperCase()}
-          </kbd>
+          <Icon className="size-3.5" />
         </button>
       ))}
     </div>

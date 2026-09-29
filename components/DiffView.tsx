@@ -4,7 +4,7 @@ const ROW = {
   hunk: "bg-raised text-muted",
   add: "bg-add text-add-text",
   del: "bg-del text-del-text",
-  ctx: "text-text/80",
+  ctx: "text-text-2",
 } as const;
 
 const SIGN = { hunk: "", add: "+", del: "-", ctx: " " } as const;
@@ -12,14 +12,14 @@ const SIGN = { hunk: "", add: "+", del: "-", ctx: " " } as const;
 export function DiffView({ diff }: { diff: VersionDiff }) {
   const files = diff.files.filter((f) => f.status !== "unchanged");
   if (!files.length && !diff.fields.length) {
-    return <p className="rounded-lg border border-line bg-panel p-6 text-sm text-muted">These versions are identical.</p>;
+    return <p className="rounded-xl border border-line bg-panel p-6 text-ui text-muted">These versions are identical.</p>;
   }
   return (
     <div className="space-y-4">
       {diff.fields.length > 0 && (
-        <div className="rounded-lg border border-line bg-panel">
-          <h3 className="border-b border-line px-4 py-2 text-sm font-medium">Details</h3>
-          <dl className="divide-y divide-line text-sm">
+        <div className="rounded-xl border border-line bg-panel">
+          <h3 className="border-b border-line px-4 py-2 text-body font-medium">Details</h3>
+          <dl className="divide-y divide-line text-body">
             {diff.fields.map((f) => (
               <div key={f.field} className="grid gap-2 px-4 py-3 sm:grid-cols-[120px_1fr]">
                 <dt className="capitalize text-muted">{f.field}</dt>
@@ -33,16 +33,16 @@ export function DiffView({ diff }: { diff: VersionDiff }) {
         </div>
       )}
       {files.map((file) => (
-        <div key={file.name} className="overflow-hidden rounded-lg border border-line bg-panel">
-          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2 text-sm">
+        <div key={file.name} className="overflow-hidden rounded-xl border border-line bg-well">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2 text-body">
             <span className="truncate font-mono">{file.name}</span>
-            <span className="shrink-0 font-mono text-xs">
+            <span className="shrink-0 font-mono text-meta">
               {file.status !== "modified" && <span className="mr-2 text-muted">{file.status}</span>}
               <span className="text-add-text">{`+${file.additions}`}</span>{" "}
               <span className="text-del-text">{`-${file.deletions}`}</span>
             </span>
           </div>
-          <pre className="overflow-x-auto font-mono text-[13px] leading-6">
+          <pre className="overflow-x-auto font-mono text-ui leading-6">
             {file.lines.map((line, i) => (
               <div key={i} className={`${ROW[line.kind]} min-w-max px-4`}>
                 <span className="mr-3 inline-block w-3 select-none opacity-60">{SIGN[line.kind]}</span>

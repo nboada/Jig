@@ -16,10 +16,11 @@ function Icon({ children, className = "size-4" }: { children: React.ReactNode; c
   );
 }
 
+/** Braces rather than the logo's chevrons, so the tab doesn't repeat the logo. */
 export function SnippetsIcon(props: { className?: string }) {
   return (
     <Icon {...props}>
-      <path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
+      <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1" />
     </Icon>
   );
 }
@@ -101,11 +102,12 @@ export function PinOffIcon(props: { className?: string }) {
   );
 }
 
+/** Copy with a plus, so it reads differently from the copy-to-clipboard icon. */
 export function CloneIcon(props: { className?: string }) {
   return (
     <Icon {...props}>
       <rect x="8" y="8" width="14" height="14" rx="2" />
-      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2M15 12v6M12 15h6" />
     </Icon>
   );
 }
@@ -176,6 +178,83 @@ export function MoreIcon(props: { className?: string }) {
   return (
     <Icon {...props}>
       <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />
+    </Icon>
+  );
+}
+
+export function SearchIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Icon>
+  );
+}
+
+export function CopyIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </Icon>
+  );
+}
+
+export function CheckIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="M20 6 9 17l-5-5" />
+    </Icon>
+  );
+}
+
+export function CloseIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </Icon>
+  );
+}
+
+export function ChevronDownIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  );
+}
+
+export function KeyboardIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+    </Icon>
+  );
+}
+
+export function EyeIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </Icon>
+  );
+}
+
+export function EyeOffIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="M9.9 5.2A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </Icon>
+  );
+}
+
+export function LockIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </Icon>
   );
 }

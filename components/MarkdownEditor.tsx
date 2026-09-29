@@ -3,7 +3,7 @@
 import { Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { useState } from "react";
-import { proseClass } from "@/components/Markdown";
+import { readProseClass } from "@/components/Markdown";
 import { noteExtensions } from "@/lib/note-editor";
 
 /**
@@ -27,7 +27,7 @@ export function MarkdownEditor({
     contentType: "markdown",
     // Rendered on the server first; the editor mounts in the browser.
     immediatelyRender: false,
-    editorProps: { attributes: { class: `${proseClass} min-h-96 px-4 py-3 outline-none`, "aria-label": "Note" } },
+    editorProps: { attributes: { class: `${readProseClass} min-h-96 max-w-[68ch] py-5 outline-none`, "aria-label": "Note" } },
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
   });
 
@@ -38,22 +38,31 @@ export function MarkdownEditor({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-panel focus-within:border-muted">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-line px-1.5 py-1.5">
-        {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-xs text-muted">Markdown source</span>}
-        <button
-          type="button"
-          onClick={toggleSource}
-          aria-pressed={source}
-          className={`ml-auto rounded-md px-2.5 py-1 text-xs transition ${source ? "bg-raised text-text" : "text-muted hover:text-text"}`}
-        >
-          Markdown
-        </button>
+    <div>
+      {/* The toolbar stays in reach under the header on a long note. */}
+      <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-lg border border-line bg-panel/95 p-1 backdrop-blur">
+        {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-meta text-muted">Editing the markdown source</span>}
+        <div className="ml-auto flex rounded-md border border-line bg-well p-0.5" role="group" aria-label="Editor">
+          {(["Rich", "Markdown"] as const).map((mode) => {
+            const on = (mode === "Markdown") === source;
+            return (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={on}
+                onClick={() => !on && toggleSource()}
+                className={`h-6 rounded px-2.5 text-meta transition ${on ? "bg-overlay text-text" : "text-muted hover:text-text"}`}
+              >
+                {mode}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {source ? (
         <textarea
           aria-label="Note (markdown)"
-          className="block min-h-96 w-full resize-y bg-transparent px-4 py-3 font-mono text-[13px] leading-relaxed outline-none"
+          className="mt-3 block min-h-96 w-full max-w-[68ch] resize-y rounded-lg border border-line bg-well px-4 py-3 font-mono text-ui leading-relaxed outline-none focus:border-line-strong"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}
@@ -109,12 +118,12 @@ function Toolbar({ editor }: { editor: Editor }) {
             if (e.key === "Escape") setLinking(null);
           }}
           placeholder="https://example.com"
-          className="min-w-0 flex-1 rounded bg-raised px-2 py-1 text-sm outline-none"
+          className="h-7 min-w-0 flex-1 rounded-md border border-line bg-well px-2 text-ui outline-none focus:border-line-strong"
         />
-        <button type="button" onClick={apply} className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-ink">
+        <button type="button" onClick={apply} className="h-7 rounded-md bg-accent px-2.5 text-meta font-semibold text-accent-ink">
           {linking.trim() ? "Apply" : "Remove link"}
         </button>
-        <button type="button" onClick={() => setLinking(null)} className="px-1.5 text-xs text-muted hover:text-text">
+        <button type="button" onClick={() => setLinking(null)} className="h-7 px-1.5 text-meta text-muted hover:text-text">
           Cancel
         </button>
       </div>
@@ -159,7 +168,7 @@ function Tool({ label, on, run, icon, text }: { label: string; on: boolean; run:
       aria-label={label}
       aria-pressed={on}
       title={label}
-      className={`grid h-7 min-w-7 place-items-center rounded px-1 text-xs font-semibold transition ${on ? "bg-raised text-accent" : "text-muted hover:bg-raised/60 hover:text-text"}`}
+      className={`grid h-7 min-w-7 place-items-center rounded-md px-1 text-meta font-semibold transition ${on ? "bg-raised text-text" : "text-muted hover:bg-raised/60 hover:text-text"}`}
     >
       {icon ? (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden>

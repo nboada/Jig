@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LanguageSelect } from "@/components/LanguageSelect";
+import { SearchIcon } from "@/components/NavIcons";
 
 /** Replaces one search param in the current URL without a full page load, keeping the others. */
 export function useSetParam() {
@@ -41,7 +42,8 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
   }, [value, q]);
 
   return (
-    <div className="relative min-w-0 flex-1">
+    <label className="relative flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-well px-2.5 text-faint transition focus-within:border-line-strong">
+      <SearchIcon className="size-3.5" />
       <input
         ref={input}
         type="search"
@@ -55,15 +57,16 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
         }}
         placeholder={placeholder}
         autoComplete="off"
-        className="w-full rounded-md border border-line bg-panel px-3 py-2 pr-9 outline-none focus:border-accent"
+        aria-label={placeholder}
+        className="min-w-0 flex-1 bg-transparent pr-5 text-ui text-text outline-none placeholder:text-faint"
       />
       {pending && (
         <span
           aria-hidden
-          className="absolute top-1/2 right-3 size-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-muted border-t-transparent"
+          className="absolute top-1/2 right-2.5 size-3 -translate-y-1/2 animate-spin rounded-full border-2 border-muted border-t-transparent"
         />
       )}
-    </div>
+    </label>
   );
 }
 
@@ -75,6 +78,7 @@ export function LanguageFilter({ className }: { className?: string }) {
       value={params.get("lang") ?? ""}
       onChange={(value) => setParam("lang", value)}
       allLabel="All languages"
+      size="sm"
       className={className}
     />
   );

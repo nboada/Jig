@@ -2,9 +2,8 @@
 
 import { searchSnippetSlugs } from "@/app/actions";
 import { LanguageIcon } from "@/components/LanguageIcon";
-import { PinIcon } from "@/components/NavIcons";
-import { ListColumn, ListFilters, ListToolbar } from "@/components/SplitList";
-import { timeAgo } from "@/lib/format";
+import { ListColumn, ListFilters } from "@/components/SplitList";
+import { timeAgoShort } from "@/lib/format";
 import type { SnippetSummary } from "@/lib/snippets";
 import type { Sort } from "@/lib/sort";
 
@@ -19,27 +18,24 @@ export function SnippetFilters({ snippets, sort, children }: { snippets: Snippet
   );
 }
 
-export function SnippetToolbar() {
-  return <ListToolbar placeholder="Search titles, tags and code" newLabel="New snippet" languageFilter />;
-}
-
 export function SnippetColumn() {
   return (
     <ListColumn<SnippetSummary>
       noun="snippet"
+      label="Snippets"
+      placeholder="Search titles, tags and code"
+      newLabel="New snippet"
+      languageFilter
       renderRow={(s) => (
         <>
-          <span className="flex items-center gap-1.5 text-sm font-medium group-aria-[current=page]:text-accent">
-            <span className="truncate">{s.title}</span>
-            {s.pinned && <PinIcon className="size-3 shrink-0 text-muted" />}
-          </span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
-            <LanguageIcon language={s.language} className="size-3" />
+          <span className="block truncate text-ui font-medium text-text group-aria-[current=page]:text-accent">{s.title}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 font-mono text-meta text-muted">
+            <LanguageIcon language={s.language} className="size-3 shrink-0" />
             {/* Relative times can tick over between the server render and the browser's. */}
             <span className="shrink-0" suppressHydrationWarning>
-              {timeAgo(s.updatedAt)}
+              {timeAgoShort(s.updatedAt)}
             </span>
-            {s.description && <span className="truncate text-text/60">{s.description}</span>}
+            {s.description && <span className="truncate font-sans text-text-2/80">{s.description}</span>}
           </span>
         </>
       )}

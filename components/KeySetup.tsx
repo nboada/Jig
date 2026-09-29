@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { createEncryptionKey } from "@/app/actions";
+import { button } from "./Button";
 import { CopyButton } from "./CopyButton";
 
-const primary =
-  "rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition hover:brightness-110 disabled:opacity-60";
+const primary = button({ variant: "primary" });
 
 /**
  * Sets up the encryption key. Locally the server writes it into .env.local;
@@ -52,11 +52,11 @@ export function KeySetup({ local }: { local: boolean }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2">
-        <code className="min-w-0 flex-1 break-all font-mono text-xs">{`JIG_ENCRYPTION_KEY=${generated}`}</code>
+      <div className="flex items-center gap-2 rounded-lg border border-line bg-well px-3 py-2">
+        <code className="min-w-0 flex-1 break-all font-mono text-meta">{`JIG_ENCRYPTION_KEY=${generated}`}</code>
         <CopyButton value={generated} />
       </div>
-      <ol className="list-decimal space-y-1 pl-5 text-text/75">
+      <ol className="list-decimal space-y-1 pl-5 text-text-2">
         <li>In Vercel, open the project, then Settings and Environment Variables.</li>
         <li>Add JIG_ENCRYPTION_KEY with this value.</li>
         <li>Redeploy, then reload this page.</li>

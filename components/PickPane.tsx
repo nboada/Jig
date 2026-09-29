@@ -1,11 +1,17 @@
-/** The split view's right-hand pane before anything is picked. */
+import { EmptyState } from "@/components/EmptyState";
+import { Kbd } from "@/components/Kbd";
+
+/** The split view's right-hand pane before anything is picked: quiet, a third of the way down. */
 export function PickPane({ noun }: { noun: string }) {
   return (
-    <div className="grid h-[calc(100dvh-7.5rem)] place-items-center rounded-lg border border-dashed border-line text-center">
-      <div>
-        <p className="font-medium">{`Pick a ${noun}`}</p>
-        <p className="mt-1 text-sm text-muted">{`Use ↑ and ↓ to move through the list, or press N for a new one.`}</p>
-      </div>
-    </div>
+    <EmptyState className="pt-[18vh]">
+      <span className="inline-flex flex-wrap items-center justify-center gap-1.5">
+        <Kbd>↑</Kbd>
+        <Kbd>↓</Kbd>
+        {" to browse · "}
+        <Kbd>N</Kbd>
+        {` for a new ${noun}`}
+      </span>
+    </EmptyState>
   );
 }

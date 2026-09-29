@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { countLabel, plainText, safeHref } from "./format";
+import { countLabel, plainText, safeHref, timeAgoShort } from "./format";
 
 describe("safeHref", () => {
   test("links only http and https URLs", () => {
@@ -31,5 +31,24 @@ describe("plainText", () => {
 
   test("leaves ordinary text alone", () => {
     expect(plainText("snake_case_name and 2*3*4")).toBe("snake_case_name and 2*3*4");
+  });
+});
+
+describe("timeAgoShort", () => {
+  const now = Date.parse("2026-09-29T12:00:00Z");
+  const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
+
+  test("counts down to the largest whole unit", () => {
+    expect(timeAgoShort(ago(20), now)).toBe("now");
+    expect(timeAgoShort(ago(5 * 60), now)).toBe("5m");
+    expect(timeAgoShort(ago(2 * 3600 + 59 * 60), now)).toBe("2h");
+    expect(timeAgoShort(ago(3 * 86_400), now)).toBe("3d");
+    expect(timeAgoShort(ago(15 * 86_400), now)).toBe("2w");
+    expect(timeAgoShort(ago(70 * 86_400), now)).toBe("2mo");
+    expect(timeAgoShort(ago(400 * 86_400), now)).toBe("1y");
+  });
+
+  test("treats a time a little in the future as now", () => {
+    expect(timeAgoShort(ago(-30), now)).toBe("now");
   });
 });

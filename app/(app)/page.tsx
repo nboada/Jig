@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { button } from "@/components/Button";
 import { LanguageIcon } from "@/components/LanguageIcon";
 import { CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
 import { SearchInput } from "@/components/SearchInput";
@@ -118,7 +119,7 @@ function Overview({ kinds, counts }: { kinds: Kind[]; counts: Record<string, num
         {kinds.map((k) => {
           const count = counts[k.name.toLowerCase()] ?? 0;
           return (
-            <section key={k.name} className="flex flex-col rounded-lg border border-line bg-panel">
+            <section key={k.name} className="flex flex-col rounded-xl border border-line bg-panel">
               <div className="flex items-center gap-3 p-4">
                 <Link href={k.href} className="group flex flex-1 items-center gap-3">
                   <span className="grid size-9 place-items-center rounded-md bg-raised text-accent">
@@ -126,12 +127,12 @@ function Overview({ kinds, counts }: { kinds: Kind[]; counts: Record<string, num
                   </span>
                   <span>
                     <span className="block font-medium group-hover:underline">{k.name}</span>
-                    <span className="block text-xs text-muted">{count === 1 ? "1 item" : `${count} items`}</span>
+                    <span className="block text-meta text-muted">{count === 1 ? "1 item" : `${count} items`}</span>
                   </span>
                 </Link>
                 <Link
                   href={k.create}
-                  className="rounded-md border border-line px-2.5 py-1 text-xs text-muted transition hover:border-muted hover:text-text"
+                  className={button({ variant: "ghost", size: "sm" })}
                 >
                   New
                 </Link>
@@ -145,7 +146,7 @@ function Overview({ kinds, counts }: { kinds: Kind[]; counts: Record<string, num
                   ))}
                 </ul>
               ) : (
-                <p className="border-t border-line px-4 py-5 text-sm text-muted">Nothing here yet.</p>
+                <p className="border-t border-line px-4 py-5 text-body text-muted">Nothing here yet.</p>
               )}
             </section>
           );
@@ -154,8 +155,8 @@ function Overview({ kinds, counts }: { kinds: Kind[]; counts: Record<string, num
 
       {recent.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm text-muted">Recently edited</h2>
-          <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+          <h2 className="mb-3 text-body text-muted">Recently edited</h2>
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
             {recent.map((item) => (
               <li key={item.key}>
                 <ItemLink item={item} />
@@ -172,9 +173,9 @@ function Results({ q, kinds }: { q: string; kinds: Kind[] }) {
   const found = kinds.filter((k) => k.items.length > 0);
   if (found.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-line px-6 py-16 text-center">
+      <div className="rounded-xl border border-dashed border-line px-6 py-16 text-center">
         <p className="text-muted">{`Nothing matches “${q}”.`}</p>
-        <Link href="/" className="mt-3 inline-block text-sm text-accent hover:underline">
+        <Link href="/" className="mt-3 inline-block text-body text-accent hover:underline">
           Clear search
         </Link>
       </div>
@@ -184,7 +185,7 @@ function Results({ q, kinds }: { q: string; kinds: Kind[] }) {
     <div className="space-y-6">
       {found.map((k) => (
         <section key={k.name}>
-          <div className="mb-3 flex items-center gap-2 text-sm text-muted">
+          <div className="mb-3 flex items-center gap-2 text-body text-muted">
             <k.Icon className="size-4" />
             <h2>{k.name}</h2>
             {k.items.length > PER_KIND && (
@@ -193,7 +194,7 @@ function Results({ q, kinds }: { q: string; kinds: Kind[] }) {
               </Link>
             )}
           </div>
-          <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
             {k.items.slice(0, PER_KIND).map((item) => (
               <li key={item.key}>
                 <ItemLink item={item} />
@@ -213,9 +214,9 @@ function ItemLink({ item, compact = false }: { item: Item; compact?: boolean }) 
       className={`flex items-center gap-3 transition hover:bg-raised ${compact ? "px-4 py-2" : "px-4 py-3"}`}
     >
       {item.icon}
-      <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
-      {!compact && <span className="hidden text-xs text-muted sm:inline">{item.meta}</span>}
-      <span className="shrink-0 text-xs text-muted">{timeAgo(item.updatedAt)}</span>
+      <span className="min-w-0 flex-1 truncate text-body">{item.title}</span>
+      {!compact && <span className="hidden text-meta text-muted sm:inline">{item.meta}</span>}
+      <span className="shrink-0 text-meta text-muted">{timeAgo(item.updatedAt)}</span>
     </Link>
   );
 }

@@ -1,4 +1,4 @@
-import { NoteColumn, NoteFilters, NoteToolbar } from "@/components/NoteColumn";
+import { NoteColumn, NoteFilters } from "@/components/NoteColumn";
 import { GridToolbar } from "@/components/GridToolbar";
 import { SplitView } from "@/components/SplitView";
 import { getDb } from "@/lib/db";
@@ -22,7 +22,7 @@ export default async function NotesLayout({ children }: { children: React.ReactN
   const notes = await listNotes(await getDb(), { sort, limit: 500 });
   return (
     <NoteFilters notes={notes} sort={sort}>
-      <SplitView base="/notes" toolbar={<NoteToolbar />} column={<NoteColumn />}>
+      <SplitView base="/notes" column={<NoteColumn />}>
         {children}
       </SplitView>
     </NoteFilters>

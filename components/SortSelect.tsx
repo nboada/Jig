@@ -25,7 +25,7 @@ export function SortSelect({ sort, section, onChange }: { sort: Sort; section: S
       <Select.Trigger
         aria-label="Sort"
         title="Sort"
-        className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted outline-none transition hover:bg-raised hover:text-text data-[state=open]:bg-raised data-[state=open]:text-text"
+        className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-meta text-muted outline-none transition hover:bg-raised hover:text-text data-[state=open]:bg-raised data-[state=open]:text-text"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden>
           <path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16" />
@@ -38,14 +38,14 @@ export function SortSelect({ sort, section, onChange }: { sort: Sort; section: S
           position="popper"
           sideOffset={6}
           align="end"
-          className="menu-content z-50 min-w-44 overflow-hidden rounded-lg border border-line bg-panel shadow-xl shadow-black/40"
+          className="menu-content z-50 min-w-44 overflow-hidden rounded-lg border border-line-strong bg-overlay shadow-xl shadow-black/40"
         >
           <Select.Viewport className="p-1">
             {SORTS.map((s) => (
               <Select.Item
                 key={s.id}
                 value={s.id}
-                className="relative flex cursor-pointer select-none items-center rounded-md py-1.5 pr-8 pl-2 text-sm text-text/85 outline-none data-[highlighted]:bg-raised data-[state=checked]:text-text"
+                className="relative flex h-8 cursor-pointer select-none items-center rounded-md pr-8 pl-2.5 text-ui text-text-2 outline-none data-[highlighted]:bg-raised data-[state=checked]:text-text"
               >
                 <Select.ItemText>{s.label}</Select.ItemText>
                 <Select.ItemIndicator className="absolute right-2 text-accent">

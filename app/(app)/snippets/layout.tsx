@@ -1,4 +1,4 @@
-import { SnippetColumn, SnippetFilters, SnippetToolbar } from "@/components/SnippetColumn";
+import { SnippetColumn, SnippetFilters } from "@/components/SnippetColumn";
 import { GridToolbar } from "@/components/GridToolbar";
 import { SplitView } from "@/components/SplitView";
 import { getDb } from "@/lib/db";
@@ -22,7 +22,7 @@ export default async function SnippetsLayout({ children }: { children: React.Rea
   const snippets = await listSnippets(await getDb(), { sort, limit: 500 });
   return (
     <SnippetFilters snippets={snippets} sort={sort}>
-      <SplitView base="/snippets" toolbar={<SnippetToolbar />} column={<SnippetColumn />}>
+      <SplitView base="/snippets" column={<SnippetColumn />}>
         {children}
       </SplitView>
     </SnippetFilters>

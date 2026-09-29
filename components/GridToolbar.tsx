@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { button } from "@/components/Button";
+import { Kbd } from "@/components/Kbd";
 import { LanguageSelect } from "@/components/LanguageSelect";
+import { PlusIcon, SearchIcon } from "@/components/NavIcons";
 import { ViewToggle } from "@/components/ViewToggle";
 import type { Section } from "@/lib/prefs";
 
@@ -36,36 +39,34 @@ export function GridToolbar({
 
   return (
     <form
-      className="mb-6 flex flex-col gap-3 sm:flex-row"
+      className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center"
       onSubmit={(e) => {
         e.preventDefault();
         go("q", query.trim());
       }}
     >
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent"
-      />
-      <div className="flex gap-3">
+      <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-well px-2.5 text-faint transition focus-within:border-line-strong sm:max-w-sm">
+        <SearchIcon className="size-3.5" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="min-w-0 flex-1 bg-transparent text-ui text-text outline-none placeholder:text-faint"
+        />
+      </label>
+      <div className="flex items-center gap-2 sm:ml-auto">
         {languageFilter && (
-          <LanguageSelect
-            className="min-w-0 flex-1 sm:w-48 sm:flex-none"
-            value=""
-            onChange={(language) => go("lang", language)}
-            allLabel="All languages"
-          />
+          <LanguageSelect size="sm" className="w-40" value="" onChange={(language) => go("lang", language)} allLabel="All languages" />
         )}
         <ViewToggle view="grid" section={section} />
-        <Link
-          href={`${base}/new`}
-          className="flex shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-ink hover:brightness-110"
-        >
+        <Link href={`${base}/new`} className={button({ variant: "primary" })} title={`${newLabel} (N)`}>
+          <PlusIcon className="size-4" />
           {newLabel}
-          <kbd className="ml-2 hidden rounded border border-accent-ink/25 px-1 font-sans text-[10px] leading-4 opacity-70 sm:inline">N</kbd>
+          <Kbd onAccent className="hidden sm:inline">
+            N
+          </Kbd>
         </Link>
       </div>
     </form>
