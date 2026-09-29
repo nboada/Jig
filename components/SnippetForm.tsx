@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import type { EditorView } from "@codemirror/view";
+import { useActionState, useRef, useState } from "react";
 import { saveSnippet } from "@/app/actions";
+import { CodeEditor } from "@/components/CodeEditor";
 import { LanguageSelect } from "@/components/LanguageSelect";
-import { defaultFileName, languageForFile } from "@/lib/languages";
+import { beautify, canBeautify } from "@/lib/beautify";
+import { defaultFileName, languageForFile, languageLabel } from "@/lib/languages";
 import type { Snippet, SnippetFile } from "@/lib/snippets";
 
 export const field = "w-full rounded-md border border-line bg-panel px-3 py-2 outline-none focus:border-accent";
@@ -45,6 +48,31 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
 
   const updateFile = (index: number, change: Partial<SnippetFile>) =>
     setFiles((list) => list.map((f, i) => (i === index ? { ...f, ...change } : f)));
+
+  const editors = useRef<(EditorView | undefined)[]>([]);
+  const [formatting, setFormatting] = useState<number | null>(null);
+  const [formatError, setFormatError] = useState<{ index: number; message: string } | null>(null);
+  async function format(index: number, fileLanguage: string) {
+    setFormatting(index);
+    setFormatError(null);
+    try {
+      const formatted = await beautify(files[index].content, fileLanguage);
+      const view = editors.current[index];
+      // Through the editor, the change shows at once and Cmd+Z undoes it; onChange then updates the file.
+      if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: formatted } });
+      else updateFile(index, { content: formatted });
+    } catch (error) {
+      // Parser messages read like "Unexpected token (15:16)" followed by a code frame; keep the line number.
+      const where = error instanceof Error ? error.message.match(/\((\d+):\d+\)/) : null;
+      const kind = languageLabel(fileLanguage);
+      setFormatError({
+        index,
+        message: `${where ? `Line ${where[1]} isn't valid ${kind}` : `This isn't valid ${kind}`}, so nothing was changed. If the file mixes languages, move each part into its own file.`,
+      });
+    } finally {
+      setFormatting(null);
+    }
+  }
 
   const payload = JSON.stringify({
     title,
@@ -92,44 +120,63 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
       </div>
 
       <div className="space-y-4">
-        {files.map((file, index) => (
-          <div key={index} className="overflow-hidden rounded-lg border border-line bg-panel focus-within:border-muted">
-            <div className="flex items-center gap-2 border-b border-line px-2 py-1.5">
-              <input
-                aria-label="File name"
-                className="min-w-0 flex-1 rounded bg-transparent px-2 py-1 font-mono text-[13px] outline-none focus:bg-raised"
-                value={file.name}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  updateFile(index, { name });
-                  // On a new single-file snippet, the extension picks the language.
-                  const detected = languageForFile(name, "");
-                  if (!snippet && files.length === 1 && detected) setLanguage(detected);
-                }}
-                required
-              />
-              {files.length > 1 && (
+        {files.map((file, index) => {
+          const fileLanguage = languageForFile(file.name, language);
+          const formattable = canBeautify(fileLanguage);
+          return (
+            <div key={index} className="overflow-hidden rounded-lg border border-line bg-panel focus-within:border-muted">
+              <div className="flex items-center gap-2 border-b border-line px-2 py-1.5">
+                <input
+                  aria-label="File name"
+                  className="min-w-0 flex-1 rounded bg-transparent px-2 py-1 font-mono text-[13px] outline-none focus:bg-raised"
+                  value={file.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    updateFile(index, { name });
+                    // On a new single-file snippet, the extension picks the language.
+                    const detected = languageForFile(name, "");
+                    if (!snippet && files.length === 1 && detected) setLanguage(detected);
+                  }}
+                  required
+                />
                 <button
                   type="button"
-                  onClick={() => setFiles((list) => list.filter((_, i) => i !== index))}
-                  className="rounded px-2 py-1 text-xs text-muted hover:text-danger"
+                  disabled={!formattable || !file.content.trim() || formatting === index}
+                  title={formattable ? `Format as ${languageLabel(fileLanguage)}` : `No formatter for ${languageLabel(fileLanguage)}`}
+                  onClick={() => format(index, fileLanguage)}
+                  className="rounded px-2 py-1 text-xs text-muted hover:text-text disabled:cursor-default disabled:opacity-40 disabled:hover:text-muted"
                 >
-                  Remove
+                  {formatting === index ? "Formatting" : "Format"}
                 </button>
+                {files.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setFiles((list) => list.filter((_, i) => i !== index))}
+                    className="rounded px-2 py-1 text-xs text-muted hover:text-danger"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {formatError?.index === index && (
+                <p className="border-b border-line bg-danger/10 px-4 py-2 text-xs text-danger">{formatError.message}</p>
               )}
+              <CodeEditor
+                label={`Contents of ${file.name}`}
+                language={fileLanguage}
+                value={file.content}
+                onChange={(content) => {
+                  updateFile(index, { content });
+                  if (formatError?.index === index) setFormatError(null);
+                }}
+                placeholder="Paste the code here"
+                onReady={(view) => {
+                  editors.current[index] = view;
+                }}
+              />
             </div>
-            <textarea
-              aria-label={`Contents of ${file.name}`}
-              className="block min-h-72 w-full resize-y bg-transparent px-4 py-3 font-mono text-[13px] leading-relaxed outline-none"
-              style={{ tabSize: 2 }}
-              spellCheck={false}
-              value={file.content}
-              onKeyDown={indentOnTab}
-              onChange={(e) => updateFile(index, { content: e.target.value })}
-              placeholder="Paste the code here"
-            />
-          </div>
-        ))}
+          );
+        })}
         <button
           type="button"
           onClick={() => setFiles((list) => [...list, { name: `file-${list.length + 1}.${defaultFileName(language).split(".").pop()}`, content: "" }])}
@@ -202,7 +249,7 @@ export function SnippetForm({ snippet }: { snippet?: Snippet }) {
         )}
         <div className="flex gap-3">
           <Link
-            href={snippet ? `/snippets/${snippet.slug}` : "/"}
+            href={snippet ? `/snippets/${snippet.slug}` : "/snippets"}
             className="rounded-md border border-line px-4 py-2 text-sm hover:border-muted"
           >
             Cancel
