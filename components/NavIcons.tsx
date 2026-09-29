@@ -68,3 +68,11 @@ export function ListIcon(props: { className?: string }) {
     </Icon>
   );
 }
+
+export function PlusIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  );
+}

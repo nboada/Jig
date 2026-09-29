@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
+import { ConnectIcon, CredentialsIcon, NotesIcon, PlusIcon, SnippetsIcon } from "@/components/NavIcons";
 
 const SECTIONS: Section[] = [
   { href: "/snippets", label: "Snippets", Icon: SnippetsIcon, create: "/snippets/new", match: (p: string) => p.startsWith("/snippets") },
@@ -16,7 +16,7 @@ const CONNECT = { href: "/connect", label: "Connect", Icon: ConnectIcon, match: 
 type Section = { href: string; label: string; Icon: typeof ConnectIcon; create?: string; match: (p: string) => boolean };
 
 /**
- * The sidebar's section links, each with a + shortcut to create a new item. Connect and
+ * The sidebar's section links, each with a + shortcut (shown on hover) to create a new item. Connect and
  * `children` (the log out button) are pinned to the bottom.
  */
 export function SidebarNav({ children }: { children?: React.ReactNode }) {
@@ -50,9 +50,9 @@ function SectionLink({ section: s, active }: { section: Section; active: boolean
           href={s.create}
           aria-label={`New ${s.label.toLowerCase().replace(/s$/, "")}`}
           title={`New ${s.label.toLowerCase().replace(/s$/, "")}`}
-          className="mr-1 grid size-7 place-items-center rounded text-base leading-none text-muted hover:bg-line hover:text-text"
+          className="mr-1.5 grid size-6 place-items-center rounded text-muted opacity-0 transition group-hover:opacity-100 hover:bg-line hover:text-text focus-visible:opacity-100"
         >
-          +
+          <PlusIcon className="size-3.5" />
         </Link>
       )}
     </div>
