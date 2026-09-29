@@ -37,6 +37,32 @@ export function LanguageSelect({
       >
         <LanguageIcon language={current} />
         <span className="min-w-0 flex-1 truncate">{current === ALL ? allLabel : languageLabel(current)}</span>
+        {/*
+          A filter with a language picked gets a × to clear it. It lives inside the trigger (a
+          button), so it's a span that stops the press before it can open the menu; the keyboard
+          still clears it through the menu's "All languages" option.
+        */}
+        {allLabel && value && (
+          <span
+            role="button"
+            aria-label="Clear language filter"
+            title="Clear"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onChange("");
+            }}
+            className="-mr-1 grid size-5 shrink-0 place-items-center rounded text-faint transition hover:bg-raised hover:text-text"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" className="size-3" aria-hidden>
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </span>
+        )}
         <Select.Icon className="text-faint">
           <Chevron />
         </Select.Icon>

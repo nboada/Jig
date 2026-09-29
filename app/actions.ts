@@ -6,7 +6,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
-import { prefCookie, type Section, type View } from "@/lib/prefs";
+import { PREFS_SYNCED_COOKIE, prefCookie, type Section, type View } from "@/lib/prefs";
+import { loadSettings, saveSetting, SETTING_KEYS, validSetting } from "@/lib/settings";
 import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
 import { checkPassword, createSessionValue, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
@@ -73,6 +74,56 @@ async function startSession() {
     maxAge: SESSION_MAX_AGE,
     path: "/",
   });
+  // Bring this browser's layout (tab order, views, sorts) in line with the saved one.
+  await applyStoredPreferences().catch((error) => console.error("[jig] could not load preferences", error));
+}
+
+const PREF_COOKIE = { path: "/", maxAge: 31_536_000, sameSite: "lax" as const };
+const SYNC_SECONDS = 5 * 60;
+
+/**
+ * Copies the saved preferences into this browser's cookies (true if anything changed). A choice
+ * this browser has that was never saved, like one made before preferences were saved at all, is
+ * saved now, so it reaches the other browsers too.
+ */
+async function applyStoredPreferences(): Promise<boolean> {
+  const store = await cookies();
+  const db = await getDb();
+  const saved = await loadSettings(db);
+  for (const key of SETTING_KEYS) {
+    const local = store.get(key)?.value;
+    if (!(key in saved) && local && validSetting(key, local)) await saveSetting(db, key, local);
+  }
+  let changed = false;
+  for (const [key, value] of Object.entries(saved)) {
+    if (store.get(key)?.value === value) continue;
+    store.set(key, value, PREF_COOKIE);
+    changed = true;
+  }
+  store.set(PREFS_SYNCED_COOKIE, "1", { path: "/", maxAge: SYNC_SECONDS, sameSite: "lax" });
+  return changed;
+}
+
+/**
+ * Catches this browser up with preferences changed on another device. The page calls it in the
+ * background at most every few minutes; it returns true when the page should redraw.
+ */
+export async function syncPreferences(): Promise<boolean> {
+  await requireAuth();
+  try {
+    return await applyStoredPreferences();
+  } catch (error) {
+    console.error("[jig] preference sync failed", error);
+    return false;
+  }
+}
+
+/** Saves a preference (tab order, a list's sort) here and for every other browser. */
+export async function savePreference(key: string, value: string): Promise<void> {
+  await requireAuth();
+  if (!validSetting(key, value)) return;
+  (await cookies()).set(key, value, PREF_COOKIE);
+  await saveSetting(await getDb(), key, value);
 }
 
 export async function logout() {
@@ -332,7 +383,8 @@ export async function revokeShareLink(id: string): Promise<void> {
  */
 export async function setViewPreference(section: Section, view: View, goTo?: string): Promise<void> {
   await requireAuth();
-  (await cookies()).set(prefCookie("view", section), view, { path: "/", maxAge: 31_536_000, sameSite: "lax" });
+  (await cookies()).set(prefCookie("view", section), view, PREF_COOKIE);
+  await saveSetting(await getDb(), prefCookie("view", section), view);
   revalidatePath("/", "layout");
   if (goTo) redirect(goTo);
 }

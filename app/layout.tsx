@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
+import { TooltipProvider } from "@/components/Tooltip";
 import "./globals.css";
 
 // Self-hosted at build time, so the installed app never asks Google for them.
@@ -19,7 +20,10 @@ export const viewport: Viewport = { themeColor: "#181818" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        {/* Here, not in the (app) layout: shared links and login use buttons with tooltips too. */}
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

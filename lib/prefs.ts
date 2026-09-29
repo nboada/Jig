@@ -1,6 +1,7 @@
 /**
- * List-page preferences kept in cookies, one per page, so each list remembers its own layout and
- * order. Plain values only: this module is shared by the server (reading) and the browser (writing).
+ * List-page preferences, one per page, so each list remembers its own layout and order. Pages read
+ * them from cookies; lib/settings.ts keeps the saved copy that follows you to other browsers.
+ * Plain values only: this module is shared by the server (reading) and the browser (writing).
  */
 export type Section = "snippets" | "notes" | "credentials";
 export type View = "grid" | "list";
@@ -31,7 +32,5 @@ export function parseNavOrder(value: string | undefined): Section[] {
   return valid ? (parts as Section[]) : [...SECTION_ORDER];
 }
 
-/** Saves the tab order for a year. Browser only. */
-export function saveNavOrder(order: Section[]) {
-  document.cookie = `${NAV_ORDER_COOKIE}=${order.join(",")}; path=/; max-age=31536000; samesite=lax`;
-}
+/** Set for a few minutes after a browser catches up with the saved preferences. */
+export const PREFS_SYNCED_COOKIE = "jig-prefs-synced";

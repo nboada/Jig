@@ -120,6 +120,12 @@ const SCHEMA = [
     created_at timestamptz NOT NULL DEFAULT now(),
     last_used_at timestamptz
   )`,
+  // Dashboard preferences (tab order, list layouts and sorts), so they follow you to every browser.
+  `CREATE TABLE IF NOT EXISTS settings (
+    key text PRIMARY KEY,
+    value text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ];
 
 async function migrate(db: Db) {

@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Kbd } from "@/components/Kbd";
 import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
-import { saveNavOrder, type Section } from "@/lib/prefs";
+import { savePreference } from "@/app/actions";
+import { NAV_ORDER_COOKIE, type Section } from "@/lib/prefs";
 
 const SECTION_INFO: Record<Section, { href: string; label: string; Icon: (p: { className?: string }) => React.ReactNode }> = {
   snippets: { href: "/snippets", label: "Snippets", Icon: SnippetsIcon },
@@ -21,7 +22,8 @@ const CONNECT = { href: "/connect", label: "Connect", Icon: ConnectIcon, key: un
 /**
  * The header's section tabs, as a pill group with the current section filled in the accent colour.
  * The others keep an outline, so they still read as buttons on pages with no section (home, Connect).
- * Drag a tab to reorder them; the order is saved in a cookie and the 1–3 keys follow it.
+ * Drag a tab to reorder them; the order is saved (and follows you to other browsers) and the 1–3
+ * keys follow it.
  */
 export function TopNav({ order, className = "" }: { order: Section[]; className?: string }) {
   const pathname = usePathname();
@@ -39,9 +41,8 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
   function finish() {
     setDragging(null);
     if (tabs.join() !== order.join()) {
-      saveNavOrder(tabs);
-      // Redraw the layout so the number keys and the phone tab bar pick up the new order.
-      router.refresh();
+      // Saved for every browser; then redraw so the number keys and phone tab bar follow.
+      savePreference(NAV_ORDER_COOKIE, tabs.join(",")).then(() => router.refresh());
     }
   }
 

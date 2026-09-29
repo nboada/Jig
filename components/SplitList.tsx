@@ -248,7 +248,9 @@ export function ListColumn<T extends Item>({
           <li className="px-3 py-10 text-center text-ui text-muted">
             {filtered ? "Nothing matches." : (
               <>
-                {`No ${noun}s yet. Press `}
+                {`No ${noun}s yet.`}
+                <br />
+                {"Press "}
                 <Kbd>N</Kbd>
                 {" to add one."}
               </>
