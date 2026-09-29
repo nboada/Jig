@@ -99,6 +99,7 @@ export default async function CredentialPage({ params }: Props) {
         <form action={removeCredential} className="border-t border-line pt-4">
           <input type="hidden" name="slug" value={slug} />
           <ConfirmButton message={`Delete "${credential.title}"? This cannot be undone.`} tone="danger"
+              hides={slug}
               className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10">
             Delete credential
           </ConfirmButton>

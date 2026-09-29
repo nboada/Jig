@@ -137,6 +137,7 @@ export default async function NotePage({ params, searchParams }: Props) {
             <ConfirmButton
               message={`Delete "${note.title}" and all ${note.currentVersion} version(s)? This cannot be undone.`}
               tone="danger"
+              hides={slug}
               className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10"
             >
               Delete note

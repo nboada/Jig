@@ -23,3 +23,19 @@ export function orderBy(alias: string, sort: Sort, relevance: string[] = []): st
   parts.push(`${alias}.updated_at DESC`, `${alias}.slug ASC`);
   return parts.join(", ");
 }
+
+type Sortable = { slug: string; title: string; createdAt: string; updatedAt: string };
+
+/**
+ * The same order as orderBy, in the browser, so a list that already holds every item can
+ * re-sort instantly. ISO timestamps compare correctly as strings.
+ */
+export function sortItems<T extends Sortable>(items: T[], sort: Sort): T[] {
+  const byUpdated = (a: T, b: T) => b.updatedAt.localeCompare(a.updatedAt) || a.slug.localeCompare(b.slug);
+  const compare: Record<Sort, (a: T, b: T) => number> = {
+    updated: byUpdated,
+    created: (a, b) => b.createdAt.localeCompare(a.createdAt) || byUpdated(a, b),
+    title: (a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()) || byUpdated(a, b),
+  };
+  return [...items].sort(compare[sort]);
+}

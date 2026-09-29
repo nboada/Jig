@@ -6,12 +6,17 @@ import { useSetParam } from "@/components/SearchInput";
 import { savePref, type Section } from "@/lib/prefs";
 import { SORTS, type Sort } from "@/lib/sort";
 
-/** Picks the list order. Each page remembers its own in a cookie; a ?sort= in the URL is dropped on change. */
-export function SortSelect({ sort, section }: { sort: Sort; section: Section }) {
+/**
+ * Picks the list order. Each page remembers its own in a cookie; a ?sort= in the URL is dropped
+ * on change. With `onChange` (the split view, which holds every item) the list re-sorts in the
+ * browser at once and nothing reloads; otherwise the page refreshes in the new order.
+ */
+export function SortSelect({ sort, section, onChange }: { sort: Sort; section: Section; onChange?: (sort: Sort) => void }) {
   const router = useRouter();
   const { params, setParam } = useSetParam();
   function choose(next: string) {
     savePref("sort", section, next);
+    if (onChange) return onChange(next as Sort);
     if (params.has("sort")) setParam("sort", "");
     else router.refresh();
   }

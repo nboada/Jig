@@ -3,6 +3,7 @@
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useOptionalList } from "@/components/SplitList";
 
 /**
  * A button that asks in a modal before sending its form. Put it inside the <form> it submits.
@@ -15,6 +16,7 @@ export function ConfirmButton({
   title,
   confirmLabel,
   tone = "default",
+  hides,
 }: {
   message: string;
   children: React.ReactNode;
@@ -24,8 +26,11 @@ export function ConfirmButton({
   /** The confirm button's label; the button's own label when left out. */
   confirmLabel?: string;
   tone?: "default" | "danger";
+  /** A slug to take out of the split view's list the moment this is confirmed (for deletes). */
+  hides?: string;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const list = useOptionalList();
   const [open, setOpen] = useState(false);
   const label = typeof children === "string" ? children : "Confirm";
 
@@ -49,7 +54,10 @@ export function ConfirmButton({
             <SubmitButton
               label={confirmLabel ?? label}
               tone={tone}
-              onConfirm={() => trigger.current?.form?.requestSubmit()}
+              onConfirm={() => {
+                if (hides) list?.hide(hides);
+                trigger.current?.form?.requestSubmit();
+              }}
               onDone={() => setOpen(false)}
             />
           </div>

@@ -8,7 +8,9 @@
   --color-line: #2a2d33;
   --color-muted: #8b909a;
   --color-text: #e8e9ec;
-  --color-accent: #c8f169;
+  --color-accent: #cefd53;
+  /* The floating header bar. */
+  --color-bar: #1d1d1d;
   --color-accent-ink: #1a2106;
   --color-danger: #ff7a70;
   --color-add: #122a1a;

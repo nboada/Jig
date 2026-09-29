@@ -27,8 +27,8 @@ export function SplitView({
     <div className="space-y-6">
       {/* The toolbar spans both columns; on phones it goes with the list. */}
       <div className={atIndex ? "" : "hidden md:block"}>{toolbar}</div>
-      <div className="md:grid md:grid-cols-[280px_minmax(0,1fr)] md:gap-8">
-        <div className={`md:-mr-4 md:border-r md:border-line md:pr-4 ${atIndex ? "" : "hidden md:block"}`}>{column}</div>
+      <div className="md:grid md:grid-cols-[280px_minmax(0,1fr)] md:items-start md:gap-6">
+        <div className={atIndex ? "" : "hidden md:block"}>{column}</div>
         <div className={`@container min-w-0 ${atIndex ? "hidden md:block" : ""}`}>{children}</div>
       </div>
     </div>

@@ -29,6 +29,7 @@ export type CredentialSummary = {
   url: string;
   tags: string[];
   labels: string[];
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -68,7 +69,7 @@ export async function listCredentials(db: Db, options: CredentialListOptions = {
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT c.slug, c.title, c.url, c.tags, c.fields, c.updated_at FROM credentials c
+    `SELECT c.slug, c.title, c.url, c.tags, c.fields, c.created_at, c.updated_at FROM credentials c
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
      ORDER BY ${orderBy("c", parseSort(options.sort), order)}
      LIMIT ${limit}`,
@@ -80,6 +81,7 @@ export async function listCredentials(db: Db, options: CredentialListOptions = {
     url: r.url as string,
     tags: r.tags as string[],
     labels: (r.fields as StoredField[]).map((f) => f.label),
+    createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   }));
 }

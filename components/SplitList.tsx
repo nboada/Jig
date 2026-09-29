@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { SortSelect } from "@/components/SortSelect";
 import { ViewToggle } from "@/components/ViewToggle";
 import { filterItems } from "@/lib/filter";
 import { countLabel } from "@/lib/format";
 import { isPlainKey, type Section } from "@/lib/prefs";
-import type { Sort } from "@/lib/sort";
+import { sortItems, type Sort } from "@/lib/sort";
 
 /**
  * The split view's shared pieces for any list section (snippets, notes): the filters, the
@@ -17,7 +17,7 @@ import type { Sort } from "@/lib/sort";
  * layout and search text (functions can't be passed in from a server component).
  */
 
-type Item = { slug: string; tags: string[]; language?: string };
+type Item = { slug: string; title: string; tags: string[]; language?: string; createdAt: string; updatedAt: string };
 
 type ListState = {
   query: string;
@@ -28,6 +28,9 @@ type ListState = {
   setTag: (value: string) => void;
   visible: Item[];
   sort: Sort;
+  setSort: (sort: Sort) => void;
+  /** Takes an item out of the list at once, ahead of the server (after confirming a delete). */
+  hide: (slug: string) => void;
   section: Section;
   base: string;
 };
@@ -40,13 +43,18 @@ function useList() {
   return list;
 }
 
+/** The split view's list when there is one around, for pieces that also render outside it. */
+export function useOptionalList() {
+  return useContext(ListContext);
+}
+
 /**
  * Holds every item (sorted on the server) and the filters. Filtering happens in the browser as
  * you type; `search` finds content matches on the server a moment later.
  */
 export function ListFilters<T extends Item>({
   items,
-  sort,
+  sort: initialSort,
   section,
   base,
   text,
@@ -68,6 +76,11 @@ export function ListFilters<T extends Item>({
   const [language, setLanguage] = useState(params.get("lang") ?? "");
   const [tag, setTag] = useState(params.get("tag") ?? "");
   const [contentHits, setContentHits] = useState<Set<string>>();
+  // Sorting and hiding happen here first, so the column changes the moment you ask.
+  const [sort, setSort] = useState(initialSort);
+  const [hidden, setHidden] = useState<{ items: T[]; slugs: Set<string> }>({ items, slugs: new Set() });
+  // Fresh items from the server supersede anything hidden ahead of it.
+  const hiddenSlugs = hidden.items === items ? hidden.slugs : null;
 
   useEffect(() => {
     const q = query.trim();
@@ -83,13 +96,24 @@ export function ListFilters<T extends Item>({
     };
   }, [query, search]);
 
-  const visible = useMemo(
-    () => filterItems(items, { query, language, tag }, text, contentHits),
-    [items, query, language, tag, text, contentHits],
+  const visible = useMemo(() => {
+    const shown = hiddenSlugs ? items.filter((item) => !hiddenSlugs.has(item.slug)) : items;
+    return sortItems(filterItems(shown, { query, language, tag }, text, contentHits), sort);
+  }, [items, hiddenSlugs, query, language, tag, text, contentHits, sort]);
+
+  const hide = useCallback(
+    (slug: string) =>
+      setHidden((current) => ({
+        items,
+        slugs: new Set([...(current.items === items ? current.slugs : []), slug]),
+      })),
+    [items],
   );
 
   return (
-    <ListContext.Provider value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, section, base }}>
+    <ListContext.Provider
+      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, section, base }}
+    >
       {children}
     </ListContext.Provider>
   );
@@ -145,7 +169,7 @@ export function ListColumn<T extends Item>({
   noun: string;
   renderRow: (item: T) => React.ReactNode;
 }) {
-  const { visible, sort, section, base, query, language, tag, setTag } = useList();
+  const { visible, sort, setSort, section, base, query, language, tag, setTag } = useList();
   const router = useRouter();
   const pathname = usePathname();
   const selected = pathname.startsWith(`${base}/`) ? decodeURIComponent(pathname.slice(base.length + 1).split("/")[0]) : "";
@@ -172,8 +196,8 @@ export function ListColumn<T extends Item>({
   const filtered = Boolean(query.trim() || language || tag);
 
   return (
-    <div className="flex flex-col gap-2 md:sticky md:top-22 md:h-[calc(100dvh-7.5rem)]">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex flex-col overflow-hidden rounded-lg border border-line bg-panel md:sticky md:top-22 md:max-h-[calc(100dvh-7.5rem)]">
+      <div className="flex items-center justify-between gap-2 border-b border-line py-1.5 pr-1.5 pl-3">
         <p className="text-xs text-muted">
           {countLabel(visible.length, noun, 500)}
           {tag && (
@@ -182,10 +206,10 @@ export function ListColumn<T extends Item>({
             </button>
           )}
         </p>
-        <SortSelect sort={sort} section={section} />
+        <SortSelect sort={sort} section={section} onChange={setSort} />
       </div>
 
-      <ul ref={listRef} className="-mx-1 flex-1 space-y-0.5 overflow-y-auto px-1 pb-4">
+      <ul ref={listRef} className="flex-1 space-y-0.5 overflow-y-auto p-1.5">
         {visible.map((item) => {
           const active = item.slug === selected;
           return (

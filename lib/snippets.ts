@@ -22,6 +22,7 @@ export type SnippetSummary = {
   tags: string[];
   version: number;
   fileNames: string[];
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -74,6 +75,7 @@ function toSummary(row: Row): SnippetSummary {
     tags: row.tags as string[],
     version: row.current_version as number,
     fileNames: (row.files as SnippetFile[]).map((f) => f.name),
+    createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
 }
@@ -125,7 +127,7 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.updated_at, v.files
+    `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, v.files
      FROM snippets s
      JOIN snippet_versions v ON v.snippet_id = s.id AND v.version = s.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}

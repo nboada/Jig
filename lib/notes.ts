@@ -11,6 +11,7 @@ export type NoteSummary = {
   tags: string[];
   version: number;
   excerpt: string;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -75,7 +76,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    `SELECT n.slug, n.title, n.tags, n.current_version, n.updated_at, left(v.body, 400) AS excerpt
+    `SELECT n.slug, n.title, n.tags, n.current_version, n.created_at, n.updated_at, left(v.body, 400) AS excerpt
      FROM notes n
      JOIN note_versions v ON v.note_id = n.id AND v.version = n.current_version
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -89,6 +90,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
     tags: r.tags as string[],
     version: r.current_version as number,
     excerpt: plainText(r.excerpt as string),
+    createdAt: iso(r.created_at),
     updatedAt: iso(r.updated_at),
   }));
 }

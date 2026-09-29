@@ -159,6 +159,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
             <ConfirmButton
               message={`Delete "${snippet.title}" and all ${snippet.currentVersion} version(s)? This cannot be undone.`}
               tone="danger"
+              hides={slug}
               className="w-full rounded-md border border-danger/40 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10"
             >
               Delete snippet

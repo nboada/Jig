@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useOptimistic, useTransition } from "react";
 import { GridIcon, ListIcon } from "@/components/NavIcons";
 import { isPlainKey, savePref, type Section, type View } from "@/lib/prefs";
 
@@ -16,13 +16,21 @@ const OPTIONS = [
  */
 export function ViewToggle({ view, section }: { view: View; section: Section }) {
   const router = useRouter();
+  // The pressed button moves at once; the page follows when the refresh lands.
+  const [shown, setShown] = useOptimistic(view);
+  const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    function choose(next: View) {
-      if (next === view) return;
-      savePref("view", section, next);
+  function choose(next: View) {
+    if (next === shown) return;
+    savePref("view", section, next);
+    startTransition(() => {
+      setShown(next);
       router.refresh();
-    }
+    });
+  }
+
+  // Re-registered each render so G and L always see the current state; it is one listener.
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const option = OPTIONS.find((o) => isPlainKey(event, o.key));
       if (!option) return;
@@ -31,7 +39,7 @@ export function ViewToggle({ view, section }: { view: View; section: Section }) 
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [view, section, router]);
+  });
 
   return (
     <div className="flex shrink-0 rounded-md border border-line p-0.5">
@@ -39,17 +47,13 @@ export function ViewToggle({ view, section }: { view: View; section: Section }) 
         <button
           key={v}
           type="button"
-          onClick={() => {
-            if (v === view) return;
-            savePref("view", section, v);
-            router.refresh();
-          }}
+          onClick={() => choose(v)}
           aria-label={label}
-          aria-pressed={view === v}
+          aria-pressed={shown === v}
           aria-keyshortcuts={key.toUpperCase()}
           title={`${label} (${key.toUpperCase()})`}
           className={`flex min-w-8 items-center justify-center gap-1 rounded px-1.5 transition ${
-            view === v ? "bg-raised text-text" : "text-muted hover:text-text"
+            shown === v ? "bg-raised text-text" : "text-muted hover:text-text"
           }`}
         >
           <Icon />
