@@ -120,6 +120,9 @@ const SCHEMA = [
     created_at timestamptz NOT NULL DEFAULT now(),
     last_used_at timestamptz
   )`,
+  // An encrypted copy of each new link and its passcode, so the owner can copy them again later.
+  `ALTER TABLE shares ADD COLUMN IF NOT EXISTS token_enc text`,
+  `ALTER TABLE shares ADD COLUMN IF NOT EXISTS passcode_enc text`,
   // Dashboard preferences (tab order, list layouts and sorts), so they follow you to every browser.
   `CREATE TABLE IF NOT EXISTS settings (
     key text PRIMARY KEY,

@@ -1,13 +1,16 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { getCredential, revealField, type Credential } from "./credentials";
+import { decryptSecret, encryptionReady, encryptSecret } from "./crypto";
 import type { Db, Row } from "./db";
 import { getNote, type Note } from "./notes";
 import { getSnippet, SnippetError, type Snippet } from "./snippets";
 
 /**
- * Share links: a long random token in a URL (/s/<token>) that shows one item read-only. Only
- * the token's SHA-256 is stored, so a link is shown once, when it is made. Links can expire,
+ * Share links: a long random token in a URL (/s/<token>) that shows one item read-only. Links are
+ * looked up by the token's SHA-256. When the encryption key is set, the token (and a credential
+ * link's passcode) is also kept encrypted, bound to the share, so the owner can copy it again;
+ * links made before that, or without the key, are shown once, when made. Links can expire,
  * stop after a number of views, and be revoked. Credential links also need a passcode, which
  * is stored as a scrypt hash and locks the link after MAX_FAILED wrong tries.
  *
@@ -38,6 +41,8 @@ export type Share = {
   revoked: boolean;
   protected: boolean;
   failedAttempts: number;
+  /** An encrypted copy is kept, so the link can be copied again. */
+  recoverable: boolean;
 };
 
 /** Why a link can or can't be opened right now. */
@@ -68,6 +73,7 @@ function toShare(row: Row): Share {
     revoked: row.revoked_at != null,
     protected: row.passcode_hash != null,
     failedAttempts: Number(row.failed_attempts),
+    recoverable: row.token_enc != null,
   };
 }
 
@@ -133,12 +139,14 @@ export async function createShare(
   }
   const token = randomBytes(24).toString("base64url");
   const passcode = kind === "credentials" ? makePasscode() : undefined;
+  const shareId = crypto.randomUUID();
+  const keep = encryptionReady();
   const rows = await db.query(
-    `INSERT INTO shares (id, token_hash, kind, item_id, label, passcode_hash, max_views, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8::int IS NULL THEN NULL ELSE now() + make_interval(secs => $8::int) END)
+    `INSERT INTO shares (id, token_hash, kind, item_id, label, passcode_hash, max_views, expires_at, token_enc, passcode_enc)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8::int IS NULL THEN NULL ELSE now() + make_interval(secs => $8::int) END, $9, $10)
      RETURNING *`,
     [
-      crypto.randomUUID(),
+      shareId,
       await sha256(token),
       kind,
       id,
@@ -146,6 +154,8 @@ export async function createShare(
       passcode ? await hashPasscode(passcode) : null,
       options.maxViews,
       EXPIRIES[options.expiry],
+      keep ? await encryptSecret(token, `share:${shareId}:token`) : null,
+      keep && passcode ? await encryptSecret(passcode, `share:${shareId}:passcode`) : null,
     ],
   );
   return { token, passcode, share: toShare(rows[0]) };
@@ -159,6 +169,27 @@ export async function listShares(db: Db, kind: ShareKind, slug: string): Promise
     [kind, slug],
   );
   return rows.map(toShare);
+}
+
+/** A link's token (and passcode) again, for its owner. Throws when no copy was kept. */
+export async function revealShare(db: Db, id: string): Promise<{ token: string; passcode?: string }> {
+  const rows = await db.query(`SELECT id, token_enc, passcode_enc FROM shares WHERE id = $1`, [id]);
+  const row = rows[0];
+  if (!row?.token_enc) throw new SnippetError("This link was only shown when it was made.", "not_found");
+  return {
+    token: await decryptSecret(row.token_enc as string, `share:${id}:token`),
+    ...(row.passcode_enc ? { passcode: await decryptSecret(row.passcode_enc as string, `share:${id}:passcode`) } : {}),
+  };
+}
+
+/** Removes a link for good: it stops working and leaves the list. */
+export async function deleteShare(db: Db, id: string): Promise<void> {
+  await db.query(`DELETE FROM shares WHERE id = $1`, [id]);
+}
+
+/** Turns a turned-off link back on. Its expiry and view limit still apply as before. */
+export async function restoreShare(db: Db, id: string): Promise<void> {
+  await db.query(`UPDATE shares SET revoked_at = NULL WHERE id = $1`, [id]);
 }
 
 export async function revokeShare(db: Db, id: string): Promise<void> {

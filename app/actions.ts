@@ -33,7 +33,7 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simp
 import { createCredential, deleteCredential, listCredentials, revealField, updateCredential } from "@/lib/credentials";
 import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/crypto";
 import { withEncryptionKey } from "@/lib/envfile";
-import { createShare, listShares, revokeShare, type Share, type ShareKind, type ShareOptions } from "@/lib/shares";
+import { createShare, deleteShare, listShares, restoreShare, revealShare, revokeShare, type Share, type ShareKind, type ShareOptions } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
 
 export type FormState = { error?: string };
@@ -370,6 +370,27 @@ export async function createShareLink(
 export async function listItemShares(kind: ShareKind, slug: string): Promise<Share[]> {
   await requireAuth();
   return listShares(await getDb(), kind, slug);
+}
+
+/** A link and passcode again, for copying from the share dialog. */
+export async function revealShareLink(id: string): Promise<{ token?: string; passcode?: string; error?: string }> {
+  await requireAuth();
+  try {
+    return await revealShare(await getDb(), String(id));
+  } catch (error) {
+    if (error instanceof SnippetError || error instanceof DecryptError) return { error: error.message };
+    throw error;
+  }
+}
+
+export async function deleteShareLink(id: string): Promise<void> {
+  await requireAuth();
+  await deleteShare(await getDb(), String(id));
+}
+
+export async function restoreShareLink(id: string): Promise<void> {
+  await requireAuth();
+  await restoreShare(await getDb(), String(id));
 }
 
 export async function revokeShareLink(id: string): Promise<void> {

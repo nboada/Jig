@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { createShareLink, listItemShares, revokeShareLink } from "@/app/actions";
+import { createShareLink, deleteShareLink, listItemShares, restoreShareLink, revealShareLink, revokeShareLink } from "@/app/actions";
 import { button } from "@/components/Button";
 import { CopyButton } from "@/components/CopyButton";
 import { Modal } from "@/components/Modal";
+import { CheckIcon, CopyIcon, CredentialsIcon, TrashIcon } from "@/components/NavIcons";
+import { Tip } from "@/components/Tooltip";
 import { formatDateShort, timeAgo } from "@/lib/format";
 import type { Expiry, Share, ShareKind } from "@/lib/shares";
 
@@ -64,6 +66,20 @@ export function ShareDialog({
       if ("error" in result) return setError(result.error);
       setCreated({ url: `${window.location.origin}/s/${result.token}`, passcode: result.passcode });
       setLabel("");
+      await refresh();
+    });
+  }
+
+  function remove(id: string) {
+    startTransition(async () => {
+      await deleteShareLink(id);
+      await refresh();
+    });
+  }
+
+  function turnOn(id: string) {
+    startTransition(async () => {
+      await restoreShareLink(id);
       await refresh();
     });
   }
@@ -139,6 +155,7 @@ export function ShareDialog({
                     </p>
                   </div>
                   <span className={`engraved shrink-0 ${status === "Active" ? "text-accent" : "text-faint"}`}>{status}</span>
+                  {status === "Active" && link.recoverable && <CopyAgain id={link.id} passcode={link.protected} />}
                   {status === "Active" && (
                     <button
                       type="button"
@@ -149,6 +166,12 @@ export function ShareDialog({
                       Turn off
                     </button>
                   )}
+                  {status === "Turned off" && (
+                    <button type="button" disabled={pending} onClick={() => turnOn(link.id)} className={button({ variant: "ghost", size: "sm" })}>
+                      Turn on
+                    </button>
+                  )}
+                  <DeleteLink disabled={pending} onDelete={() => remove(link.id)} />
                 </li>
               );
             })}
@@ -222,5 +245,65 @@ function Copyable({ label, value }: { label: string; value: string }) {
         <CopyButton value={value} />
       </div>
     </div>
+  );
+}
+
+/** Copies a link (and a credential link's passcode) again, from the encrypted copy kept for its owner. */
+function CopyAgain({ id, passcode }: { id: string; passcode: boolean }) {
+  const [copied, setCopied] = useState<"link" | "passcode" | null>(null);
+  async function copy(what: "link" | "passcode") {
+    const result = await revealShareLink(id);
+    if (!result.token) return;
+    await navigator.clipboard.writeText(what === "link" ? `${window.location.origin}/s/${result.token}` : (result.passcode ?? ""));
+    setCopied(what);
+    setTimeout(() => setCopied(null), 1500);
+  }
+  const quiet = "grid size-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-raised hover:text-text";
+  return (
+    <>
+      <Tip label={copied === "link" ? "Copied" : "Copy link"}>
+        <button type="button" aria-label="Copy link" onClick={() => copy("link")} className={quiet}>
+          {copied === "link" ? <CheckIcon className="size-4 text-accent" /> : <CopyIcon className="size-4" />}
+        </button>
+      </Tip>
+      {passcode && (
+        <Tip label={copied === "passcode" ? "Copied" : "Copy passcode"}>
+          <button type="button" aria-label="Copy passcode" onClick={() => copy("passcode")} className={quiet}>
+            {copied === "passcode" ? <CheckIcon className="size-4 text-accent" /> : <CredentialsIcon className="size-4" />}
+          </button>
+        </Tip>
+      )}
+    </>
+  );
+}
+
+/** Deletes a link on a second click, so one stray click can't. */
+function DeleteLink({ disabled, onDelete }: { disabled: boolean; onDelete: () => void }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => setArmed(false), 3000);
+    return () => clearTimeout(timer);
+  }, [armed]);
+  return armed ? (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onDelete}
+      className={button({ variant: "ghost", size: "sm", className: "text-danger hover:bg-danger/10 hover:text-danger" })}
+    >
+      Delete?
+    </button>
+  ) : (
+    <Tip label="Delete link">
+      <button
+        type="button"
+        aria-label="Delete link"
+        onClick={() => setArmed(true)}
+        className="grid size-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-danger/10 hover:text-danger"
+      >
+        <TrashIcon className="size-4" />
+      </button>
+    </Tip>
   );
 }

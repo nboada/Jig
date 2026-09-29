@@ -93,34 +93,30 @@ function Gate({ state, title, line, children }: { state: string; title: string; 
   );
 }
 
-/** The shared item itself: a slim strip saying what this is, then the item as the dashboard shows it. */
+/**
+ * The shared item itself, on the same centred workbench as the passcode screen: the logo, the item
+ * as the dashboard shows it, then when the link expires. Each kind gets a width that suits it.
+ */
 function Shared({ share, item }: { share: Share; item: SharedItem | null }) {
   if (!item) return <Gate state="Deleted" title="What was shared here has since been deleted" />;
+  const width = item.kind === "credentials" ? "max-w-xl" : item.kind === "notes" ? "max-w-3xl" : "max-w-4xl";
   return (
-    <div className="min-h-dvh">
-      <header className="border-b border-line bg-panel/80">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-4 px-4">
-          <Logo />
-          <p className="engraved truncate" suppressHydrationWarning>
-            {share.expiresAt ? `Read-only · expires ${formatDate(share.expiresAt)}` : "Read-only · shared from Jig"}
-          </p>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-4xl px-4 py-10">
+    <main className="bench relative grid min-h-dvh place-items-center px-4 py-10">
+      <div className={`relative w-full ${width}`}>
+        <Logo className="mb-8" />
         {item.kind === "snippets" && (
           <article className="space-y-6">
             <ItemHeader
               kicker={
                 <>
                   <LanguageIcon language={item.snippet.language} className="size-3.5" />
-                  {`Snippet · ${languageLabel(item.snippet.language)}`}
+                  {`Snippet · ${languageLabel(item.snippet.language)} · Read-only`}
                 </>
               }
               title={item.snippet.title}
               meta={
                 <Meta>
                   {[
-                    <span key="v" className="text-text-2">{`v${item.snippet.version}`}</span>,
                     `${item.snippet.files.length} file${item.snippet.files.length === 1 ? "" : "s"}`,
                     item.snippet.dependencies.length > 0 && `needs ${item.snippet.dependencies.join(", ")}`,
                   ]}
@@ -141,8 +137,8 @@ function Shared({ share, item }: { share: Share; item: SharedItem | null }) {
         )}
         {item.kind === "notes" && (
           <article className="space-y-7">
-            <ItemHeader kicker="Note" title={item.note.title} />
-            <div className="max-w-[68ch]">
+            <ItemHeader kicker="Note · Read-only" title={item.note.title} />
+            <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
               <Markdown size="read">{item.note.body || "This note is empty."}</Markdown>
             </div>
           </article>
@@ -150,13 +146,13 @@ function Shared({ share, item }: { share: Share; item: SharedItem | null }) {
         {item.kind === "credentials" && (
           <article className="space-y-6">
             <ItemHeader
-              kicker="Credential"
+              kicker="Credential · Read-only"
               title={item.credential.title}
               meta={item.credential.url ? <Meta>{[<span key="u" className="break-all">{item.credential.url}</span>]}</Meta> : undefined}
             />
             <dl className="divide-y divide-line rounded-xl border border-line bg-panel">
               {item.credential.fields.map((f) => (
-                <div key={f.id} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[150px_1fr] sm:items-center sm:gap-4">
+                <div key={f.id} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[120px_1fr] sm:items-center sm:gap-4">
                   <dt className="engraved">{f.label}</dt>
                   <dd className="min-w-0">
                     {f.secret ? (
@@ -181,8 +177,11 @@ function Shared({ share, item }: { share: Share; item: SharedItem | null }) {
             )}
           </article>
         )}
-        <Credit className="mt-14" />
-      </main>
-    </div>
+        <p className="engraved mt-10" suppressHydrationWarning>
+          {share.expiresAt ? `This link expires ${formatDate(share.expiresAt)}` : "Shared from Jig"}
+        </p>
+        <Credit className="mt-2" />
+      </div>
+    </main>
   );
 }

@@ -23,6 +23,7 @@ const share = (over: Partial<Share> = {}): Share => ({
   revoked: false,
   protected: false,
   failedAttempts: 0,
+  recoverable: false,
   ...over,
 });
 

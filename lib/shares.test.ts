@@ -5,11 +5,14 @@ import { createNote } from "./notes";
 import {
   checkPasscode,
   createShare,
+  deleteShare,
   findShare,
   listShares,
   loadSharedItem,
   MAX_FAILED,
   recordView,
+  revealShare,
+  restoreShare,
   revokeShare,
   shareStatus,
 } from "./shares";
@@ -133,4 +136,32 @@ describe("credential links", () => {
     expect(await checkPasscode(db, share, passcode!)).toBe(true);
     expect(await recordView(db, share)).toBe(false);
   });
+});
+
+describe("copying and deleting links", () => {
+  test("a new link can be copied again, bound to its share; delete removes it", async () => {
+    const saved = process.env.JIG_ENCRYPTION_KEY;
+    process.env.JIG_ENCRYPTION_KEY = Buffer.from(new Uint8Array(32).fill(9)).toString("base64");
+    try {
+      await createSnippet(db, { title: "Copy again", language: "css", files: [{ name: "a.css", content: "a{}" }] });
+      const { token, share } = await createShare(db, "snippets", "copy-again", { expiry: "never", maxViews: null });
+      expect(share.recoverable).toBe(true);
+      expect((await revealShare(db, share.id)).token).toBe(token);
+      await deleteShare(db, share.id);
+      expect(await findShare(db, token)).toBeNull();
+      expect(revealShare(db, share.id)).rejects.toThrow("only shown");
+    } finally {
+      if (saved === undefined) delete process.env.JIG_ENCRYPTION_KEY;
+      else process.env.JIG_ENCRYPTION_KEY = saved;
+    }
+  });
+});
+
+test("a turned-off link can be turned back on", async () => {
+  await createSnippet(db, { title: "Back on", language: "css", files: [{ name: "a.css", content: "a{}" }] });
+  const { token, share } = await createShare(db, "snippets", "back-on", { expiry: "never", maxViews: null });
+  await revokeShare(db, share.id);
+  expect(shareStatus((await findShare(db, token))!)).toBe("revoked");
+  await restoreShare(db, share.id);
+  expect(shareStatus((await findShare(db, token))!)).toBe("open");
 });
