@@ -54,8 +54,11 @@ export function GridHead({
           </div>
           {languageFilter && <LanguageFilter className="min-w-0 flex-1 sm:w-40 sm:flex-none" />}
           {hiddenTag && <input type="hidden" name="tag" value={hiddenTag} />}
-          <SortSelect sort={sort} section={section} />
-          <ViewToggle view="grid" section={section} />
+          {/* Phones: sort and layout drop to their own row under search and the filters. */}
+          <div className="order-last flex basis-full items-center justify-between gap-2 sm:order-none sm:basis-auto sm:justify-start">
+            <SortSelect sort={sort} section={section} />
+            <ViewToggle view="grid" section={section} />
+          </div>
           <Link href={`/${section}/new`} className={button({ variant: "primary" })} title={`${newLabel} (N)`}>
             <PlusIcon className="size-4" />
             {newLabel}

@@ -51,7 +51,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
   return (
     <article className="min-w-0 space-y-6">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
-      <BackLink href="/snippets" className={view === "list" ? "md:hidden" : ""}>
+      <BackLink href="/snippets" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Snippets
       </BackLink>
       {!isLatest && (

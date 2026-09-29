@@ -41,7 +41,7 @@ export default async function CredentialPage({ params }: Props) {
   return (
     <article className="min-w-0 space-y-6">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
-      <BackLink href="/credentials" className={view === "list" ? "md:hidden" : ""}>
+      <BackLink href="/credentials" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Credentials
       </BackLink>
       <ItemHeader

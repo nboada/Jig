@@ -38,8 +38,9 @@ export function GridToolbar({
   const go = (param: string, value: string) => router.push(value ? `${base}?${param}=${encodeURIComponent(value)}` : base);
 
   return (
+    // Hidden on phones: the back link and the tab bar already lead to search and New.
     <form
-      className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center"
+      className="mb-6 hidden gap-2 sm:flex sm:flex-row sm:items-center"
       onSubmit={(e) => {
         e.preventDefault();
         go("q", query.trim());

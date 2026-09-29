@@ -24,7 +24,7 @@ export function Card({
   return (
     <Link
       href={href}
-      className="flex h-full flex-col sm:min-h-48 gap-2 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-px hover:border-line-strong"
+      className="flex h-full min-w-0 flex-col gap-2 sm:min-h-48 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-px hover:border-line-strong"
     >
       <span className="flex items-center justify-between gap-3">
         <span className="engraved flex min-w-0 items-center gap-1.5 truncate">{kicker}</span>

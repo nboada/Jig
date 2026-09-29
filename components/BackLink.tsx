@@ -5,7 +5,7 @@ export function BackLink({ href, children, className = "" }: { href: string; chi
   return (
     <Link
       href={href}
-      className={`group -ml-2 inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-body text-muted transition hover:bg-raised hover:text-text ${className}`}
+      className={`group -ml-1.5 inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-ui text-muted transition hover:bg-raised hover:text-text ${className}`}
     >
       <svg
         viewBox="0 0 24 24"
@@ -14,7 +14,7 @@ export function BackLink({ href, children, className = "" }: { href: string; chi
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="size-4 shrink-0 transition group-hover:-translate-x-0.5"
+        className="size-3.5 shrink-0 transition group-hover:-translate-x-0.5"
         aria-hidden
       >
         <path d="M19 12H5M12 19l-7-7 7-7" />

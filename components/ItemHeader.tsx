@@ -21,21 +21,28 @@ export function ItemHeader({
   description?: string | null;
 }) {
   return (
-    <header className="space-y-2">
+    // Phones: kicker, title, the details line, then the actions on a row of their own. From sm up the
+    // actions sit beside the title. (On phones the title row's box is dissolved so flex order applies.)
+    <header className="flex flex-col gap-2 sm:block sm:space-y-2">
       <p className="engraved flex h-5 items-center gap-1.5">{kicker}</p>
-      <div className="flex items-center gap-4">
-        <h1 className="min-w-0 flex-1 text-title font-semibold break-words">{title}</h1>
-        {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
+      <div className="contents sm:flex sm:flex-row sm:items-center sm:gap-4">
+        <h1 className="min-w-0 text-title font-semibold break-words sm:flex-1">{title}</h1>
+        {actions && (
+          <div className="order-1 mt-1 flex w-full shrink-0 items-center gap-0.5 sm:order-none sm:mt-0 sm:w-auto">{actions}</div>
+        )}
       </div>
       {meta}
-      {description && <p className="max-w-[68ch] pt-1 text-body text-text-2">{description}</p>}
+      {description && <p className="order-2 max-w-[68ch] pt-1 text-body text-text-2 sm:order-none">{description}</p>}
     </header>
   );
 }
 
-/** The thin rule between the quiet icon actions and Edit. */
+/**
+ * The thin rule between the quiet icon actions and Edit. On phones, where the actions take a row
+ * of their own, it becomes the gap that pushes Edit and ⋯ to the right.
+ */
 export function ActionDivider() {
-  return <span className="mx-2 h-4.5 w-px bg-line" aria-hidden />;
+  return <span className="ml-auto h-4.5 w-px sm:mx-2 sm:bg-line" aria-hidden />;
 }
 
 /** The page's one primary action. */

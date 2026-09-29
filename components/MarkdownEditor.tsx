@@ -27,7 +27,7 @@ export function MarkdownEditor({
     contentType: "markdown",
     // Rendered on the server first; the editor mounts in the browser.
     immediatelyRender: false,
-    editorProps: { attributes: { class: `${readProseClass} min-h-96 max-w-[68ch] py-5 outline-none`, "aria-label": "Note" } },
+    editorProps: { attributes: { class: `${readProseClass} min-h-96 px-5 py-4 outline-none sm:px-7 sm:py-6 [&>*]:max-w-[68ch]`, "aria-label": "Note" } },
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
   });
 
@@ -38,9 +38,10 @@ export function MarkdownEditor({
   }
 
   return (
-    <div>
+    // Framed like a snippet's file: the toolbar is the frame's header, the note its body.
+    <div className="rounded-xl border border-line bg-well">
       {/* The toolbar stays in reach under the header on a long note. */}
-      <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-lg border border-line bg-panel/95 p-1 backdrop-blur">
+      <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-[#0e0f11]/95 p-1 backdrop-blur">
         {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-meta text-muted">Editing the markdown source</span>}
         <div className="ml-auto flex rounded-md border border-line bg-well p-0.5" role="group" aria-label="Editor">
           {(["Rich", "Markdown"] as const).map((mode) => {
@@ -62,7 +63,7 @@ export function MarkdownEditor({
       {source ? (
         <textarea
           aria-label="Note (markdown)"
-          className="mt-3 block min-h-96 w-full max-w-[68ch] resize-y rounded-lg border border-line bg-well px-4 py-3 font-mono text-ui leading-relaxed outline-none focus:border-line-strong"
+          className="block min-h-96 w-full resize-y rounded-b-xl bg-transparent px-5 py-4 font-mono text-ui leading-relaxed outline-none sm:px-7 sm:py-6"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}

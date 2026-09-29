@@ -92,6 +92,8 @@ html body[data-scroll-locked] {
 }
 
 body {
+  /* A long unbroken string (a licence key, a URL) wraps instead of widening the page on a phone. */
+  overflow-wrap: anywhere;
   background: var(--color-ink);
   color: var(--color-text);
   font-family: var(--font-sans);

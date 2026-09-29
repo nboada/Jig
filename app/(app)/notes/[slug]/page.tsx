@@ -47,7 +47,7 @@ export default async function NotePage({ params, searchParams }: Props) {
   return (
     <article className="min-w-0 space-y-7">
       {/* In the split view the list is right there; keep the link for phones and the grid view. */}
-      <BackLink href="/notes" className={view === "list" ? "md:hidden" : ""}>
+      <BackLink href="/notes" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Notes
       </BackLink>
       {!isLatest && (
@@ -140,10 +140,12 @@ export default async function NotePage({ params, searchParams }: Props) {
         }
       />
 
-      {/* A reading surface, not a box: the note sits on the page at a comfortable measure. */}
+      {/* Framed like a snippet's file, with the text kept to a comfortable measure inside. */}
       {note.body ? (
-        <div className="max-w-[68ch]">
-          <Markdown size="read">{note.body}</Markdown>
+        <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
+          <div className="max-w-[68ch]">
+            <Markdown size="read">{note.body}</Markdown>
+          </div>
         </div>
       ) : (
         <p className="text-body text-muted">This note is empty.</p>
