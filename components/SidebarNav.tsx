@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
 
 const SECTIONS: Section[] = [
-  { href: "/", label: "Snippets", Icon: SnippetsIcon, create: "/snippets/new", match: (p: string) => p === "/" || p.startsWith("/snippets") },
+  { href: "/snippets", label: "Snippets", Icon: SnippetsIcon, create: "/snippets/new", match: (p: string) => p.startsWith("/snippets") },
   { href: "/notes", label: "Notes", Icon: NotesIcon, create: "/notes/new", match: (p: string) => p.startsWith("/notes") },
   { href: "/credentials", label: "Credentials", Icon: CredentialsIcon, create: "/credentials/new", match: (p: string) => p.startsWith("/credentials") },
 ];

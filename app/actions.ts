@@ -84,7 +84,7 @@ export async function removeSnippet(form: FormData) {
   await requireAuth();
   await deleteSnippet(await getDb(), String(form.get("slug")));
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/snippets");
 }
 
 export async function restore(form: FormData) {

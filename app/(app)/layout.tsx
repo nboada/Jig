@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
         <nav className="flex gap-5 px-4 pb-2.5 text-sm text-muted">
-          <Link href="/" className="flex items-center gap-1.5 hover:text-text">
+          <Link href="/snippets" className="flex items-center gap-1.5 hover:text-text">
             <SnippetsIcon className="size-3.5" />
             Snippets
           </Link>
