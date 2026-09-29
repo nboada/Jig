@@ -11,8 +11,8 @@ const shape =
 export const proseClass = `prose prose-sm ${palette} ${shape}`;
 
 /** Typography for reading a note, shared by the rendered note and the editor so both look the same. */
-// 14px everywhere, with lines at 1.8 (about 25px): nine-tenths of the 28px they had before.
-export const readProseClass = `prose prose-sm text-[14px] leading-[1.8] ${palette} ${shape} prose-p:leading-[1.8] prose-li:leading-[1.8] prose-h1:text-xl prose-h2:text-lg prose-h3:text-base sm:prose-h1:text-2xl sm:prose-h2:text-xl sm:prose-h3:text-lg`;
+// 14px everywhere, with line-height 0.85lh; paragraphs and list items inherit it.
+export const readProseClass = `prose prose-sm text-[14px] leading-[0.85lh] ${palette} ${shape} prose-p:leading-[inherit] prose-li:leading-[inherit] prose-h1:text-xl prose-h2:text-lg prose-h3:text-base sm:prose-h1:text-2xl sm:prose-h2:text-xl sm:prose-h3:text-lg`;
 
 /**
  * Renders markdown as formatted text. GitHub-flavoured (tables, task lists, autolinks); raw HTML

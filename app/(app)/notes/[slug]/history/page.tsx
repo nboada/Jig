@@ -123,7 +123,7 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
                   ? "The only version so far. Edits will show up here as changes."
                   : `Version ${shown.version}, as it was saved.`}
               </p>
-              <div className="max-w-[68ch] rounded-xl border border-line bg-panel p-6">
+              <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
                 <Markdown size="read">{shown.body || "This version is empty."}</Markdown>
               </div>
             </section>

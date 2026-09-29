@@ -172,14 +172,12 @@ export default async function NotePage({ params, searchParams }: Props) {
         }
       />
 
-      {/* Framed like a snippet's file, with the text kept to a comfortable measure inside. */}
+      {/* Framed like a snippet's file; the text fills the frame. */}
       {!readable ? (
         <UnlockPanel hasPasskey={passkey} />
       ) : note.body ? (
         <div className="rounded-xl border border-line bg-well px-5 py-4 sm:px-7 sm:py-6">
-          <div className="max-w-[42rem]">
-            <Markdown size="read">{note.body}</Markdown>
-          </div>
+          <Markdown size="read">{note.body}</Markdown>
         </div>
       ) : (
         <p className="text-body text-muted">This note is empty.</p>
