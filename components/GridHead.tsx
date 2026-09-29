@@ -49,10 +49,10 @@ export function GridHead({
           <span className="engraved">{count >= 100 ? "100+" : count}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-0 flex-1 sm:w-80 sm:flex-none">
+          <div className="min-w-0 basis-full sm:w-80 sm:basis-auto sm:flex-none">
             <SearchInput placeholder={placeholder} />
           </div>
-          {languageFilter && <LanguageFilter className="w-40" />}
+          {languageFilter && <LanguageFilter className="min-w-0 flex-1 sm:w-40 sm:flex-none" />}
           {hiddenTag && <input type="hidden" name="tag" value={hiddenTag} />}
           <SortSelect sort={sort} section={section} />
           <ViewToggle view="grid" section={section} />
@@ -66,8 +66,9 @@ export function GridHead({
         </div>
       </form>
       {note && <p className="text-ui text-muted">{note}</p>}
+      {/* On phones the chips are one row you swipe along, so they don't push the cards off screen. */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>*]:shrink-0">
           {tags.map(({ tag, count: n }) => {
             const active = activeTag === tag;
             return (
