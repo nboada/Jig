@@ -5,6 +5,7 @@ import { setPinned } from "@/app/actions";
 import { iconButton } from "@/components/Button";
 import { useOptionalList } from "@/components/ListContext";
 import { PinIcon } from "@/components/NavIcons";
+import { toast } from "@/components/Toaster";
 import { Tip } from "@/components/Tooltip";
 
 /**
@@ -27,7 +28,11 @@ export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; 
             setShown(!shown);
             list?.pin(slug, !shown);
             // The button goes back by itself when the transition ends; the list needs telling.
-            if ((await setPinned(kind, slug, !shown)).error) list?.pin(slug, shown);
+            const result = await setPinned(kind, slug, !shown);
+            if (result.error) {
+              list?.pin(slug, shown);
+              toast.error(result.error);
+            } else toast.success(shown ? "Unpinned" : "Pinned to top");
           })
         }
         className={iconButton({ className: shown ? "text-accent hover:text-accent" : "" })}

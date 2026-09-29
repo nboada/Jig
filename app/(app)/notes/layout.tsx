@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { listNotes } from "@/lib/notes";
 import { getListPrefs } from "@/lib/view";
 import { requireAuth } from "@/lib/auth";
+import { isUnlocked } from "@/lib/locked-notes";
 
 /**
  * In list view, notes open beside a column listing them all, which stays put while you move
@@ -21,9 +22,9 @@ export default async function NotesLayout({ children }: { children: React.ReactN
       </div>
     );
   }
-  const notes = await listNotes(await getDb(), { sort, limit: 500 });
+  const [notes, unlocked] = await Promise.all([listNotes(await getDb(), { sort, limit: 500 }), isUnlocked()]);
   return (
-    <NoteFilters notes={notes} sort={sort}>
+    <NoteFilters notes={notes} sort={sort} unlocked={unlocked}>
       <SplitView base="/notes" column={<NoteColumn />}>
         {children}
       </SplitView>

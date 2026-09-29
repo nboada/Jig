@@ -32,6 +32,7 @@ export function ListFilters<T extends Item>({
   base,
   text,
   search,
+  unlocked = false,
   children,
 }: {
   items: T[];
@@ -41,6 +42,7 @@ export function ListFilters<T extends Item>({
   /** The words an item can be found by without asking the server: title, tags and the like. */
   text: (item: T) => string;
   search: (query: string) => Promise<string[]>;
+  unlocked?: boolean;
   children: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
@@ -107,7 +109,7 @@ export function ListFilters<T extends Item>({
 
   return (
     <ListContext.Provider
-      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, unhide, pin, lock, section, base }}
+      value={{ query, setQuery, language, setLanguage, tag, setTag, visible, sort, setSort, hide, unhide, pin, lock, section, base, unlocked }}
     >
       {children}
     </ListContext.Provider>
@@ -137,7 +139,7 @@ export function ListColumn<T extends Item>({
   languageFilter?: boolean;
   renderRow: (item: T) => React.ReactNode;
 }) {
-  const { visible, sort, setSort, section, base, query, setQuery, language, setLanguage, tag, setTag } = useList();
+  const { visible, sort, setSort, section, base, unlocked, query, setQuery, language, setLanguage, tag, setTag } = useList();
   const router = useRouter();
   const pathname = usePathname();
   const selected = pathname.startsWith(`${base}/`) ? decodeURIComponent(pathname.slice(base.length + 1).split("/")[0]) : "";
@@ -235,7 +237,7 @@ export function ListColumn<T extends Item>({
                   {groupLabel === "pinned" ? "Pinned" : "All"}
                 </p>
               )}
-              <ItemMenu kind={section} slug={item.slug} title={item.title} url={item.url} pinned={item.pinned} locked={item.locked}>
+              <ItemMenu kind={section} slug={item.slug} title={item.title} url={item.url} pinned={item.pinned} locked={item.locked} unlocked={unlocked}>
                 <Link
                   href={`${base}/${item.slug}`}
                   aria-current={active ? "page" : undefined}

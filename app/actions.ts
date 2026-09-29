@@ -37,6 +37,7 @@ import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/cry
 import { withEncryptionKey } from "@/lib/envfile";
 import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealShare, revokeShare, type Share } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
+import { FLASH_COOKIE } from "@/lib/flash";
 
 export type FormState = { error?: string };
 export type Result = { error?: string };
@@ -118,6 +119,11 @@ async function signIn() {
   await startSession();
   // Bring this browser's layout (tab order, views, sorts) in line with the saved one.
   await applyStoredPreferences().catch((error) => console.error("[jig] could not load preferences", error));
+}
+
+/** Leaves `message` for the page the action redirects to, shown there as a toast. Not exported: every export here is callable. */
+async function flash(message: string) {
+  (await cookies()).set(FLASH_COOKIE, encodeURIComponent(message), { path: "/", maxAge: 60, sameSite: "lax" });
 }
 
 const PREF_COOKIE = { path: "/", maxAge: 31_536_000, sameSite: "lax" as const };
@@ -204,10 +210,12 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
     }
     const db = await getDb();
     if (slug) {
-      const { snippet } = await updateSnippet(db, slug, data);
+      const { snippet, changed } = await updateSnippet(db, slug, data);
       target = snippet.slug;
+      await flash(changed ? "Snippet saved" : "No changes to save");
     } else {
       target = (await createSnippet(db, data)).slug;
+      await flash("Snippet created");
     }
   } catch (error) {
     return failure(error, "Could not save the snippet. Try again.");
@@ -219,6 +227,7 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
 export async function removeSnippet(form: FormData) {
   await requireAuth();
   await deleteSnippet(await getDb(), String(form.get("slug")));
+  await flash("Snippet deleted");
   revalidatePath("/", "layout");
   redirect("/snippets");
 }
@@ -227,6 +236,7 @@ export async function restore(form: FormData) {
   await requireAuth();
   const slug = String(form.get("slug"));
   await restoreVersion(await getDb(), slug, Number(form.get("version")));
+  await flash(`Version ${Number(form.get("version"))} restored`);
   revalidatePath("/", "layout");
   redirect(`/snippets/${slug}/history`);
 }
@@ -252,9 +262,14 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
   try {
     const data = JSON.parse(String(form.get("payload") ?? "{}"));
     const db = await getDb();
-    target = slug
-      ? (await updateNote(db, slug, data, "web", await unlockedCodec())).note.slug
-      : (await createNote(db, data)).slug;
+    if (slug) {
+      const { note, changed } = await updateNote(db, slug, data, "web", await unlockedCodec());
+      target = note.slug;
+      await flash(changed ? "Note saved" : "No changes to save");
+    } else {
+      target = (await createNote(db, data)).slug;
+      await flash("Note created");
+    }
   } catch (error) {
     return failure(error, "Could not save the note. Try again.");
   }
@@ -265,6 +280,7 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
 export async function removeNote(form: FormData) {
   await requireAuth();
   await deleteNote(await getDb(), String(form.get("slug")));
+  await flash("Note deleted");
   revalidatePath("/", "layout");
   redirect("/notes");
 }
@@ -273,6 +289,7 @@ export async function restoreNote(form: FormData) {
   await requireAuth();
   const slug = String(form.get("slug"));
   await restoreNoteVersion(await getDb(), slug, Number(form.get("version")), "web", undefined, await unlockedCodec());
+  await flash(`Version ${Number(form.get("version"))} restored`);
   revalidatePath("/", "layout");
   redirect(`/notes/${slug}/history`);
 }
@@ -285,6 +302,7 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
     const data = JSON.parse(String(form.get("payload") ?? "{}"));
     const db = await getDb();
     target = (slug ? await updateCredential(db, slug, data) : await createCredential(db, data)).slug;
+    await flash(slug ? "Credential saved" : "Credential created");
   } catch (error) {
     return failure(error, "Could not save the credential. Try again.");
   }
@@ -295,6 +313,7 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
 export async function removeCredential(form: FormData) {
   await requireAuth();
   await deleteCredential(await getDb(), String(form.get("slug")));
+  await flash("Credential deleted");
   revalidatePath("/", "layout");
   redirect("/credentials");
 }

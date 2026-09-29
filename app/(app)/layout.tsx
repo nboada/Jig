@@ -4,7 +4,7 @@ import { AppShortcuts } from "@/components/AppShortcuts";
 import { HeaderActions } from "@/components/HeaderActions";
 import { Logo } from "@/components/Logo";
 import { PrefsSync } from "@/components/PrefsSync";
-import { BottomNav, TopNav } from "@/components/TopNav";
+import { BottomNav, SectionTitle, TopNav } from "@/components/TopNav";
 import { requireAuth } from "@/lib/auth";
 import { NAV_ORDER_COOKIE, parseNavOrder } from "@/lib/prefs";
 
@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   await requireAuth();
   const order = parseNavOrder((await cookies()).get(NAV_ORDER_COOKIE)?.value);
   return (
-    <div className="min-h-dvh pb-20 md:pb-0">
+    <div className="min-h-dvh pb-24 md:pb-0">
       {/* A floating bar, inset to line up with the page content. */}
       <header className="sticky top-0 z-20 mx-auto max-w-[90rem] px-3 pt-(--header-gap) md:px-6">
         {/* Three columns so the section tabs sit in the true centre whatever the sides hold. */}
@@ -21,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Logo />
           </Link>
           <TopNav order={order} className="hidden md:flex" />
+          <SectionTitle order={order} className="col-start-2 md:hidden" />
           <div className="col-start-3 justify-self-end">
             <HeaderActions />
           </div>

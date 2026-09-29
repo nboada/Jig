@@ -15,6 +15,7 @@ export function ItemMenu({
   url,
   pinned = false,
   locked = false,
+  unlocked = false,
   children,
 }: {
   kind: Section;
@@ -25,9 +26,11 @@ export function ItemMenu({
   pinned?: boolean;
   /** A locked note: no clone or share. Its lock is changed from the note's own page. */
   locked?: boolean;
+  /** Locked notes are open right now: a locked note offers "Lock again now". */
+  unlocked?: boolean;
   children: React.ReactNode;
 }) {
-  const { actions, danger, dialogs } = useItemActions({ kind, slug, title, url, pinned, locked });
+  const { actions, danger, dialogs } = useItemActions({ kind, slug, title, url, pinned, locked, unlocked });
   return (
     <>
       <ContextMenu.Root>

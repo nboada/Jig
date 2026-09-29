@@ -10,9 +10,19 @@ import type { Sort } from "@/lib/sort";
 /** What a note can be found by in the browser; matches further into the text come from the server. */
 const noteText = (n: NoteSummary) => [n.title, n.slug, n.tags.join(" "), n.excerpt].join(" ");
 
-export function NoteFilters({ notes, sort, children }: { notes: NoteSummary[]; sort: Sort; children: React.ReactNode }) {
+export function NoteFilters({
+  notes,
+  sort,
+  unlocked,
+  children,
+}: {
+  notes: NoteSummary[];
+  sort: Sort;
+  unlocked: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <ListFilters items={notes} sort={sort} section="notes" base="/notes" text={noteText} search={searchNoteSlugs}>
+    <ListFilters items={notes} sort={sort} section="notes" base="/notes" text={noteText} search={searchNoteSlugs} unlocked={unlocked}>
       {children}
     </ListFilters>
   );

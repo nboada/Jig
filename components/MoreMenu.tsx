@@ -9,8 +9,12 @@ import { MoreIcon } from "@/components/NavIcons";
 import { Tip } from "@/components/Tooltip";
 import type { Section } from "@/lib/prefs";
 
+/** Actions the item page already has buttons for. */
+const ON_PAGE = new Set(["pin", "share"]);
+
 /**
- * The item page's ⋯ menu: the same actions as the right-click menu in the list, plus Details.
+ * The item page's ⋯ menu: the right-click menu's actions, less Pin and Share (they have their own
+ * buttons beside it), plus Details.
  * `details` is the server-rendered details panel (slug, dates, agent prompt), shown in a dialog.
  * On an older version (`latest` false) only Details is offered.
  */
@@ -36,7 +40,7 @@ export function MoreMenu({
   details: React.ReactNode;
 }) {
   const [showDetails, setShowDetails] = useState(false);
-  const { actions, danger, dialogs } = useItemActions({
+  const { actions: all, danger, dialogs } = useItemActions({
     kind,
     slug,
     title,
@@ -48,6 +52,7 @@ export function MoreMenu({
     newTab: false,
     onDetails: () => setShowDetails(true),
   });
+  const actions = all.filter(({ key }) => !ON_PAGE.has(key));
 
   return (
     <>

@@ -2,15 +2,25 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { cloneItem, deleteItem, setNoteLock, setPinned } from "@/app/actions";
+import { cloneItem, deleteItem, relockNotes, setNoteLock, setPinned } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { useOptionalList } from "@/components/ListContext";
 import { AgentIcon, CloneIcon, ExternalIcon, InfoIcon, LinkIcon, LockIcon, PinIcon, PinOffIcon, ShareIcon, TrashIcon, UnlockIcon } from "@/components/NavIcons";
 import { ShareDialog } from "@/components/ShareDialog";
+import { toast } from "@/components/Toaster";
 import type { Section } from "@/lib/prefs";
 import { agentPrompt } from "@/lib/prompts";
 
 export const NOUNS: Record<Section, string> = { snippets: "snippet", notes: "note", credentials: "credential" };
+
+const capitalise = (word: string) => word[0].toUpperCase() + word.slice(1);
+
+function copy(text: string, done: string) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(done),
+    () => toast.error("Couldn't copy. Try again."),
+  );
+}
 
 export type ItemAction = {
   key: string;
@@ -40,6 +50,7 @@ export function useItemActions({
   url,
   pinned = false,
   locked = false,
+  unlocked = false,
   latest = true,
   versions,
   newTab = true,
@@ -52,6 +63,8 @@ export function useItemActions({
   pinned?: boolean;
   /** A locked note: no clone, share or copy for agent, and its lock can be removed. */
   locked?: boolean;
+  /** Locked notes are open right now, so a locked one can be locked again at once. */
+  unlocked?: boolean;
   /** False on an older version: only Details is offered. */
   latest?: boolean;
   /** How many versions a delete removes, for its warning. */
@@ -68,8 +81,6 @@ export function useItemActions({
   const [sharing, setSharing] = useState(false);
   const [locking, setLocking] = useState<"lock" | "unlock" | null>(null);
   const [lockError, setLockError] = useState("");
-  // Why the last pin, clone or delete didn't go through, shown in a small dialog.
-  const [problem, setProblem] = useState("");
   const [changingLock, startLock] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [, startAction] = useTransition();
@@ -86,10 +97,10 @@ export function useItemActions({
     if (leaving) router.push(base);
     startDelete(async () => {
       const result = await deleteItem(kind, slug);
-      if (!result.error) return;
+      if (!result.error) return void toast.success(`${capitalise(noun)} deleted`);
       list?.unhide(slug);
       if (leaving) router.push(`${base}/${slug}`);
-      setProblem(result.error);
+      toast.error(result.error);
     });
   }
 
@@ -106,8 +117,8 @@ export function useItemActions({
           const result = await setPinned(kind, slug, !pinned);
           if (result.error) {
             list?.pin(slug, pinned);
-            setProblem(result.error);
-          }
+            toast.error(result.error);
+          } else toast.success(pinned ? "Unpinned" : "Pinned to top");
         });
       },
     });
@@ -119,26 +130,42 @@ export function useItemActions({
         onSelect: () =>
           startAction(async () => {
             const result = await cloneItem(kind, slug);
-            if (result.slug) router.push(`${base}/${result.slug}`);
-            else setProblem(result.error ?? "Could not make the copy. Try again.");
+            if (result.slug) {
+              router.push(`${base}/${result.slug}`);
+              toast.success(`${capitalise(noun)} cloned`);
+            } else toast.error(result.error ?? "Could not make the copy. Try again.");
           }),
       });
     }
     // Agents can't see a locked note, so there's nothing to hand them.
     if (!locked) {
-      actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => navigator.clipboard.writeText(agentPrompt(kind, slug)) });
+      actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => copy(agentPrompt(kind, slug), "Copied for your agent") });
     }
   }
   if (latest && !versioned && url) {
-    actions.push({ key: "url", label: "Copy URL", icon: LinkIcon, onSelect: () => navigator.clipboard.writeText(url) });
+    actions.push({ key: "url", label: "Copy URL", icon: LinkIcon, onSelect: () => copy(url, "URL copied") });
   }
   if (latest && !locked) actions.push({ key: "share", label: "Share…", icon: ShareIcon, onSelect: () => setSharing(true) });
   if (latest && kind === "notes") {
     // Locking also has a button beside the pin; the right-click menu in the list needs it here.
     if (!locked) actions.push({ key: "lock", label: "Lock note…", icon: LockIcon, onSelect: () => setLocking("lock") });
+    // Open right now: shut it (and every other locked note) again before the 30 minutes are up.
+    if (locked && unlocked) {
+      actions.push({
+        key: "relock",
+        label: "Lock again now",
+        icon: LockIcon,
+        onSelect: () =>
+          startAction(async () => {
+            await relockNotes();
+            router.refresh();
+            toast.success("Locked again");
+          }),
+      });
+    }
     // Offered even where the list can't tell whether the notes are unlocked; the server refuses
     // (and the dialog says why) until they are.
-    else actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
+    if (locked) actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
   }
   if (newTab) actions.push({ key: "tab", label: "Open in new tab", icon: ExternalIcon, onSelect: () => window.open(`${base}/${slug}`, "_blank", "noopener") });
   if (onDetails) actions.push({ key: "details", label: "Details…", icon: InfoIcon, onSelect: onDetails });
@@ -159,6 +186,7 @@ export function useItemActions({
       } else {
         setLocking(null);
         router.refresh();
+        toast.success(locked ? "Note locked" : "Lock removed");
       }
     });
   }
@@ -185,13 +213,6 @@ export function useItemActions({
         }
       />
       <ShareDialog kind={kind} slug={slug} title={title} open={sharing} onOpenChange={setSharing} />
-      <ConfirmDialog
-        open={problem !== ""}
-        onOpenChange={(open) => !open && setProblem("")}
-        title="That didn't work"
-        message={problem}
-        action={<DialogAction label="OK" onClick={() => setProblem("")} />}
-      />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

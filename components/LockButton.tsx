@@ -7,6 +7,7 @@ import { iconButton } from "@/components/Button";
 import { useOptionalList } from "@/components/ListContext";
 import { Modal } from "@/components/Modal";
 import { LockIcon, UnlockIcon } from "@/components/NavIcons";
+import { toast } from "@/components/Toaster";
 import { Tip } from "@/components/Tooltip";
 
 /**
@@ -55,6 +56,7 @@ export function LockButton({ slug, locked: savedLocked, readable: savedReadable 
                 }
               }
               router.refresh();
+              toast.success(locked ? "Locked again" : "Note locked");
             })
           }
           className={iconButton({ className: locked ? "text-accent hover:text-accent" : "" })}

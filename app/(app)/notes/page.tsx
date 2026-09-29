@@ -14,6 +14,7 @@ import { timeAgoShort } from "@/lib/format";
 import { listNotes, listNoteTags } from "@/lib/notes";
 import { getListPrefs } from "@/lib/view";
 import { requireAuth } from "@/lib/auth";
+import { isUnlocked } from "@/lib/locked-notes";
 
 export const metadata: Metadata = { title: "Notes" };
 
@@ -33,9 +34,10 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
   // In list view the layout shows the notes in a column; this pane waits for a pick.
   if (view === "list") return <PickPane noun="note" />;
   const db = await getDb();
-  const [notes, tags] = await Promise.all([
+  const [notes, tags, unlocked] = await Promise.all([
     listNotes(db, { query: search.q, tag: search.tag, sort }),
     listNoteTags(db),
+    isUnlocked(),
   ]);
   const filtered = Boolean(search.q || search.tag);
 
@@ -83,7 +85,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {notes.map((n) => (
             <li key={n.slug}>
-              <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned} locked={n.locked}>
+              <ItemMenu kind="notes" slug={n.slug} title={n.title} pinned={n.pinned} locked={n.locked} unlocked={unlocked}>
                 <Card
                   href={`/notes/${n.slug}`}
                   kicker={

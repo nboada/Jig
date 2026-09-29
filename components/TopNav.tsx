@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Kbd } from "@/components/Kbd";
-import { ConnectIcon, CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
+import { CredentialsIcon, NotesIcon, SnippetsIcon } from "@/components/NavIcons";
 import { savePreference } from "@/app/actions";
 import { NAV_ORDER_COOKIE, type Section } from "@/lib/prefs";
 
@@ -17,12 +17,10 @@ const SECTION_INFO: Record<Section, { href: string; label: string; Icon: (p: { c
 /** The sections in the user's order, each with the number key that opens it. */
 const sectionsIn = (order: Section[]) => order.map((id, i) => ({ id, ...SECTION_INFO[id], key: String(i + 1) }));
 
-const CONNECT = { href: "/connect", label: "Connect", Icon: ConnectIcon, key: undefined };
-
 /**
- * The header's section tabs, as a pill group with the current section filled in the accent colour.
- * The others keep an outline, so they still read as buttons on pages with no section (home, Connect).
- * Drag a tab to reorder them; the order is saved (and follows you to other browsers) and the 1–3
+ * The header's section tabs, as a segmented control whose accent fill slides to the current
+ * section (and to a tab the moment it's clicked, ahead of the page). On pages with no section
+ * (home, Connect) there's no fill. Drag a tab to reorder them; the order is saved (and follows you to other browsers) and the 1–3
  * keys follow it.
  */
 export function TopNav({ order, className = "" }: { order: Section[]; className?: string }) {
@@ -30,6 +28,25 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
   const router = useRouter();
   const [tabs, setTabs] = useState(order);
   const [dragging, setDragging] = useState<Section | null>(null);
+  // The tab just clicked, filled at once rather than when its page arrives.
+  const [clicked, setClicked] = useState<{ href: string; from: string } | null>(null);
+  const current = clicked?.from === pathname ? clicked.href : sectionsIn(tabs).find(({ href }) => pathname.startsWith(href))?.href;
+  const navRef = useRef<HTMLElement>(null);
+  const [fill, setFill] = useState<{ left: number; width: number; animate: boolean } | null>(null);
+
+  // Measure the current tab and move the fill under it; the first placement doesn't slide in.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const measure = () => {
+      const tab = current ? nav?.querySelector<HTMLElement>(`a[href="${current}"]`) : null;
+      setFill((prev) => (tab ? { left: tab.offsetLeft, width: tab.offsetWidth, animate: prev !== null } : null));
+    };
+    measure();
+    if (!nav) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [current, tabs]);
 
   function moveOver(target: Section) {
     if (!dragging || dragging === target) return;
@@ -47,9 +64,16 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
   }
 
   return (
-    <nav className={`items-center gap-2 rounded-full bg-ink p-1 text-ui font-medium ${className}`}>
+    <nav ref={navRef} className={`relative items-center gap-1 rounded-2xl bg-panel p-1 text-ui font-medium ${className}`}>
+      {fill && (
+        <span
+          aria-hidden="true"
+          className={`absolute inset-y-1 left-0 rounded-xl bg-accent ${fill.animate ? "transition-[translate,width] duration-300 ease-out motion-reduce:transition-none" : ""}`}
+          style={{ translate: `${fill.left}px 0`, width: fill.width }}
+        />
+      )}
       {sectionsIn(tabs).map(({ id, href, label, Icon, key }) => {
-        const active = pathname.startsWith(href);
+        const active = href === current;
         return (
           <Link
             key={href}
@@ -65,13 +89,14 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
             }}
             onDrop={(e) => e.preventDefault()}
             onDragEnd={finish}
+            onClick={(e) => {
+              if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) setClicked({ href, from: pathname });
+            }}
             aria-current={active ? "page" : undefined}
             aria-keyshortcuts={key}
             title={`${label} (${key}) · drag to reorder`}
-            className={`flex h-10 shrink-0 items-center gap-2 rounded-full border pr-3.5 pl-4 transition ${
-              active
-                ? "border-transparent bg-accent text-accent-ink"
-                : "border-line bg-panel text-text-2 hover:border-muted/60 hover:bg-overlay hover:text-text"
+            className={`relative flex h-10 shrink-0 items-center gap-2 rounded-xl pr-3.5 pl-4 transition-colors duration-300 ${
+              active ? "text-accent-ink" : "text-muted hover:text-text-2"
             } ${dragging === id ? "opacity-50" : ""}`}
           >
             <Icon className="size-4" />
@@ -85,31 +110,73 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
 }
 
 /**
- * The phone's tab bar along the bottom of the screen, in thumb reach: the three sections and
- * Connect. It replaces the header's tabs below the md breakpoint.
+ * The phone's tab bar, floating along the bottom of the screen in thumb reach: an icon for each
+ * section, with a darker square and a short accent bar that slide to the current one. It replaces
+ * the header's tabs below the md breakpoint; Connect is in the header's ⋯ menu.
  */
 export function BottomNav({ order }: { order: Section[] }) {
   const pathname = usePathname();
+  const sections = sectionsIn(order);
+  // The tab just tapped, shown at once rather than when its page arrives.
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
+  const current = tapped?.from === pathname ? tapped.href : sections.find(({ href }) => pathname.startsWith(href))?.href;
+  const index = sections.findIndex(({ href }) => href === current);
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-      {[...sectionsIn(order), CONNECT].map(({ href, label, Icon }) => {
-        const active = pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition ${
-              active ? "text-text" : "text-muted"
-            }`}
+    <nav className="fixed inset-x-4 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-60 rounded-[1.375rem] border border-line bg-panel/90 p-1.5 shadow-2xl shadow-black/50 backdrop-blur md:hidden">
+      <div className="relative grid grid-cols-3">
+        {index >= 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 w-1/3 transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{ transform: `translateX(${index * 100}%)` }}
           >
-            <span className={`grid h-7 w-12 place-items-center rounded-full transition ${active ? "bg-accent text-accent-ink" : ""}`}>
-              <Icon className="size-[18px]" />
-            </span>
-            {label}
-          </Link>
-        );
-      })}
+            <span className="absolute inset-0 rounded-2xl bg-ink" />
+            <span className="absolute bottom-0 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-t-full bg-accent" />
+          </span>
+        )}
+        {sections.map(({ href, label, Icon }) => {
+          const active = href === current;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              aria-current={active ? "page" : undefined}
+              onClick={() => setTapped({ href, from: pathname })}
+              className={`relative grid h-11 place-items-center transition-colors duration-300 ${active ? "text-text" : "text-muted"}`}
+            >
+              <Icon className="size-5" />
+            </Link>
+          );
+        })}
+      </div>
     </nav>
+  );
+}
+
+/**
+ * The current section's name in the middle of the header, on phones (where the tabs are icons).
+ * A new name slides in from the side the bottom bar moved towards.
+ */
+export function SectionTitle({ order, className = "" }: { order: Section[]; className?: string }) {
+  const pathname = usePathname();
+  const sections = sectionsIn(order);
+  const index = sections.findIndex(({ href }) => pathname.startsWith(href));
+  const title = pathname.startsWith("/connect") ? "Connect" : sections[index]?.label;
+  // Where the last name sat, to tell which way the new one arrives from; to or from a page that
+  // isn't a tab (home, Connect) it just fades. Nothing moves on first load.
+  const [last, setLast] = useState({ title, index, from: 0, changed: false });
+  if (last.title !== title) {
+    setLast({ title, index, from: index >= 0 && last.index >= 0 ? Math.sign(index - last.index) : 0, changed: true });
+  }
+  if (!title) return null;
+  return (
+    <p
+      key={title}
+      className={`text-body font-semibold text-text ${last.changed ? "section-title-in" : ""} ${className}`}
+      style={{ "--from": `${last.from * 12}px` } as React.CSSProperties}
+    >
+      {title}
+    </p>
   );
 }

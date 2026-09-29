@@ -41,6 +41,8 @@ export type ListState = {
   lock: (slug: string, locked: boolean) => void;
   section: Section;
   base: string;
+  /** Whether locked notes are open right now (so the menu can offer to lock them again). */
+  unlocked: boolean;
 };
 
 export const ListContext = createContext<ListState | null>(null);
