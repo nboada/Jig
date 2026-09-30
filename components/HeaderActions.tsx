@@ -11,6 +11,8 @@ import { Kbd } from "@/components/Kbd";
 import { Modal } from "@/components/Modal";
 import { ConnectIcon, FingerprintIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon, TrashIcon } from "@/components/NavIcons";
 import { PasskeysDialog } from "@/components/Passkeys";
+import { AiSettingsDialog } from "@/components/AiSettings";
+import { SparkleIcon } from "@/components/NoteAi";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";
 
@@ -22,6 +24,7 @@ export function HeaderActions() {
   const [searching, setSearching] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [passkeys, setPasskeys] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [leaving, setLeaving] = useState<"here" | "everywhere" | null>(null);
   const [loggingOut, startLogout] = useTransition();
   const pathname = usePathname();
@@ -94,6 +97,10 @@ export function HeaderActions() {
               <FingerprintIcon className="size-4 text-muted" />
               Passkeys…
             </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => setAiOpen(true)} className={menuItemClass()}>
+              <SparkleIcon className="size-4 text-muted" />
+              AI settings…
+            </DropdownMenu.Item>
             <DropdownMenu.Separator className="mx-1 my-1 h-px bg-line" />
             <DropdownMenu.Item onSelect={() => setLeaving("here")} className={menuItemClass()}>
               <LogoutIcon className="size-4 text-muted" />
@@ -110,6 +117,7 @@ export function HeaderActions() {
       <SearchDialog open={searching} onOpenChange={setSearching} />
       <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
       <PasskeysDialog open={passkeys} onOpenChange={setPasskeys} />
+      <AiSettingsDialog open={aiOpen} onOpenChange={setAiOpen} />
       <ConfirmDialog
         open={leaving !== null}
         onOpenChange={(open) => !open && setLeaving(null)}

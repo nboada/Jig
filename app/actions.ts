@@ -41,7 +41,9 @@ import { FLASH_COOKIE } from "@/lib/flash";
 import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
 import { approve, checkAuthorizeRequest, redirectError, revokeGrant } from "@/lib/oauth";
 import { resourceUrlFrom } from "@/lib/oauth-http";
-import { AiError, fixFile, review as reviewSnippet, rewrite, type Review, type RewriteMode } from "@/lib/ai";
+import { AiError, fixFile, review as reviewSnippet, rewrite, testKey, type Review, type RewriteMode } from "@/lib/ai";
+import { PLATFORM_IDS, platformById } from "@/lib/ai-providers";
+import { getAiSettings, removeAiKey, saveAiKey, setActivePlatform, setAiModel, type AiSettings } from "@/lib/ai-settings";
 
 export type FormState = { error?: string };
 export type Result = { error?: string };
@@ -799,4 +801,61 @@ export async function aiFix(input: {
   } catch (error) {
     return aiFailure(error);
   }
+}
+
+const PlatformIdSchema = z.enum(PLATFORM_IDS);
+
+/** The AI settings dialog's view: which platforms have keys (never the keys themselves). */
+export async function aiSettings(): Promise<AiSettings> {
+  await requireAuth();
+  return getAiSettings(await getDb());
+}
+
+/**
+ * Saves a platform's key and model from the AI settings dialog. A new key is tried first with one
+ * tiny request, so a wrong one is caught before it's stored; the platform then becomes the one in
+ * use. An empty key keeps the one already there and only changes the model.
+ */
+export async function saveAiPlatform(id: string, input: { key: string; model: string }): Promise<{ settings?: AiSettings; error?: string }> {
+  await requireAuth();
+  try {
+    const platformId = parse(PlatformIdSchema, id);
+    const { key, model } = parse(z.object({ key: z.string().trim().max(500), model: z.string().trim().max(200) }), input);
+    const db = await getDb();
+    if (key) {
+      await testKey(platformById(platformId)!, key, model || null);
+      await saveAiKey(db, platformId, key);
+      await setActivePlatform(db, platformId);
+    }
+    await setAiModel(db, platformId, model);
+  } catch (error) {
+    if (error instanceof CredentialsUnavailable) return { error: "Saving AI keys needs JIG_ENCRYPTION_KEY, the same key as Credentials." };
+    return aiFailure(error);
+  }
+  revalidatePath("/", "layout");
+  return { settings: await getAiSettings(await getDb()) };
+}
+
+/** Forgets the key saved in Jig for a platform (its environment variable, if any, still works). */
+export async function removeAiPlatformKey(id: string): Promise<{ settings?: AiSettings; error?: string }> {
+  await requireAuth();
+  try {
+    await removeAiKey(await getDb(), parse(PlatformIdSchema, id));
+  } catch (error) {
+    return failure(error, "Could not remove the key. Try again.");
+  }
+  revalidatePath("/", "layout");
+  return { settings: await getAiSettings(await getDb()) };
+}
+
+/** Picks the platform the AI helpers use. */
+export async function chooseAiPlatform(id: string): Promise<{ settings?: AiSettings; error?: string }> {
+  await requireAuth();
+  try {
+    await setActivePlatform(await getDb(), parse(PlatformIdSchema, id));
+  } catch (error) {
+    return failure(error, "Could not switch. Try again.");
+  }
+  revalidatePath("/", "layout");
+  return { settings: await getAiSettings(await getDb()) };
 }

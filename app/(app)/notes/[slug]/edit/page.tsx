@@ -19,7 +19,7 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
   return (
     <div>
       <NoteForm
-        ai={aiEnabled()}
+        ai={await aiEnabled()}
         note={note}
         header={{ eyebrow: "Edit note" }}
       />

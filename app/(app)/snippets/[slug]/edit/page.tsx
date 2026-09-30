@@ -16,7 +16,7 @@ export default async function EditSnippetPage({ params }: { params: Promise<{ sl
   return (
     <div>
       <SnippetForm
-        ai={aiEnabled()}
+        ai={await aiEnabled()}
         snippet={snippet}
         header={{ eyebrow: "Edit snippet" }}
       />

@@ -10,7 +10,7 @@ export default async function NewSnippetPage() {
   return (
     <div>
       <SnippetForm
-        ai={aiEnabled()}
+        ai={await aiEnabled()}
         header={{ eyebrow: "New snippet" }}
       />
     </div>

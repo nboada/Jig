@@ -10,7 +10,7 @@ export default async function NewNotePage() {
   return (
     <div>
       <NoteForm
-        ai={aiEnabled()}
+        ai={await aiEnabled()}
         header={{ eyebrow: "New note" }}
       />
     </div>
