@@ -8,10 +8,6 @@ import CodeMirror, { type Extension } from "@uiw/react-codemirror";
 import { useEffect, useMemo, useState } from "react";
 import { SYNTAX } from "@/lib/code-theme";
 
-/**
- * CodeMirror grammars per language id, each loaded the first time it's needed, so an edit page
- * only downloads the one it shows. Astro and Svelte files are HTML with extras, close enough to colour.
- */
 const GRAMMARS: Record<string, () => Promise<Extension>> = {
   javascript: async () => (await import("@codemirror/lang-javascript")).javascript(),
   jsx: async () => (await import("@codemirror/lang-javascript")).javascript({ jsx: true }),
@@ -35,7 +31,6 @@ const GRAMMARS: Record<string, () => Promise<Extension>> = {
   markdown: async () => (await import("@codemirror/lang-markdown")).markdown(),
 };
 
-// "Jig Night", the same colours as the read view (lib/code-theme.ts).
 const jigNight = syntaxHighlighting(
   HighlightStyle.define([
     { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: SYNTAX.comment, fontStyle: "italic" },
@@ -55,8 +50,6 @@ const jigNight = syntaxHighlighting(
   ]),
 );
 
-// Sit in the code well like the read view: no editor background, the app's mono font and size.
-// Highest precedence so these win over the basic setup's own background and gutter.
 const frame = Prec.highest(EditorView.theme({
   "&": { backgroundColor: "transparent", color: SYNTAX.text, fontSize: "13px" },
   "&.cm-focused": { outline: "none" },
@@ -67,13 +60,11 @@ const frame = Prec.highest(EditorView.theme({
     backgroundColor: "color-mix(in srgb, #cefd53 22%, transparent) !important",
   },
   ".cm-matchingBracket": { backgroundColor: "var(--color-line)", outline: "none" },
-  // Stretch the typing area over the whole box, so a click anywhere in it starts typing.
   ".cm-content, .cm-gutter": { minHeight: "18rem" },
   ".cm-content": { padding: "12px 0" },
   ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "color-mix(in srgb, var(--color-raised) 70%, transparent)" },
 }, { dark: true }));
 
-/** A code editor that colours the code by language, keeps Tab for indenting, and grows with its content. */
 export function CodeEditor({
   value,
   onChange,
@@ -87,10 +78,8 @@ export function CodeEditor({
   language: string;
   label: string;
   placeholder?: string;
-  /** Hands over the editor, for changes that should go in as edits (and undo like them). */
   onReady?: (view: EditorView) => void;
 }) {
-  // The grammar arrives a moment after the editor; until then the code shows uncoloured.
   const [grammar, setGrammar] = useState<{ language: string; extension: Extension } | null>(null);
   useEffect(() => {
     let current = true;
@@ -119,7 +108,6 @@ export function CodeEditor({
       theme="none"
       placeholder={placeholder}
       onCreateEditor={onReady}
-      // Snippets are mostly pasted, so completion popups would only get in the way.
       basicSetup={{ foldGutter: false, autocompletion: false }}
     />
   );

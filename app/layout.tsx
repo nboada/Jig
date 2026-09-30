@@ -5,7 +5,6 @@ import { Toaster } from "@/components/Toaster";
 import { TooltipProvider } from "@/components/Tooltip";
 import "./globals.css";
 
-// Self-hosted at build time, so the installed app never asks Google for them.
 const sans = Schibsted_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-schibsted" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], style: ["normal", "italic"], variable: "--font-jetbrains" });
 
@@ -16,17 +15,13 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Jig", statusBarStyle: "black-translucent" },
 };
 
-// The installed app's title bar and the browser's UI take the page's darkest colour.
 export const viewport: Viewport = { themeColor: "#181818" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Every page is rendered per request, so each gets the nonce proxy.ts put in its
-  // Content-Security-Policy; a page built ahead of time would have scripts without one.
   await connection();
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh">
-        {/* Here, not in the (app) layout: shared links and login use buttons with tooltips too. */}
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
       </body>

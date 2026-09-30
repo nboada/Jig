@@ -4,7 +4,6 @@ import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, copyTitle, parse, slugify, SnippetError } from "./snippets";
 import { noteInputSchema, notePatchSchema, slugSchema, type NoteInput, type NotePatch } from "./validation";
 
-/** The listing view of a note: its latest title and tags plus the start of its text (none when locked). */
 export type NoteSummary = {
   slug: string;
   title: string;
@@ -17,7 +16,6 @@ export type NoteSummary = {
   updatedAt: string;
 };
 
-/** One saved version of a note: a full snapshot, like snippet versions. */
 export type NoteVersion = {
   slug: string;
   version: number;
@@ -33,10 +31,6 @@ export type Note = NoteVersion & {
   id: string;
   currentVersion: number;
   pinned: boolean;
-  /**
-   * The text is encrypted. Without a codec, `body` comes back empty; `unreadable` says so, and the
-   * note can't be changed (nothing here can encrypt a new version).
-   */
   locked: boolean;
   unreadable: boolean;
   createdAt: string;
@@ -46,11 +40,6 @@ export type Note = NoteVersion & {
 
 export type NoteVersionSummary = Pick<NoteVersion, "version" | "title" | "message" | "source" | "createdAt">;
 
-/**
- * Encrypts and decrypts a locked note's text, one version at a time. The dashboard passes one in
- * (lib/locked-notes.ts) once the notes are unlocked. This module never imports the encryption key
- * itself, because the MCP server uses it and must never be able to read a locked note.
- */
 export type NoteCodec = {
   encode(noteId: string, version: number, body: string): Promise<string>;
   decode(noteId: string, version: number, stored: string): Promise<string>;
@@ -79,15 +68,9 @@ export type NoteListOptions = {
   tag?: string;
   limit?: number;
   sort?: Sort;
-  /** Leave locked notes out altogether (the MCP server does). */
   hideLocked?: boolean;
 };
 
-/**
- * Lists notes, newest first. Every word of `query` must appear somewhere in
- * the title, slug, tags or body; title and slug hits rank first. A locked note's
- * text is never searched or excerpted: it's ciphertext, and it's meant to stay hidden.
- */
 export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<NoteSummary[]> {
   const where: string[] = [];
   const params: unknown[] = [];
@@ -130,7 +113,6 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
   }));
 }
 
-/** All note tags in use, with how many notes carry each. */
 export async function listNoteTags(db: Db): Promise<{ tag: string; count: number }[]> {
   const rows = await db.query<{ tag: string; count: number | string }>(
     `SELECT tag, count(*) AS count FROM notes, jsonb_array_elements_text(tags) AS tag
@@ -139,10 +121,6 @@ export async function listNoteTags(db: Db): Promise<{ tag: string; count: number
   return rows.map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }
 
-/**
- * Returns the latest version of a note, or a specific one when `version` is given. A locked
- * note's text is decoded with `codec`; without one it comes back empty and `unreadable`.
- */
 export async function getNote(db: Db, slug: string, version?: number, codec?: NoteCodec): Promise<Note | null> {
   const rows = await db.query(
     `SELECT n.id, n.slug, n.current_version, n.created_at AS note_created_at, n.updated_at, n.pinned_at, n.locked_at,
@@ -204,10 +182,6 @@ export async function createNote(db: Db, input: NoteInput, source = "web"): Prom
 
 const NOTE_FIELDS = ["title", "tags", "body"] as const;
 
-/**
- * Saves a new version. Fields left out of the patch carry over from the latest
- * version. Nothing is saved when the result is identical to the latest version.
- */
 export async function updateNote(
   db: Db,
   slug: string,
@@ -238,10 +212,6 @@ export async function updateNote(
   return { note: await requireNote(db, slug, undefined, codec), changed: true };
 }
 
-/**
- * Bumps the note to a new version in one statement, failing if another save got there first.
- * A locked note's new text is encrypted for the version it becomes.
- */
 async function insertNoteVersion(
   db: Db,
   current: Note,
@@ -295,7 +265,6 @@ export async function getNoteVersionPair(db: Db, slug: string, from: number, to?
   return [a, b] as const;
 }
 
-/** Rolls back by saving a new version whose content is a copy of an older one. */
 export async function restoreNoteVersion(
   db: Db,
   slug: string,
@@ -318,7 +287,6 @@ export async function deleteNote(db: Db, slug: string): Promise<void> {
   if (!rows.length) throw new SnippetError(`No note with the slug "${slug}"`, "not_found");
 }
 
-/** Saves a copy of a note's latest version as a new note, with its own slug and history. */
 export async function cloneNote(db: Db, slug: string, source = "web"): Promise<Note> {
   const original = await getNote(db, slug);
   if (!original) throw new SnippetError(`No note called "${slug}".`, "not_found");
@@ -330,7 +298,6 @@ export async function cloneNote(db: Db, slug: string, source = "web"): Promise<N
   );
 }
 
-/** Pins a note to the top of the list, or unpins it. Not a new version: nothing in it changes. */
 export async function setNotePinned(db: Db, slug: string, pinned: boolean): Promise<void> {
   const rows = await db.query(
     `UPDATE notes SET pinned_at = CASE WHEN $2 THEN coalesce(pinned_at, now()) END WHERE slug = $1 RETURNING slug`,
@@ -339,11 +306,6 @@ export async function setNotePinned(db: Db, slug: string, pinned: boolean): Prom
   if (rows.length === 0) throw new SnippetError(`No note called "${slug}".`, "not_found");
 }
 
-/**
- * Locks a note (encrypts the text of every version) or removes its lock (decrypts them all).
- * The whole history changes in one statement, and only if nobody saved a version or changed the
- * lock meanwhile, so no version is ever left readable in a locked note's history.
- */
 export async function setNoteLocked(db: Db, slug: string, locked: boolean, codec: NoteCodec): Promise<void> {
   const rows = await db.query(
     `SELECT n.id, n.current_version, n.locked_at, v.version, v.body

@@ -10,12 +10,6 @@ import { PlusIcon, SearchIcon } from "@/components/NavIcons";
 import { ViewToggle } from "@/components/ViewToggle";
 import type { Section } from "@/lib/prefs";
 
-/**
- * In grid layout, the list page has its own toolbar; this puts the same one above an item, a new
- * item or an edit, so search, the layout toggle and New stay at hand. Searching or picking a
- * language goes back to the grid with that filter. History pages keep the full width, as in the
- * split view.
- */
 export function GridToolbar({
   section,
   placeholder,
@@ -38,7 +32,6 @@ export function GridToolbar({
   const go = (param: string, value: string) => router.push(value ? `${base}?${param}=${encodeURIComponent(value)}` : base);
 
   return (
-    // Hidden on phones: the back link and the tab bar already lead to search and New.
     <form
       className="mb-6 hidden gap-2 sm:flex sm:flex-row sm:items-center"
       onSubmit={(e) => {

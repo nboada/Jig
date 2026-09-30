@@ -30,12 +30,8 @@ import { requireAuth } from "@/lib/auth";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
-/** A `?v=` version number, or undefined for the latest. */
 const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) : undefined);
 
-// The page title and the page both need the note; cache() makes that one query per request.
-// Both pass the same arguments, version included, so they share the cached result.
-// A locked note's text is only decoded while the notes are unlocked.
 const loadNote = cache(async (slug: string, version: number | undefined) =>
   getNote(await getDb(), slug, version, await unlockedCodec()),
 );
@@ -61,7 +57,6 @@ export default async function NotePage({ params, searchParams }: Props) {
 
   return (
     <EnterOnReturn className="min-w-0 space-y-7">
-      {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/notes" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Notes
       </BackLink>
@@ -156,7 +151,6 @@ export default async function NotePage({ params, searchParams }: Props) {
         meta={
           <Meta>
             {[
-              // Who saved it, only worth a mention when it was an agent rather than you.
               note.source !== "web" && formatSource(note.source),
               <span key="t" suppressHydrationWarning>
                 {timeAgo(note.versionCreatedAt)}
@@ -175,7 +169,6 @@ export default async function NotePage({ params, searchParams }: Props) {
         }
       />
 
-      {/* Framed like a snippet's file; the text fills the frame. */}
       {!readable ? (
         <UnlockPanel hasPasskey={passkey} />
       ) : note.body ? (

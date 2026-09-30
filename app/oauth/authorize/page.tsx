@@ -12,11 +12,6 @@ import { resourceUrlFrom } from "@/lib/oauth-http";
 
 export const metadata: Metadata = { title: "Connect an app" };
 
-/**
- * The consent screen an app (Claude, say) sends you to when it connects over OAuth. You're signed
- * in by now (the proxy sent you through /login otherwise). Shows who's asking and, more to the
- * point, the site the approval goes back to, since any app can call itself "Claude".
- */
 export default async function AuthorizePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireAuth();
   const raw = await searchParams;

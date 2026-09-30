@@ -1,7 +1,3 @@
-/**
- * An empty list, a search with no results or a pane waiting for a pick: a small bracket glyph
- * (an empty jig, drawn from the logo's chevrons), a heading, one line and optional actions.
- */
 export function EmptyState({
   title,
   children,

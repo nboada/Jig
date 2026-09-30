@@ -46,7 +46,6 @@ type Text = { content: { type: "text"; text: string }[]; isError?: boolean };
 
 const text = (value: string): Text => ({ content: [{ type: "text", text: value }] });
 
-/** A code fence longer than any run of backticks inside the content. */
 function fence(content: string, lang: string) {
   const longest = Math.max(2, ...(content.match(/`+/g) ?? []).map((m) => m.length));
   const ticks = "`".repeat(longest + 1);
@@ -85,7 +84,6 @@ function formatNoteSummary(n: NoteSummary) {
   return `- ${n.slug}: ${n.title} (v${n.version})${tags}${excerpt}`;
 }
 
-/** Agents never see locked notes: to them a locked note doesn't exist. */
 async function refuseLocked(db: Db, slug: string) {
   if ((await getNote(db, slug))?.locked) {
     throw new SnippetError(`No note with the slug "${slug}". Use search_notes to find it.`, "not_found");
@@ -115,7 +113,6 @@ async function run(fn: () => Promise<Text>): Promise<Text> {
   }
 }
 
-/** Who made a change, recorded on each version: "mcp:<token name>". */
 const sourceOf = (ctx: ServerContext) => `mcp:${ctx.http?.authInfo?.clientId ?? "agent"}`;
 
 const slugArg = z.string().trim().min(1).describe("The snippet's slug, e.g. gsap-scroll-trigger. Find it with search_snippets.");

@@ -1,25 +1,14 @@
-/**
- * The AI platforms Jig can use for its helpers, as data: adding one is a line here (plus an
- * adapter in lib/ai.ts if it doesn't speak the OpenAI-style API). Shared with the browser, which
- * lists them in the AI settings dialog, so nothing secret belongs here.
- */
 
 export type PlatformId = "gemini" | "anthropic" | "openai" | "openrouter" | "groq" | "mistral" | "deepseek";
 
 export type Platform = {
   id: PlatformId;
   label: string;
-  /** How it's called: Google's SDK, Anthropic's SDK, or the OpenAI-style chat completions API. */
   kind: "gemini" | "anthropic" | "openai-compatible";
-  /** For the OpenAI-style ones: the API's base address. */
   baseUrl?: string;
-  /** Used unless a model is set for the platform. */
   defaultModel: string;
-  /** The environment variable that works too (a key saved in the app wins). */
   envKey: string;
-  /** Where to make a key. */
   keyUrl: string;
-  /** Shown beside the platform: what it's good for, or where the text goes. */
   note: string;
 };
 

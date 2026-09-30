@@ -30,7 +30,6 @@ export type ItemAction = {
   danger?: boolean;
 };
 
-/** The class list for a menu's panel and its items, shared by the right-click and ⋯ menus. */
 export const menuContentClass =
   "menu-content z-50 min-w-52 overflow-hidden rounded-lg border border-line-strong bg-overlay p-1 text-ui shadow-xl shadow-black/40";
 export const menuItemClass = (danger = false) =>
@@ -38,11 +37,6 @@ export const menuItemClass = (danger = false) =>
     danger ? "text-danger" : "text-text-2 data-[highlighted]:text-text"
   }`;
 
-/**
- * The actions on one item, in the same order in every menu: Pin, Clone, Copy for agent (or a
- * credential's Copy URL), Share, Open in new tab, Details, then Delete on its own. `dialogs` holds
- * the share and delete dialogs these open; render it next to the menu.
- */
 export function useItemActions({
   kind,
   slug,
@@ -61,17 +55,11 @@ export function useItemActions({
   title: string;
   url?: string;
   pinned?: boolean;
-  /** A locked note: no clone, share or copy for agent, and its lock can be removed. */
   locked?: boolean;
-  /** Locked notes are open right now, so a locked one can be locked again at once. */
   unlocked?: boolean;
-  /** False on an older version: only Details is offered. */
   latest?: boolean;
-  /** How many versions a delete removes, for its warning. */
   versions?: number;
-  /** Offer "Open in new tab" (pointless on the item's own page). */
   newTab?: boolean;
-  /** Offer "Details…", which calls this. */
   onDetails?: () => void;
 }) {
   const router = useRouter();
@@ -89,8 +77,6 @@ export function useItemActions({
   const versioned = kind !== "credentials";
 
   function remove() {
-    // Out of the list at once, and off the item's own page straight away if that's where we are;
-    // the server catches up behind it. If it can't, the item comes back and the menu says why.
     list?.hide(slug);
     setConfirming(false);
     const leaving = pathname.startsWith(`${base}/${slug}`);
@@ -108,7 +94,6 @@ export function useItemActions({
     });
   }
 
-  /** Brings a deleted item back from Recently deleted, and returns to it if we'd left its page. */
   function undo(id: string, leaving: boolean) {
     startAction(async () => {
       const result = await restoreDeleted(id);
@@ -126,7 +111,6 @@ export function useItemActions({
       key: "pin",
       label: pinned ? "Unpin" : "Pin to top",
       icon: pinned ? PinOffIcon : PinIcon,
-      // Moves in the list at once; the action's revalidation refreshes everything else.
       onSelect: () => {
         list?.pin(slug, !pinned);
         startAction(async () => {
@@ -153,7 +137,6 @@ export function useItemActions({
           }),
       });
     }
-    // Agents can't see a locked note, so there's nothing to hand them.
     if (!locked) {
       actions.push({ key: "agent", label: "Copy for agent", icon: AgentIcon, onSelect: () => copy(agentPrompt(kind, slug), "Copied for your agent") });
     }
@@ -163,9 +146,7 @@ export function useItemActions({
   }
   if (latest && !locked) actions.push({ key: "share", label: "Share…", icon: ShareIcon, onSelect: () => setSharing(true) });
   if (latest && kind === "notes") {
-    // Locking also has a button beside the pin; the right-click menu in the list needs it here.
     if (!locked) actions.push({ key: "lock", label: "Lock note…", icon: LockIcon, onSelect: () => setLocking("lock") });
-    // Open right now: shut it (and every other locked note) again before the 30 minutes are up.
     if (locked && unlocked) {
       actions.push({
         key: "relock",
@@ -179,8 +160,6 @@ export function useItemActions({
           }),
       });
     }
-    // Offered even where the list can't tell whether the notes are unlocked; the server refuses
-    // (and the dialog says why) until they are.
     if (locked) actions.push({ key: "unlock", label: "Remove lock…", icon: UnlockIcon, onSelect: () => setLocking("unlock") });
   }
   if (newTab) actions.push({ key: "tab", label: "Open in new tab", icon: ExternalIcon, onSelect: () => window.open(`${base}/${slug}`, "_blank", "noopener") });
@@ -193,7 +172,6 @@ export function useItemActions({
     const locked = locking === "lock";
     startLock(async () => {
       setLockError("");
-      // The list shows the padlock (or drops it) at once; it goes back if the server says no.
       list?.lock(slug, locked);
       const result = await setNoteLock(slug, locked);
       if (result.error) {

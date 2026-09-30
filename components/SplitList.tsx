@@ -15,16 +15,7 @@ import { filterItems } from "@/lib/filter";
 import { isPlainKey, type Section } from "@/lib/prefs";
 import { sortItems, type Sort } from "@/lib/sort";
 
-/**
- * The split view's shared pieces for any list section: the filters and the list column. Each
- * kind wraps these with its own row layout and search text (functions can't be passed in from a
- * server component).
- */
 
-/**
- * Holds every item (sorted on the server) and the filters. Filtering happens in the browser as
- * you type; `search` finds content matches on the server a moment later.
- */
 export function ListFilters<T extends Item>({
   items,
   sort: initialSort,
@@ -39,7 +30,6 @@ export function ListFilters<T extends Item>({
   sort: Sort;
   section: Section;
   base: string;
-  /** The words an item can be found by without asking the server: title, tags and the like. */
   text: (item: T) => string;
   search: (query: string) => Promise<string[]>;
   unlocked?: boolean;
@@ -48,10 +38,6 @@ export function ListFilters<T extends Item>({
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("");
   const [tag, setTag] = useState("");
-  // Links from elsewhere (home's "See all", a tag on an item) arrive with ?q=, ?lang= or ?tag=.
-  // Read once from the address after mounting, not with useSearchParams: that needs a Suspense
-  // boundary around the layout, and pages inside one never finished mounting (their effects,
-  // like the code editor's, never ran).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setQuery(params.get("q") ?? "");
@@ -59,11 +45,9 @@ export function ListFilters<T extends Item>({
     setTag(params.get("tag") ?? "");
   }, []);
   const [contentHits, setContentHits] = useState<Set<string>>();
-  // Sorting, hiding and pinning happen here first, so the column changes the moment you ask.
   const [sort, setSort] = useState(initialSort);
   type Edits = { items: T[]; hidden: Set<string>; pins: Map<string, boolean>; locks: Map<string, boolean> };
   const [edits, setEdits] = useState<Edits>({ items, hidden: new Set(), pins: new Map(), locks: new Map() });
-  // Fresh items from the server supersede any edits made ahead of it.
   const current = edits.items === items ? edits : null;
 
   useEffect(() => {
@@ -116,13 +100,6 @@ export function ListFilters<T extends Item>({
   );
 }
 
-/**
- * The list column. Its head holds the section's search, filters, sort, layout and New, so the
- * open item gets the whole height beside it. It stays mounted while you move between items, and
- * ↑/↓ step through what is visible. `renderRow` draws an item's content inside its link; the link
- * is a `group` with aria-current="page" when selected, so rows can style their title with
- * group-aria-[current=page].
- */
 export function ListColumn<T extends Item>({
   noun,
   label,
@@ -132,7 +109,6 @@ export function ListColumn<T extends Item>({
   renderRow,
 }: {
   noun: string;
-  /** The section's name, engraved at the top of the column. */
   label: string;
   placeholder: string;
   newLabel: string;
@@ -144,7 +120,6 @@ export function ListColumn<T extends Item>({
   const pathname = usePathname();
   const selected = pathname.startsWith(`${base}/`) ? decodeURIComponent(pathname.slice(base.length + 1).split("/")[0]) : "";
 
-  // ↑/↓ move through the list; the selected row scrolls into view.
   const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -201,7 +176,6 @@ export function ListColumn<T extends Item>({
               className="min-w-0 flex-1 bg-transparent text-ui text-text outline-none placeholder:text-faint"
             />
           </label>
-          {/* Without a language filter, layout and New fit beside the search. */}
           {!languageFilter && controls}
         </div>
         {(languageFilter || tag) && (
@@ -227,7 +201,6 @@ export function ListColumn<T extends Item>({
       <ul ref={listRef} className="flex-1 overflow-y-auto p-1.5">
         {visible.map((item, index) => {
           const active = item.slug === selected;
-          // Pinned items come first; label the two groups when there are both.
           const groupLabel = hasPins && index === 0 ? "pinned" : hasPins && visible[index - 1]?.pinned && !item.pinned ? "all" : null;
           return (
             <li key={item.slug}>
@@ -249,7 +222,6 @@ export function ListColumn<T extends Item>({
             </li>
           );
         })}
-        {/* The column holds the first 500 (the section layouts' limit); the grid view's search asks the server. */}
         {visible.length >= 500 && (
           <li className="px-3 py-4 text-center text-meta text-muted">{`Showing the first 500 ${noun}s. Search in the grid view to reach the rest.`}</li>
         )}

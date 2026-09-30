@@ -57,7 +57,6 @@ describe("notes over MCP", () => {
 
   test("locked notes don't exist as far as agents can tell", async () => {
     await call("create_note", { title: "Plugin keys", body: "ACF: abc123" });
-    // Locked straight in the database: this test file must not reach the encryption key either.
     await db.query(`UPDATE notes SET locked_at = now()`);
     expect((await call("search_notes", { query: "plugin" })).text).not.toContain("plugin-keys");
     expect((await call("search_notes", {})).text).not.toContain("plugin-keys");
@@ -79,8 +78,6 @@ describe("credentials stay out of MCP", () => {
     expect([...tools.keys()].filter((name) => /credential|secret/i.test(name))).toEqual([]);
   });
 
-  // Follows `from "./x"`, `from "@/lib/x"`, `import "./x"`, dynamic `import("./x")`, and
-  // `./`-relative subpaths like `./sub/x`. Both `./x` and `@/lib/x` resolve to `lib/x.ts`.
   const IMPORT_RE = /(?:from|import)\s*\(?\s*["'](?:\.\/|@\/lib\/)([\w.\/-]+)["']/g;
 
   test("the import regex matches from, bare import, dynamic import and @/lib forms", () => {

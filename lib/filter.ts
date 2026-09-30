@@ -3,12 +3,6 @@ import { familyMembers } from "./languages";
 type Filterable = { slug: string; tags: string[]; language?: string };
 export type Filters = { query: string; language: string; tag: string };
 
-/**
- * Narrows an already-sorted list in the browser. Every word of the query must appear in the
- * item's searchable `text` (title, tags and the like); `contentHits` adds the slugs a server
- * search matched on the full content. Language filters by family (JavaScript covers TSX),
- * tag by exact tag.
- */
 export function filterItems<T extends Filterable>(
   items: T[],
   filters: Filters,

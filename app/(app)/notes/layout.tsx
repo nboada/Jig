@@ -7,10 +7,6 @@ import { getListPrefs } from "@/lib/view";
 import { requireAuth } from "@/lib/auth";
 import { isUnlocked } from "@/lib/locked-notes";
 
-/**
- * In list view, notes open beside a column listing them all, which stays put while you move
- * between them. In grid view the pages get the full width.
- */
 export default async function NotesLayout({ children }: { children: React.ReactNode }) {
   await requireAuth();
   const { view, sort } = await getListPrefs("notes");

@@ -7,11 +7,6 @@ import { readProseClass } from "@/components/Markdown";
 import { NoteAi } from "@/components/NoteAi";
 import { noteExtensions } from "@/lib/note-editor";
 
-/**
- * A rich text editor that reads and writes markdown: a toolbar for headings, emphasis, lists,
- * checklists, quotes, code and links, plus the usual markdown shortcuts as you type ("- ", "## ",
- * "**bold**"). The Markdown toggle switches to the source for pasting or fine edits.
- */
 export function MarkdownEditor({
   value,
   onChange,
@@ -21,7 +16,6 @@ export function MarkdownEditor({
   value: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
-  /** Offer the AI menu (rephrase, shorten, fix). `slug` is the note's, when it has been saved. */
   ai?: { slug?: string };
 }) {
   const [source, setSource] = useState(false);
@@ -29,22 +23,18 @@ export function MarkdownEditor({
     extensions: [...noteExtensions, Placeholder.configure({ placeholder })],
     content: value,
     contentType: "markdown",
-    // Rendered on the server first; the editor mounts in the browser.
     immediatelyRender: false,
     editorProps: { attributes: { class: `${readProseClass} min-h-96 px-5 py-4 outline-none sm:px-7 sm:py-6`, "aria-label": "Note" } },
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
   });
 
   function toggleSource() {
-    // Coming back from the source, load whatever was typed there.
     if (source) editor?.commands.setContent(value, { contentType: "markdown" });
     setSource(!source);
   }
 
   return (
-    // Framed like a snippet's file: the toolbar is the frame's header, the note its body.
     <div className="rounded-xl border border-line bg-well">
-      {/* The toolbar stays in reach under the header on a long note. */}
       <div className="sticky top-(--pane-top) z-10 flex flex-wrap items-center gap-0.5 rounded-t-xl border-b border-line bg-strip/95 p-1 backdrop-blur">
         {editor && !source ? <Toolbar editor={editor} /> : <span className="px-2 text-meta text-muted">Editing the markdown source</span>}
         {editor && !source && ai && (
@@ -86,7 +76,6 @@ export function MarkdownEditor({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
-  // Re-render the buttons' pressed states as the selection moves, without re-rendering the editor.
   const active = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -173,7 +162,6 @@ function Tool({ label, on, run, icon, text }: { label: string; on: boolean; run:
   return (
     <button
       type="button"
-      // Keep the editor's selection: act on mousedown without taking focus.
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
       aria-label={label}

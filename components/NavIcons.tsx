@@ -1,4 +1,3 @@
-/** Stroke icons for the section links, drawn on a 24px grid to match the sidebar's text size. */
 function Icon({ children, className = "size-4" }: { children: React.ReactNode; className?: string }) {
   return (
     <svg
@@ -16,7 +15,6 @@ function Icon({ children, className = "size-4" }: { children: React.ReactNode; c
   );
 }
 
-/** Braces rather than the logo's chevrons, so the tab doesn't repeat the logo. */
 export function SnippetsIcon(props: { className?: string }) {
   return (
     <Icon {...props}>
@@ -102,7 +100,6 @@ export function PinOffIcon(props: { className?: string }) {
   );
 }
 
-/** Copy with a plus, so it reads differently from the copy-to-clipboard icon. */
 export function CloneIcon(props: { className?: string }) {
   return (
     <Icon {...props}>
@@ -268,7 +265,6 @@ export function UnlockIcon(props: { className?: string }) {
   );
 }
 
-/** A fingerprint, for Touch ID and other passkeys. */
 export function FingerprintIcon(props: { className?: string }) {
   return (
     <Icon {...props}>

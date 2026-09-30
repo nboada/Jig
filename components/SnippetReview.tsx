@@ -18,13 +18,6 @@ const ORDER = { error: 0, warning: 1, suggestion: 2 };
 
 type Draft = { title: string; language: string; instructions: string; files: { name: string; content: string }[] };
 
-/**
- * "AI check" beside a file's Format button: asks the AI to review that file as it is in the
- * editor, unsaved changes included, and lists what it finds with the line and a fix. Each issue's
- * location jumps to that line. Tick the issues to fix and "Fix with AI" rewrites the file with just
- * those fixes; the change shows as a diff, and Apply puts it in the editor (Cmd+Z undoes it, and
- * nothing is saved until Save).
- */
 export function SnippetReview({
   draft,
   onGoTo,
@@ -33,7 +26,6 @@ export function SnippetReview({
 }: {
   draft: () => Draft;
   onGoTo: (file: string, line: number | null) => void;
-  /** Puts the fixed file into the editor. */
   onApply: (content: string) => void;
   disabled?: boolean;
 }) {
@@ -56,7 +48,6 @@ export function SnippetReview({
       const result = await aiReview(draft());
       if (!result.review) return setError(result.error ?? "The AI couldn't answer just now. Try again.");
       setReview(result.review);
-      // Errors and warnings are ticked to start with; suggestions are opt-in.
       const sorted = [...result.review.issues].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
       setChosen(new Set(sorted.flatMap((issue, i) => (issue.severity === "suggestion" ? [] : [i]))));
     });
@@ -187,7 +178,6 @@ export function SnippetReview({
   );
 }
 
-/** The fix as a line diff: removed lines in red, added in green-ish accent, unchanged kept for context. */
 function FixDiff({ before, after }: { before: string; after: string }) {
   const parts = diffLines(before, after);
   const changed = parts.filter((p) => p.added || p.removed).reduce((n, p) => n + (p.count ?? 0), 0);

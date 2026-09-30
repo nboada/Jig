@@ -9,7 +9,6 @@ const items = [
 const slugs = (list: { slug: string }[]) => list.map((i) => i.slug);
 
 test("browser sorting matches the database's orders", () => {
-  // The same expectations as the listSnippets sorting test, so the two agree.
   expect(slugs(sortItems(items, "updated"))).toEqual(["bravo", "charlie", "alpha"]);
   expect(slugs(sortItems(items, "created"))).toEqual(["charlie", "alpha", "bravo"]);
   expect(slugs(sortItems(items, "title"))).toEqual(["alpha", "bravo", "charlie"]);

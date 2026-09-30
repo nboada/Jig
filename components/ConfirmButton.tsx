@@ -9,10 +9,6 @@ import { overlayClass, panelClass } from "@/components/Modal";
 
 type Tone = "default" | "danger";
 
-/**
- * The app's confirmation modal, controlled by whoever opens it. `action` is the confirm button,
- * usually a DialogAction.
- */
 export function ConfirmDialog({
   open,
   onOpenChange,
@@ -45,7 +41,6 @@ export function ConfirmDialog({
   );
 }
 
-/** The confirm button of a ConfirmDialog. */
 export function DialogAction({
   label,
   tone = "default",
@@ -64,17 +59,12 @@ export function DialogAction({
       onClick={onClick}
       className={button({ variant: tone === "danger" ? "danger" : "primary" })}
     >
-      {/* The label stays while working, so the button keeps its width; a spinner shows progress. */}
       {pending && <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
       {label}
     </button>
   );
 }
 
-/**
- * A button that asks in a modal before sending its form. Put it inside the <form> it submits.
- * `tone="danger"` is for deletes and revokes; the confirm button then reads as destructive.
- */
 export function ConfirmButton({
   message,
   children,
@@ -87,12 +77,9 @@ export function ConfirmButton({
   message: string;
   children: React.ReactNode;
   className?: string;
-  /** The modal's heading; the button's own label when left out. */
   title?: string;
-  /** The confirm button's label; the button's own label when left out. */
   confirmLabel?: string;
   tone?: Tone;
-  /** A slug to take out of the split view's list the moment this is confirmed (for deletes). */
   hides?: string;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
@@ -111,7 +98,6 @@ export function ConfirmButton({
         title={title ?? `${label}?`}
         message={message}
         action={
-          // The dialog is portaled out of the page but stays inside the form in React's tree.
           <FormAction
             label={confirmLabel ?? label}
             tone={tone}
@@ -138,8 +124,6 @@ function FormAction({
   onConfirm: () => void;
   onDone: () => void;
 }) {
-  // Pending while the form's server action runs. Actions that redirect take the page away;
-  // for the rest (a revoke refreshes in place) the dialog closes once the action finishes.
   const { pending } = useFormStatus();
   const [wasPending, setWasPending] = useState(false);
   useEffect(() => {

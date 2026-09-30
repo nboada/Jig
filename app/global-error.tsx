@@ -3,10 +3,6 @@
 import { useEffect } from "react";
 import "./globals.css";
 
-/**
- * The last resort, when the root or app layout itself fails. It replaces the whole document, so it
- * brings its own <html> and <body> (and styles: the root layout's aren't loaded here).
- */
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => console.error("[jig] app failed", error), [error]);
   return (

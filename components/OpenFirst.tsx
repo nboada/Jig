@@ -4,13 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useOptionalList } from "@/components/ListContext";
 
-/**
- * In the split view, a section opens on its first item (pinned first, in the list's order and
- * filters) instead of an empty pane. Wide screens only: on a phone the list is the page, so it
- * stays on the list (and this pane isn't shown there at all). Replaces the history entry, so Back
- * doesn't bounce off the empty pane. While the item loads, a skeleton of an item page stands in;
- * with nothing in the list, `empty` (the browse hint) shows instead.
- */
 export function OpenFirst({ empty }: { empty: React.ReactNode }) {
   const router = useRouter();
   const list = useOptionalList();
@@ -22,7 +15,6 @@ export function OpenFirst({ empty }: { empty: React.ReactNode }) {
   return first ? <ItemSkeleton /> : <>{empty}</>;
 }
 
-/** The outline of an item page: its label, title, details line and content panel, pulsing gently. */
 function ItemSkeleton() {
   const bar = "rounded-md bg-raised";
   return (

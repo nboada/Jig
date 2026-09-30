@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { MarkdownManager } from "@tiptap/markdown";
 import { noteExtensions } from "./note-editor";
 
-// What the editor would save for a note it was given, without any edits in between.
 const manager = new MarkdownManager({ extensions: noteExtensions });
 const roundTrip = (markdown: string) => manager.serialize(manager.parse(markdown)).trim();
 

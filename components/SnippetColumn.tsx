@@ -7,7 +7,6 @@ import { timeAgoShort } from "@/lib/format";
 import type { SnippetSummary } from "@/lib/snippets";
 import type { Sort } from "@/lib/sort";
 
-/** What a snippet can be found by in the browser; code matches come from the server. */
 const snippetText = (s: SnippetSummary) => [s.title, s.slug, s.description, s.tags.join(" "), s.fileNames.join(" ")].join(" ");
 
 export function SnippetFilters({ snippets, sort, children }: { snippets: SnippetSummary[]; sort: Sort; children: React.ReactNode }) {
@@ -31,7 +30,6 @@ export function SnippetColumn() {
           <span className="block truncate text-body font-medium text-text group-aria-[current=page]:text-accent">{s.title}</span>
           <span className="mt-0.5 flex items-center gap-1.5 font-mono text-meta text-muted">
             <LanguageIcon language={s.language} className="size-3 shrink-0" />
-            {/* Relative times can tick over between the server render and the browser's. */}
             <span className="shrink-0" suppressHydrationWarning>
               {timeAgoShort(s.updatedAt)}
             </span>

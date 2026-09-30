@@ -10,12 +10,6 @@ import { LockIcon, UnlockIcon } from "@/components/NavIcons";
 import { toast } from "@/components/Toaster";
 import { Tip } from "@/components/Tooltip";
 
-/**
- * The lock beside a note's pin. On an unlocked note it locks it at once; on a locked note that's
- * open it locks it again before the 30 minutes are up; on one that's shut it just says so (the
- * panel below does the unlocking). Taking the lock off stays in the ⋯ menu, behind a confirm.
- * The padlock (and the list's) changes at once; if the server says no, it goes back.
- */
 export function LockButton({ slug, locked: savedLocked, readable: savedReadable }: { slug: string; locked: boolean; readable: boolean }) {
   const router = useRouter();
   const list = useOptionalList();

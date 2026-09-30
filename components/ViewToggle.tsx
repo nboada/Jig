@@ -11,13 +11,8 @@ const OPTIONS = [
   { view: "list", label: "List view", key: "l", Icon: ListIcon },
 ] as const;
 
-/**
- * Switches a list page between cards and rows, also with the G and L keys. Each page remembers
- * its own choice in a cookie, so the server renders it directly.
- */
 export function ViewToggle({ view, section }: { view: View; section: Section }) {
   const pathname = usePathname();
-  // The pressed button moves at once; the page follows when the refresh lands.
   const [shown, setShown] = useOptimistic(view);
   const [, startTransition] = useTransition();
 
@@ -25,12 +20,10 @@ export function ViewToggle({ view, section }: { view: View; section: Section }) 
     if (next === shown) return;
     startTransition(async () => {
       setShown(next);
-      // On an item, the grid has nothing to show beside it: go back to the list, now as cards.
       await setViewPreference(section, next, next === "grid" && pathname !== `/${section}` ? `/${section}` : undefined);
     });
   }
 
-  // Re-registered each render so G and L always see the current state; it is one listener.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const option = OPTIONS.find((o) => isPlainKey(event, o.key));

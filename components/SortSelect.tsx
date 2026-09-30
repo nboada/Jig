@@ -7,16 +7,10 @@ import { useSetParam } from "@/components/SearchInput";
 import { prefCookie, savePref, type Section } from "@/lib/prefs";
 import { SORTS, type Sort } from "@/lib/sort";
 
-/**
- * Picks the list order. Each page remembers its own (in this browser, and saved for the others); a ?sort= in the URL is dropped
- * on change. With `onChange` (the split view, which holds every item) the list re-sorts in the
- * browser at once and nothing reloads; otherwise the page refreshes in the new order.
- */
 export function SortSelect({ sort, section, onChange }: { sort: Sort; section: Section; onChange?: (sort: Sort) => void }) {
   const router = useRouter();
   const { params, setParam } = useSetParam();
   function choose(next: string) {
-    // Saved here at once, and in the background for your other browsers.
     savePref("sort", section, next);
     void savePreference(prefCookie("sort", section), next);
     if (onChange) return onChange(next as Sort);
@@ -33,7 +27,6 @@ export function SortSelect({ sort, section, onChange }: { sort: Sort; section: S
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden>
           <path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16" />
         </svg>
-        {/* Rendered directly: Radix only fills Select.Value once its items have mounted. */}
         <Select.Value>{SORTS.find((s) => s.id === sort)?.label}</Select.Value>
       </Select.Trigger>
       <Select.Portal>

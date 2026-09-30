@@ -14,7 +14,6 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const note = await getNote(await getDb(), slug, undefined, await unlockedCodec());
   if (!note) notFound();
-  // Locked and not unlocked: the note's page asks for Touch ID first.
   if (note.unreadable) redirect(`/notes/${slug}`);
   return (
     <div>

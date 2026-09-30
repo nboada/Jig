@@ -3,14 +3,12 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { CloseIcon } from "@/components/NavIcons";
 
-/** The overlay and panel every dialog shares, also used by the confirm dialog (a Radix AlertDialog). */
 export const overlayClass = "modal-overlay fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]";
 export const panelClass =
   "modal-content fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-line-strong bg-overlay p-6 shadow-2xl shadow-black/50 outline-none";
 
 const WIDTHS = { sm: "w-[min(26rem,calc(100vw-2rem))]", md: "w-[min(36rem,calc(100vw-2rem))]" };
 
-/** A dialog with a title, an optional line under it, a close button and the given body. */
 export function Modal({
   open,
   onOpenChange,
@@ -22,7 +20,6 @@ export function Modal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: React.ReactNode;
-  /** Shown under the title; when left out, screen readers read the title instead. */
   description?: React.ReactNode;
   size?: keyof typeof WIDTHS;
   children: React.ReactNode;

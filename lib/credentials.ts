@@ -4,11 +4,6 @@ import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, parse, slugify, SnippetError } from "./snippets";
 import { credentialInputSchema, slugSchema, type CredentialInput } from "./validation";
 
-/**
- * Credentials are dashboard-only. Secret field values are stored as
- * ciphertext and only revealField returns them in plain text. This module
- * must never be imported by lib/mcp.ts (lib/mcp.test.ts enforces it).
- */
 
 export type CredentialField = { id: string; label: string; secret: boolean; value: string | null };
 
@@ -33,7 +28,6 @@ export type CredentialSummary = {
   updatedAt: string;
 };
 
-/** A field as stored: `value` is ciphertext when `secret` is true. */
 type StoredField = { id: string; label: string; secret: boolean; value: string };
 
 const iso = (value: unknown) => new Date(value as string).toISOString();
@@ -42,10 +36,6 @@ const secretContext = (credentialId: string, fieldId: string) => `${credentialId
 
 export type CredentialListOptions = { query?: string; tag?: string; limit?: number; sort?: Sort };
 
-/**
- * Lists credentials, newest first. Searches titles, slugs, URLs, tags, notes,
- * field labels and plain field values; secret values are never searched.
- */
 export async function listCredentials(db: Db, options: CredentialListOptions = {}): Promise<CredentialSummary[]> {
   const where: string[] = [];
   const params: unknown[] = [];
@@ -86,7 +76,6 @@ export async function listCredentials(db: Db, options: CredentialListOptions = {
   }));
 }
 
-/** All credential tags in use, with how many credentials carry each. */
 export async function listCredentialTags(db: Db): Promise<{ tag: string; count: number }[]> {
   assertEncryptionReady();
   const rows = await db.query<{ tag: string; count: number | string }>(
@@ -119,14 +108,12 @@ function toCredential(row: Row): Credential {
   };
 }
 
-/** A credential with its secret values left out (`value: null`). */
 export async function getCredential(db: Db, slug: string): Promise<Credential | null> {
   assertEncryptionReady();
   const row = await findRow(db, slug);
   return row ? toCredential(row) : null;
 }
 
-/** Decrypts one secret field. The only function that returns a secret in plain text. */
 export async function revealField(db: Db, slug: string, fieldId: string): Promise<string> {
   assertEncryptionReady();
   const row = await requireRow(db, slug);
@@ -135,10 +122,6 @@ export async function revealField(db: Db, slug: string, fieldId: string): Promis
   return field.secret ? decryptSecret(field.value, secretContext(row.id as string, field.id)) : field.value;
 }
 
-/**
- * Turns submitted fields into stored ones. A secret sent with an empty value
- * keeps its stored ciphertext; new and changed secrets are encrypted.
- */
 async function buildFields(
   credentialId: string,
   fields: { id?: string; label: string; secret: boolean; value: string }[],
@@ -195,7 +178,6 @@ export async function createCredential(db: Db, input: CredentialInput): Promise<
   return toCredential(rows[0]);
 }
 
-/** Replaces a credential's details and fields. There is no history. The slug never changes. */
 export async function updateCredential(db: Db, slug: string, input: CredentialInput): Promise<Credential> {
   assertEncryptionReady();
   const data = parse(credentialInputSchema, input);

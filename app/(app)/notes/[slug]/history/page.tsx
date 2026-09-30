@@ -26,7 +26,6 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   const codec = await unlockedCodec();
   const note = await getNote(db, slug, undefined, codec);
   if (!note) notFound();
-  // A locked note's history is as private as the note: unlock it on the note's page first.
   if (note.unreadable) redirect(`/notes/${slug}`);
 
   const versions = await listNoteVersions(db, slug);
@@ -34,7 +33,6 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
   const pick = (value: string | undefined, fallback: number) => (numbers.has(Number(value)) ? Number(value) : fallback);
   const to = pick(search.to, note.currentVersion);
   const from = pick(search.from, Math.max(1, to - 1));
-  // One version picked (the first, which has nothing before it): show it as it was saved.
   const shown = from === to ? await getNote(db, slug, to, codec) : null;
   const diff = from !== to ? compareNotes(...(await getNoteVersionPair(db, slug, from, to, codec))) : null;
 
@@ -58,7 +56,6 @@ export default async function NoteHistoryPage({ params, searchParams }: Props) {
                 key={v.version}
                 className={`relative rounded-xl border p-3 text-ui transition ${selected ? "border-accent-line bg-accent-soft" : "border-line bg-panel hover:border-line-strong"}`}
               >
-                {/* The whole card shows what changed in this version; the links inside sit above it. */}
                 <Link
                   href={`/notes/${slug}/history?from=${Math.max(1, v.version - 1)}&to=${v.version}`}
                   scroll={false}

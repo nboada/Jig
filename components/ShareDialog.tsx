@@ -25,10 +25,6 @@ const VIEW_OPTIONS: { value: number | null; label: string }[] = [
   { value: 10, label: "10×" },
 ];
 
-/**
- * Makes and manages share links for one item. A new link (and a credential's passcode) shows
- * once; after that the item's links are listed with their state and can be turned off.
- */
 export function ShareDialog({
   kind,
   slug,
@@ -43,7 +39,6 @@ export function ShareDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const strict = kind === "credentials";
-  // Credentials default to the strictest settings; everything else to no expiry and no view limit.
   const [label, setLabel] = useState("");
   const [expiry, setExpiry] = useState<Expiry>(strict ? "24h" : "never");
   const [maxViews, setMaxViews] = useState<number | null>(strict ? 1 : null);
@@ -55,7 +50,6 @@ export function ShareDialog({
   const refresh = () => listItemShares(kind, slug).then(setLinks);
   useEffect(() => {
     if (open) refresh();
-    // Only when the dialog opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -70,10 +64,6 @@ export function ShareDialog({
     });
   }
 
-  /**
-   * Turning a link off or on, or deleting it, shows in the list at once; the server catches up
-   * behind it, and the list reloads from the server either way, so a failure puts it back.
-   */
   function change(apply: (links: Share[]) => Share[], action: () => Promise<{ error?: string }>) {
     setError("");
     setLinks((current) => (current ? apply(current) : current));
@@ -248,13 +238,11 @@ function Copyable({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Copies a link (and a credential link's passcode) again, from the encrypted copy kept for its owner. */
 function CopyAgain({ id, passcode }: { id: string; passcode: boolean }) {
   const [copied, setCopied] = useState<"link" | "passcode" | null>(null);
   const [problem, setProblem] = useState("");
   async function copy(what: "link" | "passcode") {
     const result = await revealShareLink(id);
-    // A credential's link needs an unlock, like its secrets; say so where the copy was asked for.
     if (!result.token) return setProblem(result.error ?? "Could not copy the link. Try again.");
     setProblem("");
     await navigator.clipboard.writeText(what === "link" ? `${window.location.origin}/s/${result.token}` : (result.passcode ?? ""));
@@ -281,7 +269,6 @@ function CopyAgain({ id, passcode }: { id: string; passcode: boolean }) {
   );
 }
 
-/** Deletes a link on a second click, so one stray click can't. */
 function DeleteLink({ disabled, onDelete }: { disabled: boolean; onDelete: () => void }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {

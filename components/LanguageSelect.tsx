@@ -4,14 +4,8 @@ import * as Select from "@radix-ui/react-select";
 import { LanguageIcon } from "@/components/LanguageIcon";
 import { LANGUAGE_CHOICES, languageFamily, languageLabel } from "@/lib/languages";
 
-// Radix reserves the empty string for "no selection", so "every language" travels as this sentinel.
 const ALL = "all";
 
-/**
- * A language picker with brand icons. It lists families (TypeScript, JSX and TSX sit under
- * JavaScript), so a value like "tsx" shows as JavaScript and is kept until another family is
- * picked. With `allLabel`, it offers an extra first option that reports "" (no filter).
- */
 export function LanguageSelect({
   value,
   onChange,
@@ -22,7 +16,6 @@ export function LanguageSelect({
   value: string;
   onChange: (value: string) => void;
   allLabel?: string;
-  /** "sm" for toolbars (32px, on the well); "md" for forms. */
   size?: "sm" | "md";
   className?: string;
 }) {
@@ -37,11 +30,6 @@ export function LanguageSelect({
       >
         <LanguageIcon language={current} />
         <span className="min-w-0 flex-1 truncate">{current === ALL ? allLabel : languageLabel(current)}</span>
-        {/*
-          A filter with a language picked gets a × to clear it. It lives inside the trigger (a
-          button), so it's a span that stops the press before it can open the menu; the keyboard
-          still clears it through the menu's "All languages" option.
-        */}
         {allLabel && value && (
           <span
             role="button"

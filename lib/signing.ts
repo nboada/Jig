@@ -1,15 +1,5 @@
 import type { Db } from "./db";
 
-/**
- * Signed, expiring values kept in cookies: the session, share passes, passkey challenges and the
- * unlock. Each purpose signs with its own key, derived (HKDF) from a root that combines:
- * - a random secret the database makes for itself on first use (`app_secrets`),
- * - SESSION_SECRET, or ADMIN_PASSWORD when that isn't set,
- * - JIG_ENCRYPTION_KEY, when it is set.
- * So nothing is signed with the password alone: a signed value handed to a stranger (a share
- * pass, a passkey challenge) can't be used to guess the password offline, and a copy of the
- * database alone can't forge a session.
- */
 
 export type Purpose = "session" | "share-pass" | "webauthn" | "unlock";
 
@@ -25,7 +15,6 @@ async function provisionedSecret(db: Db): Promise<string> {
     [ROOT_SECRET, fresh],
   );
   if (rows[0]) return rows[0].value;
-  // Another request made it at the same moment, after this statement's snapshot was taken.
   const again = await db.query<{ value: string }>(`SELECT value FROM app_secrets WHERE name = $1`, [ROOT_SECRET]);
   if (!again[0]) throw new Error("Could not set up the signing secret.");
   return again[0].value;
@@ -75,10 +64,6 @@ async function keyFor(db: Db, purpose: Purpose): Promise<CryptoKey> {
 
 const bytes = (value: string) => new TextEncoder().encode(value);
 
-/**
- * Signs some fields with an expiry (unix seconds): "field.field.expires.signature". Fields can't
- * contain dots.
- */
 export async function seal(db: Db, purpose: Purpose, fields: string[], expires: number): Promise<string> {
   if (fields.some((f) => f.includes("."))) throw new Error("Signed fields can't contain dots.");
   const body = [...fields, String(Math.floor(expires))].join(".");
@@ -86,7 +71,6 @@ export async function seal(db: Db, purpose: Purpose, fields: string[], expires: 
   return `${body}.${Buffer.from(signature).toString("base64url")}`;
 }
 
-/** The fields of a value `seal` made for this purpose, or null if it's forged, altered or expired. */
 export async function unseal(db: Db, purpose: Purpose, value: string | undefined, now = Date.now()): Promise<string[] | null> {
   if (!value) return null;
   const parts = value.split(".");
@@ -107,7 +91,6 @@ export async function unseal(db: Db, purpose: Purpose, value: string | undefined
   }
 }
 
-/** Compares two strings in constant time for equal lengths. */
 export function safeEqual(a: string, b: string): boolean {
   const x = new TextEncoder().encode(a);
   const y = new TextEncoder().encode(b);
@@ -116,7 +99,6 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** Hex SHA-256, for looking up tokens by hash. */
 export async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Buffer.from(digest).toString("hex");

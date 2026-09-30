@@ -28,7 +28,6 @@ beforeEach(async () => {
   await db.query(`TRUNCATE oauth_clients, oauth_codes, oauth_grants`);
 });
 
-/** Registers Claude and runs the authorize step, returning the code it would be sent. */
 async function authorize(extra: Record<string, string> = {}) {
   const client = await registerClient(db, { client_name: "Claude", redirect_uris: [CALLBACK] });
   const request = await checkAuthorizeRequest(
@@ -75,14 +74,12 @@ describe("oauth", () => {
     expect((await verifyAccessToken(db, tokens.access_token))?.name).toBe("Claude");
     expect((await listGrants(db)).map((g) => g.name)).toEqual(["Claude"]);
 
-    // Only hashes are stored.
     const [row] = await db.query<{ access_hash: string }>(`SELECT access_hash FROM oauth_grants`);
     expect(row.access_hash).not.toBe(tokens.access_token);
 
     const next = await refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id });
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
     expect(await verifyAccessToken(db, next.access_token)).not.toBeNull();
-    // The old refresh token died with the rotation.
     await expect(refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
 
     await revokeByToken(db, next.refresh_token);
@@ -94,7 +91,6 @@ describe("oauth", () => {
     const { client, code } = await authorize();
     const other = "b".repeat(50);
     await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: other })).rejects.toBeInstanceOf(OAuthError);
-    // Right verifier now, but the code is gone.
     await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
 
     const second = await authorize();
@@ -110,7 +106,6 @@ describe("oauth", () => {
     const tokens = await exchangeCode(db, { code: fresh.code, clientId: fresh.client.id, codeVerifier: verifier });
     await db.query(`UPDATE oauth_grants SET access_expires_at = now() - interval '1 second'`);
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
-    // Refreshing still works after the access token expires.
     const next = await refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: fresh.client.id });
     expect(await verifyAccessToken(db, next.access_token)).not.toBeNull();
   });

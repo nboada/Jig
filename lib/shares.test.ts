@@ -120,7 +120,6 @@ describe("credential links", () => {
     expect(passcode).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     expect(share.protected).toBe(true);
 
-    // Case, spaces and the dash don't matter when typing it back.
     expect(await checkPasscode(db, share, passcode!.toLowerCase().replace("-", " "))).toEqual({ ok: true, left: MAX_FAILED });
     const item = await loadSharedItem(db, share);
     if (item?.kind !== "credentials") throw new Error("expected a credential");
@@ -134,7 +133,6 @@ describe("credential links", () => {
       expect(await checkPasscode(db, share, "WRONG-CODE")).toEqual({ ok: false, left: MAX_FAILED - i - 1 });
     }
     expect(shareStatus(await reload(token))).toBe("locked");
-    // Once locked, even the right passcode isn't checked, and no view comes out of it.
     expect(await checkPasscode(db, share, passcode!)).toEqual({ ok: false, left: 0 });
     expect(await recordView(db, share)).toBe(false);
   });

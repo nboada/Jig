@@ -1,9 +1,3 @@
-/**
- * Encrypts credential secrets at rest with AES-256-GCM. The key comes from
- * JIG_ENCRYPTION_KEY (32 bytes, base64). Each value is bound to its
- * credential and field through the additional data, so ciphertext copied to
- * another place in the database does not decrypt.
- */
 
 const PREFIX = "v1";
 
@@ -24,9 +18,6 @@ const fromBase64 = (value: string, encoding: "base64" | "base64url"): Uint8Array
   new Uint8Array(Buffer.from(value, encoding));
 const toBase64Url = (bytes: ArrayLike<number>): string => Buffer.from(bytes).toString("base64url");
 
-// Standard base64 of exactly 32 bytes: 43 base64 characters plus one "=" pad character.
-// `Buffer.from(value, "base64")` silently skips characters outside its alphabet, so without
-// this check a typo'd key could still decode to 32 bytes and look valid.
 const KEY_SHAPE = /^[A-Za-z0-9+/]{43}=$/;
 
 function keyBytes(): Uint8Array<ArrayBuffer> | null {

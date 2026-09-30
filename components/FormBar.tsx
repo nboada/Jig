@@ -7,19 +7,10 @@ import { button } from "@/components/Button";
 import { markReturn } from "@/components/EnterOnReturn";
 import { Kbd } from "@/components/Kbd";
 
-/** What the page puts at the top of its form. */
 export type FormHeader = { eyebrow: string; description?: string };
 
-/** The title, edited where it's shown: the page heading is the field. */
 export type TitleField = { value: string; onChange: (value: string) => void; placeholder: string; autoFocus?: boolean };
 
-/**
- * The top of a new or edit form, laid out like the item page's header: a small line where the item
- * page has its badges, then the title with Cancel and Save on the right, exactly where Edit was.
- * The title is typed straight into the heading, so there's no second Title field below. Cancel goes
- * back, so there's no separate back link. Rendered inside the form, so Save submits it; ⌘S does too.
- * Esc cancels; with unsaved changes it asks for a second Esc first.
- */
 
 export function FormBar({
   eyebrow,
@@ -39,8 +30,6 @@ export function FormBar({
   const [confirmLeave, setConfirmLeave] = useState(false);
 
   useEffect(() => {
-    // Every form sends its fields as one JSON "payload"; comparing it with how it started tells
-    // whether anything was changed.
     const payload = () => (submit.current?.form?.elements.namedItem("payload") as HTMLInputElement | null)?.value ?? "";
     const initial = payload();
     let armed = false;
@@ -53,7 +42,6 @@ export function FormBar({
         return;
       }
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      // An open menu, picker or dialog takes Esc for itself.
       if (document.querySelector('[role="dialog"], [role="listbox"], [role="menu"], .cm-tooltip-autocomplete')) return;
       if (payload() === initial || armed) {
         markReturn();
@@ -68,7 +56,6 @@ export function FormBar({
         setConfirmLeave(false);
       }, 2500);
     }
-    // Saving from either Save button (or ⌘S) returns to the item page, which slides in.
     const form = submit.current?.form;
     form?.addEventListener("submit", markReturn);
     window.addEventListener("keydown", onKey);

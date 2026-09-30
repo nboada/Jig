@@ -1,15 +1,10 @@
 import type { Db } from "./db";
 import { sha256 } from "./signing";
 
-/**
- * API tokens let agents reach the MCP endpoint. Only a SHA-256 hash is stored,
- * so a token is shown once, when it is created.
- */
 
 export type ApiToken = { id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null };
 
 const TOKEN_PREFIX = "jig_";
-/** Tokens created before the rename to Jig keep working. */
 const LEGACY_PREFIX = "snp_";
 
 function toToken(row: Record<string, unknown>): ApiToken {
@@ -32,10 +27,6 @@ export async function createToken(db: Db, name: string): Promise<{ token: string
   return { token, record: toToken(rows[0]) };
 }
 
-/**
- * Returns the token's record when it is valid, and notes when it was last used (to the nearest
- * few minutes, so a busy agent doesn't write to the database on every request).
- */
 export async function verifyToken(db: Db, token: string | undefined): Promise<ApiToken | null> {
   if (!token?.startsWith(TOKEN_PREFIX) && !token?.startsWith(LEGACY_PREFIX)) return null;
   const rows = await db.query(

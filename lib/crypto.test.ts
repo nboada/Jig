@@ -59,7 +59,6 @@ describe("crypto", () => {
   });
 
   test("a malformed key with an invalid character is reported as not ready", () => {
-    // Same length as a real 32-byte key (44 chars), but with an invalid character substituted in.
     const malformed = "!" + KEY_A.slice(1);
     expect(malformed).toHaveLength(44);
     process.env.JIG_ENCRYPTION_KEY = malformed;

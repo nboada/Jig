@@ -4,10 +4,6 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { button } from "@/components/Button";
 
-/**
- * What a page shows when rendering it (or an action it ran) fails, instead of Next's bare error
- * screen. The header and tabs stay, since they belong to the layout above this boundary.
- */
 export default function AppError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => console.error("[jig] page failed", error), [error]);
   return (

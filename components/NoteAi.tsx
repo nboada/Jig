@@ -25,10 +25,6 @@ export function SparkleIcon({ className = "size-4" }: { className?: string }) {
   );
 }
 
-/**
- * The rewrite marked up against the original, word by word: removed words struck through in red,
- * added ones highlighted. Shown as the markdown source, so every change is visible, formatting too.
- */
 function Changes({ original, text }: { original: string; text: string }) {
   const parts = useMemo(() => diffWordsWithSpace(original, text), [original, text]);
   const count = parts.filter((p) => p.added || p.removed).length;
@@ -56,11 +52,6 @@ function Changes({ original, text }: { original: string; text: string }) {
 
 type Suggestion = { mode: RewriteMode; original: string; text: string; range: { from: number; to: number } | null };
 
-/**
- * The note editor's AI menu. It works on the selected text, or the whole note when nothing is
- * selected, and shows the suggestion first: Replace puts it in the editor, and the note's own Save
- * keeps it as a new version. `slug` lets the server refuse a locked note.
- */
 export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState("");
@@ -70,7 +61,6 @@ export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
 
   function run(mode: RewriteMode, from?: Suggestion) {
     const { from: a, to: b, empty } = editor.state.selection;
-    // A retry reuses what was asked about the first time, even if the selection has moved since.
     const range = from ? from.range : empty ? null : { from: a, to: b };
     const original = from
       ? from.original
@@ -105,11 +95,9 @@ export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
-          // Keep the editor's selection when the menu opens.
           onMouseDown={(e) => e.preventDefault()}
           disabled={working !== null}
           title="AI check: rephrase, shorten or fix the selection (or the whole note)"
-          // The same button as a snippet file's "AI check", beside Format.
           className={button({ variant: "ghost", size: "sm", className: "disabled:opacity-60 data-[state=open]:bg-raised data-[state=open]:text-text" })}
         >
           <SparkleIcon className={`size-3.5 ${working ? "animate-pulse text-accent" : ""}`} />

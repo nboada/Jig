@@ -2,10 +2,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { Kbd } from "@/components/Kbd";
 import { OpenFirst } from "@/components/OpenFirst";
 
-/**
- * The split view's right-hand pane before anything is picked. It opens the first item, showing a
- * skeleton meanwhile; an empty section gets a quiet hint a third of the way down instead.
- */
 export function PickPane({ noun }: { noun: string }) {
   return (
     <OpenFirst

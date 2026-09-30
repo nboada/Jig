@@ -23,7 +23,7 @@ const splitList = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet; header: FormHeader; /** Offer "Check for errors". */ ai?: boolean }) {
+export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet; header: FormHeader; ai?: boolean }) {
   const [state, action, pending] = useActionState(saveSnippet, {});
   const [title, setTitle] = useState(snippet?.title ?? "");
   const [description, setDescription] = useState(snippet?.description ?? "");
@@ -32,11 +32,9 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
   const [dependencies, setDependencies] = useState(snippet?.dependencies.join("\n") ?? "");
   const [instructions, setInstructions] = useState(snippet?.instructions ?? "");
   const [message, setMessage] = useState("");
-  // Saved files still called snippet.* take the title's name straight away, so the next save keeps it.
   const [files, setFiles] = useState<SnippetFile[]>(() =>
     snippet ? renameForTitle(snippet.files, "", snippet.title) : [{ name: defaultFileName("javascript"), content: "" }],
   );
-  // The optional fields start folded away unless the snippet already uses them.
   const hasDetails = Boolean(
     snippet && (snippet.description || snippet.tags.length || snippet.dependencies.length || snippet.instructions),
   );
@@ -53,15 +51,12 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
     try {
       const formatted = await beautify(files[index].content, fileLanguage);
       const view = editors.current[index];
-      // Through the editor, the change shows at once and Cmd+Z undoes it; onChange then updates the file.
       if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: formatted } });
       else updateFile(index, { content: formatted });
     } catch (error) {
-      // Parser messages read like "Unexpected token (15:16)" followed by a code frame; keep the line number.
       const where = error instanceof Error ? error.message.match(/\((\d+):\d+\)/) : null;
       const kind = languageLabel(fileLanguage);
       const content = files[index].content;
-      // Either the whole file is another language (wrong extension), or a block at the end is.
       const actual = await detectLanguage(content, fileLanguage, [language]);
       const split = actual ? undefined : ((await findSplit(content, fileLanguage)) ?? undefined);
       setFormatError({
@@ -79,7 +74,6 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
     }
   }
 
-  /** Puts the cursor on a line of a file (from the AI review) and scrolls it into view. */
   function goTo(name: string, line: number | null) {
     const index = Math.max(0, files.findIndex((f) => f.name === name));
     const view = editors.current[index];
@@ -90,12 +84,10 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
     view.focus();
   }
 
-  /** Moves a stray block out of a file into a new file named for its language, e.g. snippet.css. */
   function moveSplit(index: number, split: Split) {
     const taken = new Set(files.map((f) => f.name));
     let name = withExtension(files[index].name, split.tailLanguage);
     for (let n = 2; taken.has(name); n++) name = withExtension(`${files[index].name.replace(/\.[^.]+$/, "")}-${n}`, split.tailLanguage);
-    // Trim the original through its editor, as Format does; its onChange updates the file.
     const view = editors.current[index];
     if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: split.head } });
     else updateFile(index, { content: split.head });
@@ -142,7 +134,6 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
             className="w-full bg-well text-body"
             value={language}
             onChange={(next) => {
-              // A lone file whose extension followed the old language follows the new one too.
               if (files.length === 1 && languageFamily(languageForFile(files[0].name, "")) === languageFamily(language)) {
                 updateFile(0, { name: withExtension(files[0].name, next) });
               }
@@ -166,7 +157,6 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
                   onChange={(e) => {
                     const name = e.target.value;
                     updateFile(index, { name });
-                    // On a new single-file snippet, the extension picks the language.
                     const detected = languageForFile(name, "");
                     if (!snippet && files.length === 1 && detected) setLanguage(detected);
                   }}
@@ -178,7 +168,6 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
                     draft={() => ({ title, language, instructions, files: [files[index]] })}
                     onGoTo={goTo}
                     onApply={(content) => {
-                      // Through the editor, as Format does: it shows at once and Cmd+Z undoes it.
                       const view = editors.current[index];
                       if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
                       else updateFile(index, { content });

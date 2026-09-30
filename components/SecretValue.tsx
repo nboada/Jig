@@ -6,10 +6,6 @@ import { revealSecret } from "@/app/actions";
 import { iconButton } from "@/components/Button";
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, LockIcon } from "@/components/NavIcons";
 
-/**
- * A hidden secret. Its value is fetched from the server only when revealed or copied, and
- * forgotten on leaving. While `locked` (no recent unlock) the buttons wait for the unlock panel.
- */
 export function SecretValue({ slug, fieldId, locked = false }: { slug: string; fieldId: string; locked?: boolean }) {
   const router = useRouter();
   const [value, setValue] = useState<string | null>(null);
@@ -19,7 +15,6 @@ export function SecretValue({ slug, fieldId, locked = false }: { slug: string; f
 
   async function load(): Promise<string> {
     const result = await revealSecret(slug, fieldId);
-    // The unlock ran out: redraw, so the page shows the unlock panel again.
     if (result.locked) router.refresh();
     if (result.error !== undefined) throw new Error(result.error);
     return result.value ?? "";
@@ -38,7 +33,6 @@ export function SecretValue({ slug, fieldId, locked = false }: { slug: string; f
 
   async function copy() {
     try {
-      // Handing the clipboard a promise keeps Safari's user-gesture check happy across the server round trip.
       const text = value !== null ? Promise.resolve(value) : load();
       await navigator.clipboard.write([
         new ClipboardItem({ "text/plain": text.then((t) => new Blob([t], { type: "text/plain" })) }),

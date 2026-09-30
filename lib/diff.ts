@@ -31,7 +31,7 @@ export function diffFile(name: string, before: string | undefined, after: string
   for (const hunk of patch.hunks) {
     lines.push({ kind: "hunk", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@` });
     for (const line of hunk.lines) {
-      if (line.startsWith("\\")) continue; // "\ No newline at end of file"
+      if (line.startsWith("\\")) continue;
       const kind = line[0] === "+" ? "add" : line[0] === "-" ? "del" : "ctx";
       if (kind === "add") additions++;
       if (kind === "del") deletions++;
@@ -43,7 +43,6 @@ export function diffFile(name: string, before: string | undefined, after: string
 
 const show = (value: unknown) => (Array.isArray(value) ? value.join(", ") || "(none)" : String(value || "(empty)"));
 
-/** Compares two versions of a snippet: changed metadata fields plus a line diff per file. */
 export function compareVersions(a: SnippetVersion, b: SnippetVersion): VersionDiff {
   const fields: FieldChange[] = [];
   for (const field of ["title", "description", "language", "tags", "dependencies", "instructions"] as const) {
@@ -60,7 +59,6 @@ export function compareVersions(a: SnippetVersion, b: SnippetVersion): VersionDi
   return { from: a.version, to: b.version, fields, files };
 }
 
-/** Renders a diff as a unified-diff style text block, for agents and terminals. */
 export function formatDiff(diff: VersionDiff): string {
   const out: string[] = [`Changes from version ${diff.from} to version ${diff.to}`];
   if (diff.fields.length) {
@@ -79,7 +77,6 @@ export function formatDiff(diff: VersionDiff): string {
   return out.join("\n");
 }
 
-/** Compares two versions of a note. The body is shown as one file, "Body", so DiffView works unchanged. */
 export function compareNotes(a: NoteVersion, b: NoteVersion): VersionDiff {
   const fields: FieldChange[] = [];
   for (const field of ["title", "tags"] as const) {

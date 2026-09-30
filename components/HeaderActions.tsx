@@ -16,10 +16,6 @@ import { SparkleIcon } from "@/components/NoteAi";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";
 
-/**
- * The right side of the header: search everything (⌘K), Connect, and a ⋯ menu with the
- * keyboard shortcuts (also ?), Log out and Sign out everywhere, used rarely enough to live in a menu.
- */
 export function HeaderActions() {
   const [searching, setSearching] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
@@ -35,7 +31,6 @@ export function HeaderActions() {
         event.preventDefault();
         setSearching(true);
       } else if (event.key === "?" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        // ? is Shift+/ on most layouts, so isPlainKey (which rejects Shift) can't be used here.
         const target = event.target as HTMLElement | null;
         if (target?.closest("input, textarea, select, [contenteditable], [role=dialog]")) return;
         event.preventDefault();
@@ -140,7 +135,6 @@ export function HeaderActions() {
   );
 }
 
-/** Search across snippets, notes and credentials: sends the words to the home page's search. */
 function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);

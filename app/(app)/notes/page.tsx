@@ -31,7 +31,6 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
   await requireAuth();
   const search = await searchParams;
   const { view, sort } = await getListPrefs("notes", search.sort);
-  // In list view the layout shows the notes in a column; this pane waits for a pick.
   if (view === "list") return <PickPane noun="note" />;
   const db = await getDb();
   const [notes, tags, unlocked] = await Promise.all([

@@ -18,7 +18,6 @@ import {
 
 type Brand = { path: string; hex: string };
 
-/** Brand marks per language id. Liquid is Shopify's template language, so it wears Shopify's mark. */
 const BRANDS: Record<string, Brand> = {
   javascript: siJavascript,
   typescript: siTypescript,
@@ -38,7 +37,6 @@ const BRANDS: Record<string, Brand> = {
   markdown: siMarkdown,
 };
 
-/** Marks whose brand colour is black would vanish on the dark theme, so they take the text colour instead. */
 function fill(hex: string) {
   return hex === "000000" ? "currentColor" : `#${hex}`;
 }
@@ -52,7 +50,6 @@ export function LanguageIcon({ language, className = "size-4" }: { language: str
       </svg>
     );
   }
-  // No brand for SQL, plain text or "all": draw a database, a page, or a stack of files.
   return (
     <svg
       viewBox="0 0 24 24"

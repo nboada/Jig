@@ -5,7 +5,6 @@ import { iconButton } from "@/components/Button";
 import { CopyButton } from "@/components/CopyButton";
 import { EyeIcon, EyeOffIcon, LockIcon } from "@/components/NavIcons";
 
-/** A shared credential's secret: masked until the viewer asks to see it. */
 export function SharedSecret({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
   return (

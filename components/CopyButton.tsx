@@ -5,10 +5,6 @@ import { button, iconButton } from "@/components/Button";
 import { CheckIcon, CopyIcon } from "@/components/NavIcons";
 import { Tip } from "@/components/Tooltip";
 
-/**
- * Copies `value`. With a label it's a small ghost button that reads "Copied" for a moment, at a
- * fixed width so nothing beside it moves; `iconOnly` makes it a square icon button.
- */
 export function CopyButton({ value, label = "Copy", iconOnly = false }: { value: string; label?: string; iconOnly?: boolean }) {
   const [copied, setCopied] = useState(false);
   async function copy() {

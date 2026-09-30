@@ -10,7 +10,6 @@ import { FLASH_COOKIE } from "@/lib/flash";
 const manager = Toast.createToastManager();
 
 type ToastOptions = {
-  /** A button in the toast, like Undo. The toast closes when it's pressed. */
   action?: { label: string; onClick: () => void };
 };
 
@@ -31,13 +30,11 @@ function add(title: string, type: "success" | "error", { action }: ToastOptions 
   return id;
 }
 
-/** Shows a toast from anywhere in client code: `toast.success("Note saved")`. */
 export const toast = {
   success: (title: string, options?: ToastOptions) => add(title, "success", options),
   error: (title: string, options?: ToastOptions) => add(title, "error", options),
 };
 
-/** A circle with a tick or a cross, as in shadcn's toast. */
 function StatusIcon({ type }: { type?: string }) {
   if (type !== "success" && type !== "error") return null;
   return (
@@ -64,7 +61,6 @@ function ToastList() {
       key={item.id}
       toast={item}
       className={[
-        // shadcn's Base UI toast: the newest in front, older ones peeking behind it, fanning out on hover.
         "group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-2xl border border-line-strong bg-overlay text-text shadow-xl shadow-black/40 will-change-transform outline-none select-none",
         "[--gap:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))] [--peek:0.75rem] [--scale:calc(max(0,1-(var(--toast-index)*0.1)))] [--shrink:calc(1-var(--scale))]",
         "h-(--height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)-(var(--toast-index)*var(--peek))-(var(--shrink)*var(--height))))_scale(var(--scale))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms]",
@@ -97,11 +93,6 @@ function ToastList() {
   ));
 }
 
-/**
- * Where toasts appear: bottom right on a computer, across the bottom above the tab bar on a
- * phone. It also shows the message a server action left for the page it redirected to (see
- * lib/flash.ts).
- */
 export function Toaster() {
   const pathname = usePathname();
 

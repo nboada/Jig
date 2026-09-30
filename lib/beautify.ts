@@ -1,13 +1,8 @@
 import type { Plugin } from "prettier";
 
-/**
- * Formats a file's code the way its language expects. Everything loads on first use, so the
- * formatters (a few hundred KB) never weigh on a page until someone presses Format.
- */
 
 type Formatter = (code: string) => Promise<string>;
 
-// Plugin modules export their pieces as named exports; some bundles also wrap them in `default`.
 const load = async (module: Promise<unknown>): Promise<Plugin> => {
   const mod = (await module) as { default?: Plugin } & Plugin;
   return mod.default ?? mod;
@@ -49,7 +44,6 @@ export function canBeautify(language: string): boolean {
   return language in FORMATTERS;
 }
 
-/** The formatted code; throws when the code does not parse, with the parser's message. */
 export async function beautify(code: string, language: string): Promise<string> {
   const formatter = FORMATTERS[language];
   if (!formatter) throw new Error(`No formatter for ${language}`);
@@ -58,7 +52,6 @@ export async function beautify(code: string, language: string): Promise<string> 
 
 export type Split = { line: number; head: string; tail: string; tailLanguage: string };
 
-// What a stray block usually is, by the file's language: CSS pasted under JS, or the reverse.
 const STRAYS: Record<string, string> = {
   javascript: "css",
   typescript: "css",
@@ -68,17 +61,11 @@ const STRAYS: Record<string, string> = {
   scss: "javascript",
 };
 
-/**
- * For a file that does not format, finds where a block in another language starts: the latest
- * paragraph break after which the rest formats as that language and everything before it
- * formats as the file's own. Null when no such break exists.
- */
 export async function findSplit(code: string, language: string): Promise<Split | null> {
   const tailLanguage = STRAYS[language];
   if (!tailLanguage) return null;
   const lines = code.split("\n");
   for (let i = lines.length - 1; i > 0; i--) {
-    // Only consider a block that starts on a non-empty line right after an empty one.
     if (!lines[i].trim() || lines[i - 1].trim()) continue;
     const head = lines.slice(0, i).join("\n").trimEnd();
     const tail = lines.slice(i).join("\n").trim();
@@ -90,15 +77,10 @@ export async function findSplit(code: string, language: string): Promise<Split |
   return null;
 }
 
-/**
- * For a file that does not format, the language its content actually is, when that is clear:
- * one of `candidates` (the snippet's language first), or HTML for markup. Null otherwise.
- */
 export async function detectLanguage(code: string, fileLanguage: string, candidates: string[]): Promise<string | null> {
   const tries = [...candidates, ...(code.trimStart().startsWith("<") ? ["html"] : [])];
   for (const language of new Set(tries)) {
     if (language === fileLanguage || !canBeautify(language)) continue;
-    // CSS and JSON parsers accept a lot; only trust them for the snippet's own language.
     if (await beautify(code, language).then(() => true, () => false)) return language;
   }
   return null;

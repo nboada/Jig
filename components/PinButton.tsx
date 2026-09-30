@@ -8,10 +8,6 @@ import { PinIcon } from "@/components/NavIcons";
 import { toast } from "@/components/Toaster";
 import { Tip } from "@/components/Tooltip";
 
-/**
- * The pin among an item's actions. Filled in the accent colour when pinned; changes at once,
- * moves the item in the list, then saves.
- */
 export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; slug: string; pinned: boolean }) {
   const list = useOptionalList();
   const [shown, setShown] = useOptimistic(pinned);
@@ -27,7 +23,6 @@ export function PinButton({ kind, slug, pinned }: { kind: "snippets" | "notes"; 
           startTransition(async () => {
             setShown(!shown);
             list?.pin(slug, !shown);
-            // The button goes back by itself when the transition ends; the list needs telling.
             const result = await setPinned(kind, slug, !shown);
             if (result.error) {
               list?.pin(slug, shown);

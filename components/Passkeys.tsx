@@ -19,14 +19,12 @@ import { EyeIcon, EyeOffIcon, FingerprintIcon, LockIcon, TrashIcon } from "@/com
 import { formatDateShort } from "@/lib/format";
 import type { Passkey } from "@/lib/passkeys";
 
-/** Whether this browser can use passkeys. False on the server and in old browsers. */
 function useWebAuthn() {
   const [supported, setSupported] = useState(false);
   useEffect(() => setSupported(browserSupportsWebAuthn()), []);
   return supported;
 }
 
-/** Asks the device for its Jig passkey (the Touch ID prompt). Null if the person cancelled. */
 async function promptPasskey(use: "login" | "unlock") {
   const optionsJSON = await passkeyPromptOptions(use);
   try {
@@ -37,7 +35,6 @@ async function promptPasskey(use: "login" | "unlock") {
   }
 }
 
-/** "Sign in with passkey" on the login page, under the password form. */
 export function PasskeyLogin({ next }: { next: string }) {
   const supported = useWebAuthn();
   const [error, setError] = useState("");
@@ -57,7 +54,6 @@ export function PasskeyLogin({ next }: { next: string }) {
               const result = await loginWithPasskey(response, next);
               if (result?.error) setError(result.error);
             } catch (error) {
-              // Success arrives as a redirect, which the action throws; let Next carry it out.
               unstable_rethrow(error);
               setError("That passkey didn't work. Try again, or use your password.");
             }
@@ -73,11 +69,6 @@ export function PasskeyLogin({ next }: { next: string }) {
   );
 }
 
-/**
- * Stands in for a locked note's text, or a credential's secrets, until unlocked: Touch ID when
- * there's a passkey, the dashboard password otherwise (or as a fallback). One unlock opens every
- * locked note and every secret for 30 minutes, or until the browser closes.
- */
 export function UnlockPanel({
   hasPasskey,
   title = "This note is locked",
@@ -87,7 +78,6 @@ export function UnlockPanel({
   hasPasskey: boolean;
   title?: string;
   line?: string;
-  /** Less padding, for sitting above a credential's fields. */
   compact?: boolean;
 }) {
   const router = useRouter();
@@ -185,7 +175,6 @@ export function UnlockPanel({
   );
 }
 
-/** The header menu's "Passkeys…" dialog: the passkeys on this site, and adding one on this device. */
 export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const supported = useWebAuthn();
   const [keys, setKeys] = useState<Passkey[] | null>(null);
@@ -247,7 +236,6 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   aria-label={`Remove ${k.name}`}
                   title="Remove"
                   onClick={() => {
-                    // Gone from the list at once; the server's list replaces it once it's done.
                     setKeys((current) => current?.filter((p) => p.id !== k.id) ?? current);
                     start(async () => {
                       try {

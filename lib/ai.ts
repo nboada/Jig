@@ -6,29 +6,13 @@ import { getDb } from "./db";
 import type { Platform } from "./ai-providers";
 import { resolveAi, type ResolvedAi } from "./ai-settings";
 
-/**
- * The dashboard's AI helpers: rewriting a note's text, and checking and fixing a snippet's code.
- * They run on whichever platform is chosen in the AI settings dialog (lib/ai-settings.ts: a key
- * saved in Jig, else the platform's environment variable), through one of three adapters: Google's
- * SDK, Anthropic's SDK, or the OpenAI-style chat API that OpenAI, OpenRouter, Groq, Mistral and
- * DeepSeek share. The buttons don't appear without a key. Only what you ask about is sent, and
- * never a locked note or a credential (the callers check).
- */
 
 export const aiEnabled = async () => (await resolveAi(await getDb())) !== null;
 
-/** Longest text sent in one go, so a huge note or snippet can't run up a bill or a timeout. */
 export const MAX_AI_INPUT = 60_000;
 
-/** An error to show as is: no key, a limit reached, too much text. */
 export class AiError extends Error {}
 
-/**
- * `fast` is for rewrites: the least thinking the model allows. Gemini 3 thinks at "medium" by
- * default, which spent ~1,300 thinking tokens on a one-paragraph rephrase (7 seconds, and thinking
- * is billed as output); at "low" the same rephrase takes about 2 seconds with none. Reviews keep
- * the model's default, which is what finds real bugs.
- */
 async function generate(system: string, prompt: string, json?: object, fast = false): Promise<string> {
   if (prompt.length > MAX_AI_INPUT) throw new AiError("That's too long to send to the AI in one go. Try a shorter part.");
   const ai = await resolveAi(await getDb());
@@ -48,18 +32,11 @@ async function call(ai: ResolvedAi, system: string, prompt: string, json: object
   return text;
 }
 
-/** Checks a key before it's saved: one tiny request. Throws an AiError saying what's wrong. */
 export async function testKey(platform: Platform, apiKey: string, model: string | null): Promise<void> {
   await call({ platform, apiKey, model }, "Reply with the single word: ok", "ok?", undefined, true);
 }
 
-// --- Gemini ---
 
-/**
- * The models to try, in order. When Google's servers are busy (503) or a free-tier limit is hit
- * (429), the next one gets a go: Flash-Lite is lighter, answers in about a second, and is far less
- * often overloaded.
- */
 const geminiModels = (ai: ResolvedAi) => [...new Set([ai.model || process.env.JIG_AI_MODEL || ai.platform.defaultModel, "gemini-flash-lite-latest"])];
 
 const geminiClients = new Map<string, GoogleGenAI>();
@@ -79,12 +56,10 @@ async function geminiGenerate(ai: ResolvedAi, system: string, prompt: string, js
         config: {
           systemInstruction: system,
           ...(json ? { responseMimeType: "application/json", responseJsonSchema: json } : {}),
-          // thinkingLevel is how Gemini 3 models take it (thinkingBudget is the older, 2.5-era setting).
           ...(low ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } : {}),
         },
       });
     try {
-      // A model that doesn't take thinking levels (an older one set as the model) is asked plainly.
       const response = await ask(fast).catch((error) => {
         if (fast && error instanceof ApiError && error.status === 400) return ask(false);
         throw error;
@@ -101,7 +76,6 @@ async function geminiGenerate(ai: ResolvedAi, system: string, prompt: string, js
 function geminiError(error: unknown): AiError {
   if (error instanceof ApiError) {
     if (error.status === 429) return new AiError("Gemini's limit is used up for now. Try again in a minute.");
-    // A key in a Google project with prepaid billing and no credit left (billing turns the free tier off).
     if (error.status === 402) {
       return new AiError("The Gemini key's Google project is out of prepaid credit. Add credit in AI Studio, or use a key from a project without billing (free tier).");
     }
@@ -113,13 +87,7 @@ function geminiError(error: unknown): AiError {
   return new AiError("The AI couldn't answer just now. Try again.");
 }
 
-// --- Anthropic (Claude) ---
 
-/**
- * Current Claude models take effort levels and server-side fallbacks (a request Claude's
- * safeguards decline is re-run on another Claude model instead of failing); older ones, like
- * Haiku 4.5, take neither.
- */
 const MODERN_CLAUDE = /^claude-(opus-5|sonnet-5-5|fable-5)/;
 
 async function anthropicGenerate(ai: ResolvedAi, system: string, prompt: string, json: object | undefined, fast: boolean): Promise<string | undefined> {
@@ -165,22 +133,12 @@ function anthropicError(error: unknown): AiError {
   return new AiError("The AI couldn't answer just now. Try again.");
 }
 
-// --- OpenAI-style chat (OpenAI, OpenRouter, Groq, Mistral, DeepSeek) ---
 
-/**
- * OpenRouter tries these in order, moving on by itself when one is rate-limited or down: free
- * Gemma first (free models share one pool across all of OpenRouter, so they're often throttled),
- * then GLM Flash, which costs a fraction of a cent. A model set in AI settings goes first.
- */
 const openRouterModels = (first: string | null) =>
   [...new Set([first, "google/gemma-4-31b-it:free", "google/gemma-4-26b-a4b-it:free", "~z-ai/glm-flash-latest"])]
     .filter((m): m is string => Boolean(m))
     .slice(0, 3);
 
-/**
- * OpenRouter hosts to skip: the model makers' own servers and other hosts in China, where prompts
- * would fall under Chinese data law. The same models run on US and EU hosts.
- */
 const CHINA_HOSTS = ["z-ai", "deepseek", "moonshotai", "siliconflow", "streamlake", "baidu", "alibaba"];
 
 type ChatReply = {
@@ -193,7 +151,6 @@ async function chatGenerate(ai: ResolvedAi, system: string, prompt: string, json
   const openRouter = platform.id === "openrouter";
   const model = ai.model || process.env.JIG_AI_MODEL || platform.defaultModel;
   const send = async (jsonMode: "schema" | "object" | null) => {
-    // Plain JSON mode can't take a schema, so the schema goes in the instructions instead.
     const instructions = jsonMode === "object" ? `${system}\n\nAnswer with only a JSON object matching this JSON Schema:\n${JSON.stringify(json)}` : system;
     const response = await fetch(`${platform.baseUrl}/chat/completions`, {
       method: "POST",
@@ -206,7 +163,6 @@ async function chatGenerate(ai: ResolvedAi, system: string, prompt: string, json
         ],
         ...(jsonMode === "schema" ? { response_format: { type: "json_schema", json_schema: { name: "result", schema: json } } } : {}),
         ...(jsonMode === "object" ? { response_format: { type: "json_object" } } : {}),
-        // OpenRouter: only hosts that don't store prompts or train on them, and none in China.
         ...(openRouter ? { provider: { data_collection: "deny", ignore: CHINA_HOSTS } } : {}),
       }),
       signal: AbortSignal.timeout(90_000),
@@ -215,12 +171,10 @@ async function chatGenerate(ai: ResolvedAi, system: string, prompt: string, json
       throw new AiError("The AI couldn't answer just now. Try again.");
     });
     const reply = (await response.json().catch(() => ({}))) as ChatReply;
-    // Some report failures inside a 200, so check the body as well as the status.
     const status = typeof reply.error?.code === "number" ? reply.error.code : response.ok && !reply.error ? 200 : response.status;
     return { status, reply };
   };
   let { status, reply } = await send(json ? "schema" : null);
-  // Platforms without JSON-schema output (DeepSeek, some models) get plain JSON mode instead.
   if (json && status === 400) ({ status, reply } = await send("object"));
   if (status !== 200) throw chatError(platform, status, reply.error);
   return reply.choices?.[0]?.message?.content?.trim();
@@ -251,7 +205,6 @@ const REWRITE: Record<RewriteMode, string> = {
   fix: "Fix spelling, grammar and punctuation only. Change nothing else: not the wording, tone or structure.",
 };
 
-/** Rewrites some of a note's text. Takes and returns markdown. */
 export async function rewrite(mode: RewriteMode, text: string): Promise<string> {
   const system = [
     "You edit text from the user's personal notes.",
@@ -263,7 +216,6 @@ export async function rewrite(mode: RewriteMode, text: string): Promise<string> 
   return stripFence(await generate(system, text, undefined, true));
 }
 
-/** Models sometimes wrap the whole answer in a ```markdown fence despite being asked not to. */
 function stripFence(text: string) {
   const fenced = text.match(/^```(?:markdown|md)?\n([\s\S]*)\n```$/);
   return fenced ? fenced[1] : text;
@@ -292,10 +244,8 @@ const ReviewSchema = z.object({
   ),
 });
 
-/** The shape the model is held to, as JSON Schema (without `$schema`, which OpenAI-style APIs reject). */
 const { $schema: _, ...REVIEW_JSON } = z.toJSONSchema(ReviewSchema);
 
-/** Looks for bugs and mistakes in a snippet's files. Lines are numbered so issues can point at them. */
 export async function review(snippet: {
   title: string;
   language: string;
@@ -320,7 +270,6 @@ export async function review(snippet: {
   const raw = await generate(system, prompt, REVIEW_JSON);
   let parsed: unknown;
   try {
-    // Some models wrap JSON in a code fence or a sentence; take the object itself.
     parsed = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
   } catch {
     throw new AiError("The AI's answer came back garbled. Try again.");
@@ -330,10 +279,6 @@ export async function review(snippet: {
   return result.data;
 }
 
-/**
- * Applies chosen review issues to one file and returns the whole file, fixed. Asked to change
- * nothing else, so the diff the editor shows stays about the fixes.
- */
 export async function fixFile(file: { name: string; content: string }, language: string, issues: ReviewIssue[]): Promise<string> {
   const system = [
     "You fix a file from a developer's snippet library.",
@@ -349,9 +294,7 @@ export async function fixFile(file: { name: string; content: string }, language:
     file.content,
   ].join("\n\n");
   const fixed = await generate(system, prompt);
-  // Strip a fence of any language the model may have wrapped the file in anyway.
   const fenced = fixed.match(/^```[\w-]*\n([\s\S]*)\n```$/);
   const body = fenced ? fenced[1] : fixed;
-  // Answers come back trimmed; keep the file's own final newline so it doesn't show as a change.
   return file.content.endsWith("\n") && !body.endsWith("\n") ? `${body}\n` : body;
 }

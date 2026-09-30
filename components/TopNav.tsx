@@ -14,27 +14,18 @@ const SECTION_INFO: Record<Section, { href: string; label: string; Icon: (p: { c
   credentials: { href: "/credentials", label: "Credentials", Icon: CredentialsIcon },
 };
 
-/** The sections in the user's order, each with the number key that opens it. */
 const sectionsIn = (order: Section[]) => order.map((id, i) => ({ id, ...SECTION_INFO[id], key: String(i + 1) }));
 
-/**
- * The header's section tabs, as a segmented control whose accent fill slides to the current
- * section (and to a tab the moment it's clicked, ahead of the page). On pages with no section
- * (home, Connect) there's no fill. Drag a tab to reorder them; the order is saved (and follows you to other browsers) and the 1–3
- * keys follow it.
- */
 export function TopNav({ order, className = "" }: { order: Section[]; className?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [tabs, setTabs] = useState(order);
   const [dragging, setDragging] = useState<Section | null>(null);
-  // The tab just clicked, filled at once rather than when its page arrives.
   const [clicked, setClicked] = useState<{ href: string; from: string } | null>(null);
   const current = clicked?.from === pathname ? clicked.href : sectionsIn(tabs).find(({ href }) => pathname.startsWith(href))?.href;
   const navRef = useRef<HTMLElement>(null);
   const [fill, setFill] = useState<{ left: number; width: number; animate: boolean } | null>(null);
 
-  // Measure the current tab and move the fill under it; the first placement doesn't slide in.
   useLayoutEffect(() => {
     const nav = navRef.current;
     const measure = () => {
@@ -58,7 +49,6 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
   function finish() {
     setDragging(null);
     if (tabs.join() !== order.join()) {
-      // Saved for every browser; then redraw so the number keys and phone tab bar follow.
       savePreference(NAV_ORDER_COOKIE, tabs.join(",")).then(() => router.refresh());
     }
   }
@@ -109,15 +99,9 @@ export function TopNav({ order, className = "" }: { order: Section[]; className?
   );
 }
 
-/**
- * The phone's tab bar, floating along the bottom of the screen in thumb reach: an icon for each
- * section, with a darker square and a short accent bar that slide to the current one. It replaces
- * the header's tabs below the md breakpoint; Connect is in the header's ⋯ menu.
- */
 export function BottomNav({ order }: { order: Section[] }) {
   const pathname = usePathname();
   const sections = sectionsIn(order);
-  // The tab just tapped, shown at once rather than when its page arrives.
   const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null);
   const current = tapped?.from === pathname ? tapped.href : sections.find(({ href }) => pathname.startsWith(href))?.href;
   const index = sections.findIndex(({ href }) => href === current);
@@ -154,10 +138,6 @@ export function BottomNav({ order }: { order: Section[] }) {
   );
 }
 
-/**
- * The current section's name in the middle of the header, on phones (where the tabs are icons).
- * A new name slides in from the side the bottom bar moved towards.
- */
 export function SectionTitle({ order, className = "" }: { order: Section[]; className?: string }) {
   const pathname = usePathname();
   const sections = sectionsIn(order);
@@ -167,8 +147,6 @@ export function SectionTitle({ order, className = "" }: { order: Section[]; clas
     : pathname.startsWith("/deleted")
       ? "Recently deleted"
       : sections[index]?.label;
-  // Where the last name sat, to tell which way the new one arrives from; to or from a page that
-  // isn't a tab (home, Connect) it just fades. Nothing moves on first load.
   const [last, setLast] = useState({ title, index, from: 0, changed: false });
   if (last.title !== title) {
     setLast({ title, index, from: index >= 0 && last.index >= 0 ? Math.sign(index - last.index) : 0, changed: true });

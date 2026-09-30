@@ -55,7 +55,6 @@ export const snippetPatchSchema = z.object({
   dependencies: dependenciesSchema.optional(),
   files: filesSchema.optional(),
   message: z.string().trim().max(500).default(""),
-  /** When set, the update is refused if someone saved a newer version in the meantime. */
   baseVersion: z.number().int().positive().optional(),
 });
 
@@ -74,12 +73,10 @@ export const notePatchSchema = z.object({
   tags: tagsSchema.optional(),
   body: noteBodySchema.optional(),
   message: z.string().trim().max(500).default(""),
-  /** When set, the update is refused if someone saved a newer version in the meantime. */
   baseVersion: z.number().int().positive().optional(),
 });
 
 const credentialFieldSchema = z.object({
-  /** Present for fields that already exist; new fields get an id when saved. */
   id: z.string().trim().min(1).max(64).optional(),
   label: z.string().trim().min(1, "Every field needs a label").max(80),
   secret: z.boolean(),

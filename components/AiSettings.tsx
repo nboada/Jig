@@ -18,11 +18,6 @@ function statusLabel(status: PlatformStatus) {
   return "No key";
 }
 
-/**
- * The header menu's "AI settings" dialog: every platform Jig can use, which ones have a key, and
- * the one in use. Keys are pasted here, tried with one tiny request, and saved encrypted; they
- * never come back to the browser, only their last four characters.
- */
 export function AiSettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [settings, setSettings] = useState<AiSettings | null>(null);
   const [editing, setEditing] = useState<PlatformId | null>(null);

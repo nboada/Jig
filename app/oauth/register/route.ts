@@ -2,7 +2,6 @@ import { getDb } from "@/lib/db";
 import { registerClient } from "@/lib/oauth";
 import { json, oauthError, preflight } from "@/lib/oauth-http";
 
-/** RFC 7591 dynamic registration. Registering alone grants nothing: the owner still approves. */
 export async function POST(req: Request) {
   try {
     const client = await registerClient(await getDb(), await req.json().catch(() => null));

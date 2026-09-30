@@ -17,10 +17,6 @@ function daysLeft(purgeAt: string) {
   return days === 0 ? "goes today" : `${days} day${days === 1 ? "" : "s"} left`;
 }
 
-/**
- * The deleted items, each with Restore and Delete now. Either takes the row out at once; if the
- * server says no, it comes back and a toast says why.
- */
 export function DeletedList({ items }: { items: TrashedItem[] }) {
   const router = useRouter();
   const [gone, setGone] = useState<Set<string>>(new Set());

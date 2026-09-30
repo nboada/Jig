@@ -2,7 +2,6 @@ import { getDb } from "@/lib/db";
 import { exchangeCode, OAuthError, refreshTokens } from "@/lib/oauth";
 import { json, oauthError, preflight, readBody } from "@/lib/oauth-http";
 
-/** Trades a code, or a refresh token, for tokens. Public clients only, so there's no secret. */
 export async function POST(req: Request) {
   try {
     const body = await readBody(req);

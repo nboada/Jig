@@ -12,12 +12,6 @@ const handler = createMcpHandler((server) => registerTools(server, getDb), {
   instructions: SERVER_INSTRUCTIONS,
 });
 
-/**
- * Agents authenticate with a token created on the Connect page (`Authorization: Bearer jig_...`),
- * or with an access token from signing in over OAuth (apps like Claude; see lib/oauth.ts). Either
- * way the token's name becomes the saved versions' source. Without one, the 401 points the app at
- * the OAuth discovery document.
- */
 const authed = withMcpAuth(
   handler,
   async (_req, bearer) => {
@@ -31,10 +25,6 @@ const authed = withMcpAuth(
   { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp", resourceUrl: process.env.JIG_ORIGIN?.replace(/\/+$/, "") || undefined },
 );
 
-/**
- * The MCP spec requires refusing requests from another site's page (DNS rebinding). Agents send no
- * Origin at all and pass; a browser page may only call from this site.
- */
 async function guarded(req: Request) {
   const own = [new URL(req.url).hostname, (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(":")[0]];
   return originValidationResponse(req, own.filter(Boolean)) ?? authed(req);

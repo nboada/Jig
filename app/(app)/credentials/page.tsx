@@ -32,7 +32,6 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
   if (!encryptionReady()) return <KeyMissing />;
   const search = await searchParams;
   const { view, sort } = await getListPrefs("credentials", search.sort);
-  // In list view the layout shows the credentials in a column; this pane waits for a pick.
   if (view === "list") return <PickPane noun="credential" />;
   const db = await getDb();
   const [credentials, tags] = await Promise.all([

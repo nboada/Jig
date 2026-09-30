@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-/** The link above a page title back to where it came from: an arrow and the destination's name. */
 export function BackLink({ href, children, className = "" }: { href: string; children: React.ReactNode; className?: string }) {
   return (
     <Link

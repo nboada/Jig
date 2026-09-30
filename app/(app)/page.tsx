@@ -15,24 +15,19 @@ import { requireAuth } from "@/lib/auth";
 
 type Search = { q?: string; lang?: string; tag?: string };
 
-/** One line in a card, a result group or the recent feed. */
 type Item = { key: string; href: string; title: string; meta: string; icon: React.ReactNode; updatedAt: string };
 
-// Search results show this many per kind, then link to the full list.
 const PER_KIND = 5;
-// The overview's cards show this many each; the recent feed shows RECENT across all kinds.
 const PER_CARD = 3;
 const RECENT = 8;
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireAuth();
   const search = await searchParams;
-  // The snippet list used to live here; keep its old filter links working.
   if (search.lang || search.tag) redirect(`/snippets?${new URLSearchParams(search as Record<string, string>)}`);
 
   const db = await getDb();
   const q = search.q?.trim() ?? "";
-  // Without a search, fetch enough of each kind to fill the recent feed from any mix.
   const limit = q ? PER_KIND + 1 : RECENT;
   const [snippets, notes, credentials] = await Promise.all([
     listSnippets(db, { query: q, limit }),
@@ -74,7 +69,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       href: "/credentials",
       create: "/credentials/new",
       Icon: CredentialsIcon,
-      // Titles only: secret values never leave the credential's own page.
       items: credentials.map<Item>((c) => ({
         key: `c:${c.slug}`,
         href: `/credentials/${c.slug}`,

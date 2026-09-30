@@ -31,7 +31,6 @@ export default async function HistoryPage({ params, searchParams }: Props) {
     numbers.has(Number(value)) ? Number(value) : fallback;
   const to = pick(search.to, snippet.currentVersion);
   const from = pick(search.from, Math.max(1, to - 1));
-  // One version picked (the first, which has nothing before it): show it as it was saved.
   const shown = from === to ? await getSnippet(db, slug, to) : null;
   const diff = from !== to ? compareVersions(...(await getVersionPair(db, slug, from, to))) : null;
 
@@ -55,7 +54,6 @@ export default async function HistoryPage({ params, searchParams }: Props) {
                 key={v.version}
                 className={`relative rounded-xl border p-3 text-ui transition ${selected ? "border-accent-line bg-accent-soft" : "border-line bg-panel hover:border-line-strong"}`}
               >
-                {/* The whole card shows what changed in this version; the links inside sit above it. */}
                 <Link
                   href={`/snippets/${slug}/history?from=${Math.max(1, v.version - 1)}&to=${v.version}`}
                   scroll={false}

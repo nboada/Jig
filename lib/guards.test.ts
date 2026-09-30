@@ -2,16 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * Every export of a "use server" file is a public endpoint, and pages under app/(app) must check
- * the session themselves (layouts don't re-run on client navigation). These read the source, so a
- * new action or page without its guard fails here rather than in production.
- */
 
 const root = join(import.meta.dir, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
-/** Each exported async function's name and body (up to its closing brace at the start of a line). */
 function exportedFunctions(source: string): { name: string; body: string }[] {
   return [...source.matchAll(/^export (?:default )?async function (\w+)/gm)].map((match) => {
     const end = source.indexOf("\n}\n", match.index);
@@ -19,7 +13,6 @@ function exportedFunctions(source: string): { name: string; body: string }[] {
   });
 }
 
-// The only actions that run before there's a session.
 const PUBLIC = ["login", "logout", "passkeyPromptOptions", "loginWithPasskey"];
 
 describe("server actions", () => {
@@ -28,7 +21,6 @@ describe("server actions", () => {
     expect(actions.length).toBeGreaterThan(30);
     for (const { name, body } of actions) {
       if (PUBLIC.includes(name)) continue;
-      // requireAuth must be the first thing awaited.
       const first = body.match(/await ([\w.]+)\(/)?.[1];
       expect({ name, first }).toEqual({ name, first: "requireAuth" });
     }
@@ -66,7 +58,6 @@ describe("pages", () => {
   test("the proxy never touches the database (it runs before every request)", () => {
     const imports = [...read("proxy.ts").matchAll(/from "([^"]+)"/g)].map((m) => m[1]);
     expect(imports.sort()).toEqual(["./lib/session", "next/server"]);
-    // lib/session.ts may only bring in pure helpers.
     const sessionImports = [...read("lib/session.ts").matchAll(/^import (type )?.*from "([^"]+)"/gm)].map((m) => `${m[1] ?? ""}${m[2]}`);
     expect(sessionImports.sort()).toEqual(["./signing", "type ./db"]);
   });

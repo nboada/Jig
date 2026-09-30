@@ -10,10 +10,6 @@ function size(bytes: number) {
   return `${(bytes / 1024).toFixed(bytes < 10_240 ? 1 : 0)} KB`;
 }
 
-/**
- * The code panel: a tab bar (just the name for one file), the file's size, Copy, and the code. The
- * tabs follow the ARIA tabs pattern: one tab stop, ←/→ (and Home/End) move between files.
- */
 export function CodeTabs({ files }: { files: RenderedFile[] }) {
   const [index, setIndex] = useState(0);
   const id = useId();

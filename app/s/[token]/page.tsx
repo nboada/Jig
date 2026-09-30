@@ -19,12 +19,10 @@ import { findShare, loadSharedItem, recordView, shareStatus, type Share, type Sh
 import { PasscodeForm } from "./PasscodeForm";
 import { SharedSecret } from "./SharedSecret";
 
-// The token is the secret: never send it on to sites linked from a shared note, never index it.
 export const metadata: Metadata = { title: "Shared with you", referrer: "no-referrer", robots: { index: false, follow: false } };
 
 const NOUNS = { snippets: "snippet", notes: "note", credentials: "credential" } as const;
 
-// The engraved state and the heading for a link that can no longer be opened.
 const CLOSED: Record<string, [string, string]> = {
   expired: ["Link expired", "This link has expired"],
   revoked: ["Link turned off", "This link has been turned off"],
@@ -42,7 +40,6 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   const pass = (await cookies()).get(passCookieName(share.id))?.value;
   const noun = NOUNS[share.kind];
 
-  // Seen a moment ago in this browser: show it again without using another view.
   if (await passAdmits(db, share, pass)) return <Shared share={share} item={await loadSharedItem(db, share)} />;
 
   const status = shareStatus(share);
@@ -56,7 +53,6 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     );
   }
 
-  // Limited links wait for a click, so link previews (Slack, iMessage…) don't use up views.
   if (share.maxViews != null) {
     const left = share.maxViews - share.views;
     return (
@@ -77,7 +73,6 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   return <Shared share={share} item={await loadSharedItem(db, share)} />;
 }
 
-/** A link that asks for something first, or can't be opened: a small card on the workbench. */
 function Gate({ state, title, line, children }: { state: string; title: string; line?: string; children?: React.ReactNode }) {
   return (
     <main className="bench relative grid min-h-dvh place-items-center px-4 py-10">
@@ -93,10 +88,6 @@ function Gate({ state, title, line, children }: { state: string; title: string; 
   );
 }
 
-/**
- * The shared item itself, on the same centred workbench as the passcode screen: the logo, the item
- * as the dashboard shows it, then when the link expires. Each kind gets a width that suits it.
- */
 function Shared({ share, item }: { share: Share; item: SharedItem | null }) {
   if (!item) return <Gate state="Deleted" title="What was shared here has since been deleted" />;
   const width = item.kind === "credentials" ? "max-w-xl" : item.kind === "notes" ? "max-w-3xl" : "max-w-4xl";

@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { PinIcon } from "@/components/NavIcons";
 
-/**
- * A grid card, the same anatomy for snippets, notes and credentials: an engraved kicker (the
- * language, "Note" or the site), the pin, the title, up to three lines of body, then the
- * metadata line at the foot.
- */
 export function Card({
   href,
   kicker,

@@ -31,7 +31,6 @@ export default async function SnippetsPage({ searchParams }: { searchParams: Pro
   await requireAuth();
   const search = await searchParams;
   const { view, sort } = await getListPrefs("snippets", search.sort);
-  // In list view the layout shows the snippets in a column; this pane waits for a pick.
   if (view === "list") return <PickPane noun="snippet" />;
   const db = await getDb();
   const [snippets, tags] = await Promise.all([

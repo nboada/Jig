@@ -1,20 +1,10 @@
 import type { Db } from "./db";
 import { safeEqual, seal, unseal } from "./signing";
 
-/**
- * Single-user login for the dashboard. The cookie holds when the session started and when it
- * expires, signed (lib/signing.ts). A session lasts a week from its last renewal and 30 days at
- * most, and "Sign out everywhere" ends every session started before it.
- *
- * The proxy only checks that the cookie is there and not expired (it has no database); the real
- * check is `readSession`, through `requireAuth` in lib/auth.ts.
- */
 
-// "__Host-" makes the browser refuse the cookie unless it's Secure, host-only and on "/".
 export const SESSION_COOKIE = process.env.NODE_ENV === "production" ? "__Host-jig_session" : "jig_session";
 export const SESSION_IDLE_SECONDS = 7 * 24 * 60 * 60;
 export const SESSION_ABSOLUTE_SECONDS = 30 * 24 * 60 * 60;
-/** A session is renewed (its week restarted) once it's this old. */
 export const SESSION_RENEW_SECONDS = 24 * 60 * 60;
 
 export const MIN_PASSWORD_LENGTH = 12;
@@ -23,14 +13,12 @@ const VALID_AFTER = "sessions-valid-after";
 
 export type Session = { issuedAt: number; expires: number };
 
-/** A new session value, and how long the cookie should last. `issuedAt` carries over on renewal. */
 export async function createSession(db: Db, now = Date.now(), issuedAt = now): Promise<{ value: string; maxAge: number }> {
   const expires = Math.min(Math.floor(now / 1000) + SESSION_IDLE_SECONDS, Math.floor(issuedAt / 1000) + SESSION_ABSOLUTE_SECONDS);
   const value = await seal(db, "session", [String(issuedAt)], expires);
   return { value, maxAge: Math.max(0, expires - Math.floor(now / 1000)) };
 }
 
-/** The session behind a cookie, or null when it's forged, expired or was signed out everywhere. */
 export async function readSession(db: Db, value: string | undefined, now = Date.now()): Promise<Session | null> {
   const fields = await unseal(db, "session", value, now);
   const issuedAt = Number(fields?.[0]);
@@ -40,7 +28,6 @@ export async function readSession(db: Db, value: string | undefined, now = Date.
   return { issuedAt, expires: Number(value!.split(".")[1]) };
 }
 
-/** Ends every session, this one included. */
 export async function endAllSessions(db: Db, now = Date.now()): Promise<void> {
   await db.query(
     `INSERT INTO app_secrets (name, value) VALUES ($1, $2)
@@ -49,13 +36,11 @@ export async function endAllSessions(db: Db, now = Date.now()): Promise<void> {
   );
 }
 
-/** For the proxy, which has no database: a session cookie that isn't expired. Never enough on its own. */
 export function sessionLooksCurrent(value: string | undefined, now = Date.now()): boolean {
   const parts = value?.split(".") ?? [];
   return parts.length === 3 && Number(parts[1]) * 1000 > now;
 }
 
-/** Why the dashboard password can't be used, if it can't. */
 export function passwordProblem(): string | null {
   const password = process.env.ADMIN_PASSWORD;
   if (!password) return "ADMIN_PASSWORD is not set on the server.";

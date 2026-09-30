@@ -81,7 +81,6 @@ describe("locked notes", () => {
 
   test("ciphertext is bound to its note and version", async () => {
     await lockedKeys();
-    // Swap the two versions' ciphertext: neither decrypts in the other's place.
     await db.query(
       `UPDATE note_versions v SET body = o.body FROM note_versions o
        WHERE o.note_id = v.note_id AND o.version = 3 - v.version`,

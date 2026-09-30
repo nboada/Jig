@@ -218,7 +218,6 @@ describe("sorting", () => {
     await createSnippet(db, { title: "Bravo", language: "css", files: file });
     await createSnippet(db, { title: "alpha", language: "css", files: file });
     await createSnippet(db, { title: "Charlie", language: "css", files: file });
-    // Pin the times: created Bravo, alpha, Charlie in that order, then Bravo edited last.
     await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["bravo", "2026-01-01", "2026-01-04"]);
     await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["alpha", "2026-01-02", "2026-01-02"]);
     await db.query(`UPDATE snippets SET created_at = $2, updated_at = $3 WHERE slug = $1`, ["charlie", "2026-01-03", "2026-01-03"]);
@@ -227,7 +226,6 @@ describe("sorting", () => {
       (await listSnippets(db, { sort })).map((s) => s.slug);
     expect(await order("updated")).toEqual(["bravo", "charlie", "alpha"]);
     expect(await order("created")).toEqual(["charlie", "alpha", "bravo"]);
-    // Case-insensitive: "alpha" sorts before "Bravo".
     expect(await order("title")).toEqual(["alpha", "bravo", "charlie"]);
   });
 });
@@ -260,7 +258,6 @@ describe("cloning", () => {
       "Import once.",
     ]);
 
-    // The original is untouched, and a second copy gets the next free slug.
     expect((await getSnippet(db, "lenis-defaults"))?.currentVersion).toBe(2);
     expect((await cloneSnippet(db, "lenis-defaults")).slug).toBe("lenis-defaults-copy-2");
   });
@@ -284,7 +281,6 @@ describe("pinning", () => {
     const charlie = await getSnippet(db, "charlie");
     expect([charlie?.pinned, charlie?.currentVersion]).toEqual([true, 1]);
 
-    // Pinning again keeps it pinned; unpinning puts it back in the normal order.
     await setSnippetPinned(db, "charlie", true);
     await setSnippetPinned(db, "charlie", false);
     expect(await order("title")).toEqual(["alpha", "bravo", "charlie"]);

@@ -2,18 +2,6 @@ import { z } from "zod";
 import type { Db } from "./db";
 import { sha256 } from "./signing";
 
-/**
- * OAuth 2.1 for the MCP endpoint, so apps like Claude can connect with a sign-in instead of a
- * pasted token. Jig is its own authorization server:
- * - Apps register themselves (RFC 7591) as public clients: no secret, PKCE (S256) required.
- * - The owner signs in to the dashboard and approves on /oauth/authorize, which issues a code
- *   good for 5 minutes and one use.
- * - The code buys an access token (1 hour) and a refresh token. Refreshing replaces both, so a
- *   stolen refresh token dies the first time either side uses it.
- * Like API tokens, only SHA-256 hashes of codes and tokens are stored. Every write is a single
- * statement (see lib/db.ts). An approved app gets exactly what an API token gets: snippets and
- * notes, never credentials or locked notes.
- */
 
 export const ACCESS_TTL_SECONDS = 3600;
 const CODE_TTL_SECONDS = 300;
@@ -23,7 +11,6 @@ const ACCESS_PREFIX = "jigo_at_";
 const REFRESH_PREFIX = "jigo_rt_";
 const CODE_PREFIX = "jigo_ac_";
 
-/** An OAuth error, sent to the app as `{ error, error_description }`. */
 export class OAuthError extends Error {
   constructor(
     readonly code: string,
@@ -36,13 +23,11 @@ export class OAuthError extends Error {
 
 const random = (prefix: string) => prefix + Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
 
-/** The PKCE challenge for a verifier: base64url(SHA-256(verifier)). */
 export async function pkceChallenge(verifier: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   return Buffer.from(digest).toString("base64url");
 }
 
-/** Where an app may be sent back to: any https address, or http on this computer (desktop apps). */
 export function allowedRedirect(uri: string): boolean {
   let url: URL;
   try {
@@ -67,11 +52,6 @@ const Registration = z.object({
   token_endpoint_auth_method: z.string().optional(),
 });
 
-/**
- * Registers an app. Anyone may register (that's how apps find their way in), but a registration
- * alone gets nothing: the owner still has to approve it. Registrations never approved are cleared
- * after a day.
- */
 export async function registerClient(db: Db, input: unknown): Promise<OAuthClient> {
   const parsed = Registration.safeParse(input);
   if (!parsed.success) throw new OAuthError("invalid_client_metadata", "redirect_uris is required.");
@@ -105,11 +85,6 @@ export type AuthorizeRequest = {
   resource?: string;
 };
 
-/**
- * Checks the parameters of a request to /oauth/authorize. Problems with the app or its redirect
- * address can't be sent back to it (that address isn't trusted yet), so they throw; anything else
- * is sent back to the app as `?error=`, which `redirectError` builds.
- */
 export async function checkAuthorizeRequest(
   db: Db,
   params: Record<string, string | undefined>,
@@ -138,7 +113,6 @@ export function redirectError(redirectUri: string, error: string, description: s
   return url.toString();
 }
 
-/** Issues a one-use code for an approved request, and returns the app's return address with it. */
 export async function approve(db: Db, request: AuthorizeRequest): Promise<string> {
   const code = random(CODE_PREFIX);
   await db.query(
@@ -167,10 +141,6 @@ function tokens(access: string, refresh: string): Tokens {
 
 const VERIFIER = /^[A-Za-z0-9\-._~]{43,128}$/;
 
-/**
- * Trades a code for tokens. The code is used up whether or not the trade succeeds, so a wrong
- * verifier can't be retried against it.
- */
 export async function exchangeCode(
   db: Db,
   { code, clientId, redirectUri, codeVerifier, resource }: { code?: string; clientId?: string; redirectUri?: string; codeVerifier?: string; resource?: string },
@@ -204,7 +174,6 @@ export async function exchangeCode(
   return tokens(access, refresh);
 }
 
-/** Replaces an app's access and refresh tokens; the old refresh token stops working. */
 export async function refreshTokens(db: Db, { refreshToken, clientId }: { refreshToken?: string; clientId?: string }): Promise<Tokens> {
   if (!refreshToken?.startsWith(REFRESH_PREFIX) || !clientId) throw new OAuthError("invalid_grant", "The refresh token is invalid.");
   const access = random(ACCESS_PREFIX);
@@ -220,10 +189,6 @@ export async function refreshTokens(db: Db, { refreshToken, clientId }: { refres
   return tokens(access, refresh);
 }
 
-/**
- * The approved app an access token belongs to, while the token is current. Notes when it was last
- * used, to the nearest few minutes (like API tokens).
- */
 export async function verifyAccessToken(db: Db, token: string | undefined): Promise<{ name: string; expiresAt: number } | null> {
   if (!token?.startsWith(ACCESS_PREFIX)) return null;
   const rows = await db.query<{ name: string; access_expires_at: string }>(
@@ -238,7 +203,6 @@ export async function verifyAccessToken(db: Db, token: string | undefined): Prom
   return { name: rows[0].name, expiresAt: Math.floor(new Date(rows[0].access_expires_at).getTime() / 1000) };
 }
 
-/** Revokes the approval an access or refresh token belongs to (RFC 7009: unknown tokens are fine). */
 export async function revokeByToken(db: Db, token: string): Promise<void> {
   const hash = await sha256(token);
   await db.query(`DELETE FROM oauth_grants WHERE access_hash = $1 OR refresh_hash = $1`, [hash]);
@@ -246,7 +210,6 @@ export async function revokeByToken(db: Db, token: string): Promise<void> {
 
 export type Grant = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 
-/** The apps approved to reach the MCP endpoint, for the Connect page. */
 export async function listGrants(db: Db): Promise<Grant[]> {
   const rows = await db.query(`SELECT id, name, created_at, last_used_at FROM oauth_grants ORDER BY created_at DESC`);
   return rows.map((row) => ({

@@ -7,37 +7,22 @@ import { getNote, type Note } from "./notes";
 import { sha256 } from "./signing";
 import { getSnippet, SnippetError, type Snippet } from "./snippets";
 
-/**
- * Share links: a long random token in a URL (/s/<token>) that shows one item read-only. Links are
- * looked up by the token's SHA-256. When the encryption key is set, the token (and a credential
- * link's passcode) is also kept encrypted, bound to the share, so the owner can copy it again;
- * links made before that, or without the key, are shown once, when made. Links can expire,
- * stop after a number of views, and be revoked. Credential links also need a passcode, which
- * is stored as a scrypt hash and locks the link after MAX_FAILED wrong tries.
- *
- * lib/mcp.ts must never import this module: it reads credentials.
- */
 
 type ScryptOptions = { N: number; r: number; p: number; maxmem: number };
 const scrypt = promisify(scryptCallback) as (password: string, salt: Buffer, keylen: number, options?: ScryptOptions) => Promise<Buffer>;
 
-// OWASP's minimum for scrypt (N=2^17, r=8, p=1: 128 MiB). Hashes from before this carry no
-// parameters and were made with Node's defaults (N=2^14).
 const SCRYPT = { N: 2 ** 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
 
 export type ShareKind = "snippets" | "notes" | "credentials";
 
-/** How long a link lasts, in seconds; null never expires (it can still be revoked). */
 export const EXPIRIES = { "1h": 3600, "24h": 86_400, "7d": 604_800, "30d": 2_592_000, never: null } as const;
 export type Expiry = keyof typeof EXPIRIES;
 
-/** Wrong passcodes a credential link takes before it locks for good. */
 export const MAX_FAILED = 5;
 
 export type Share = {
   id: string;
   kind: ShareKind;
-  /** The shared item's id (not its slug), so a new item under an old name never inherits a link. */
   itemId: string;
   label: string;
   maxViews: number | null;
@@ -47,11 +32,9 @@ export type Share = {
   revoked: boolean;
   protected: boolean;
   failedAttempts: number;
-  /** An encrypted copy is kept, so the link can be copied again. */
   recoverable: boolean;
 };
 
-/** Why a link can or can't be opened right now. */
 export type ShareStatus = "open" | "expired" | "revoked" | "used" | "locked";
 
 export type SharedItem =
@@ -78,7 +61,6 @@ function toShare(row: Row): Share {
   };
 }
 
-/** Whether a link can be opened now; passes (lib/share-pass.ts) apply the same rules. */
 export function shareStatus(share: Share, now = Date.now()): ShareStatus {
   if (share.revoked) return "revoked";
   if (share.failedAttempts >= MAX_FAILED) return "locked";
@@ -93,16 +75,13 @@ async function itemId(db: Db, kind: ShareKind, slug: string): Promise<string> {
   return rows[0].id as string;
 }
 
-// Passcodes avoid look-alike characters (0/O, 1/I/L) so they survive being read out or retyped.
 const PASSCODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function makePasscode(): string {
-  // randomInt, not a byte modulo the alphabet's length, so every character is equally likely.
   const chars = Array.from({ length: 8 }, () => PASSCODE_ALPHABET[randomInt(PASSCODE_ALPHABET.length)]);
   return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
 }
 
-/** Case, spaces and dashes don't matter when typing a passcode back in. */
 const normalizePasscode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 async function hashPasscode(passcode: string): Promise<string> {
@@ -113,7 +92,6 @@ async function hashPasscode(passcode: string): Promise<string> {
 
 async function passcodeMatches(passcode: string, stored: string): Promise<boolean> {
   const parts = stored.split(":");
-  // "scrypt:<log2 N>:<r>:<p>:<salt>:<hash>", or the older "<salt>:<hash>" made with the defaults.
   const [salt, hash] = parts.length === 6 ? parts.slice(4) : parts;
   const options =
     parts.length === 6 ? { N: 2 ** Number(parts[1]), r: Number(parts[2]), p: Number(parts[3]), maxmem: SCRYPT.maxmem } : undefined;
@@ -124,10 +102,6 @@ async function passcodeMatches(passcode: string, stored: string): Promise<boolea
 
 export type ShareOptions = { expiry: Expiry; maxViews: number | null; label?: string };
 
-/**
- * Makes a link to an item. Returns the token (for the URL) and, for credentials, the passcode;
- * neither can be read back later.
- */
 export async function createShare(
   db: Db,
   kind: ShareKind,
@@ -166,7 +140,6 @@ export async function createShare(
   return { token, passcode, share: toShare(rows[0]) };
 }
 
-/** An item's links, newest first, including expired and revoked ones. */
 export async function listShares(db: Db, kind: ShareKind, slug: string): Promise<Share[]> {
   const rows = await db.query(
     `SELECT * FROM shares WHERE kind = $1 AND item_id = (SELECT id FROM ${TABLES[kind]} WHERE slug = $2)
@@ -176,7 +149,6 @@ export async function listShares(db: Db, kind: ShareKind, slug: string): Promise
   return rows.map(toShare);
 }
 
-/** A link's token (and passcode) again, for its owner. Throws when no copy was kept. */
 export async function revealShare(db: Db, id: string): Promise<{ kind: ShareKind; token: string; passcode?: string }> {
   const rows = await db.query(`SELECT id, kind, token_enc, passcode_enc FROM shares WHERE id = $1`, [id]);
   const row = rows[0];
@@ -188,12 +160,10 @@ export async function revealShare(db: Db, id: string): Promise<{ kind: ShareKind
   };
 }
 
-/** Removes a link for good: it stops working and leaves the list. */
 export async function deleteShare(db: Db, id: string): Promise<void> {
   await db.query(`DELETE FROM shares WHERE id = $1`, [id]);
 }
 
-/** Turns a turned-off link back on. Its expiry and view limit still apply as before. */
 export async function restoreShare(db: Db, id: string): Promise<void> {
   await db.query(`UPDATE shares SET revoked_at = NULL WHERE id = $1`, [id]);
 }
@@ -202,17 +172,11 @@ export async function revokeShare(db: Db, id: string): Promise<void> {
   await db.query(`UPDATE shares SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`, [id]);
 }
 
-/** The link behind a token, or null for a token that was never issued. Counts nothing. */
 export async function findShare(db: Db, token: string): Promise<Share | null> {
   const rows = await db.query(`SELECT * FROM shares WHERE token_hash = $1`, [await sha256(token)]);
   return rows[0] ? toShare(rows[0]) : null;
 }
 
-/**
- * Checks a credential link's passcode. The try is taken before checking, in one statement, so a
- * burst of guesses sent at once can't all be checked before the count catches up; a right
- * passcode gives its try back. `left` is how many tries remain (0 once the link has locked).
- */
 export async function checkPasscode(db: Db, share: Share, passcode: string): Promise<{ ok: boolean; left: number }> {
   if (!share.protected) return { ok: true, left: MAX_FAILED };
   const rows = await db.query(
@@ -229,10 +193,6 @@ export async function checkPasscode(db: Db, share: Share, passcode: string): Pro
   return { ok: false, left: MAX_FAILED - Number(rows[0].failed_attempts) };
 }
 
-/**
- * Counts a view, only if the link is still open. One statement, so two people opening a
- * one-view link at the same moment can't both get in. Returns false when it may not be viewed.
- */
 export async function recordView(db: Db, share: Share): Promise<boolean> {
   const rows = await db.query(
     `UPDATE shares SET views = views + 1
@@ -245,7 +205,6 @@ export async function recordView(db: Db, share: Share): Promise<boolean> {
   return rows.length > 0;
 }
 
-/** The shared item as it is now, or null if it has since been deleted. */
 export async function loadSharedItem(db: Db, share: Share): Promise<SharedItem | null> {
   const rows = await db.query(`SELECT slug FROM ${TABLES[share.kind]} WHERE id = $1`, [share.itemId]);
   const slug = rows[0]?.slug as string | undefined;
@@ -256,12 +215,10 @@ export async function loadSharedItem(db: Db, share: Share): Promise<SharedItem |
   }
   if (share.kind === "notes") {
     const note = await getNote(db, slug);
-    // Locked after the link was made: the link shows nothing until the lock comes off.
     return note && !note.locked ? { kind: "notes", note } : null;
   }
   const credential = await getCredential(db, slug);
   if (!credential) return null;
-  // revealField stays the only way to plaintext; a passcode has already been checked.
   const secrets: Record<string, string> = {};
   for (const field of credential.fields) {
     if (field.secret) secrets[field.id] = await revealField(db, slug, field.id);

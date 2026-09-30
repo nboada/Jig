@@ -25,7 +25,6 @@ type Props = { params: Promise<{ slug: string }> };
 
 export const metadata: Metadata = { title: "Credential" };
 
-/** "https://acme.myshopify.com/admin" -> "acme.myshopify.com", for the kicker. */
 function host(url: string) {
   try {
     return new URL(url).host;
@@ -41,7 +40,6 @@ export default async function CredentialPage({ params }: Props) {
   const db = await getDb();
   const credential = await getCredential(db, slug);
   if (!credential) notFound();
-  // Secrets need an unlock (Touch ID or the password), like locked notes.
   const locked = credential.fields.some((f) => f.secret) && !(await isUnlocked());
   const passkey = locked ? await hasPasskeys(db) : false;
   const link = safeHref(credential.url);
@@ -50,7 +48,6 @@ export default async function CredentialPage({ params }: Props) {
 
   return (
     <EnterOnReturn className="min-w-0 space-y-6">
-      {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/credentials" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Credentials
       </BackLink>

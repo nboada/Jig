@@ -7,10 +7,6 @@ import { CopyButton } from "./CopyButton";
 
 const primary = button({ variant: "primary" });
 
-/**
- * Sets up the encryption key. Locally the server writes it into .env.local;
- * on a deployed server the key is generated in the browser for the user to add.
- */
 export function KeySetup({ local }: { local: boolean }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");

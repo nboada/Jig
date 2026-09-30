@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 import { AppIconArt } from "@/lib/app-icon";
 
-/** The installable app's icons, rendered once at build time. Listed in app/manifest.ts. */
 const ICONS: Record<string, { size: number; maskable?: boolean; monochrome?: boolean }> = {
   "192.png": { size: 192 },
   "512.png": { size: 512 },

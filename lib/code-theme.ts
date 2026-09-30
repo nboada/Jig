@@ -1,10 +1,5 @@
 import type { ThemeRegistration } from "shiki";
 
-/**
- * "Jig Night": the syntax colours for code, shared by the read view (Shiki) and the editor
- * (CodeMirror) so a snippet looks the same in both. Lime is kept out of code on purpose: it
- * means "selected" or "the one action" everywhere else, so here it's only the cursor.
- */
 export const SYNTAX = {
   text: "#e8e9ec",
   comment: "#5d626c",

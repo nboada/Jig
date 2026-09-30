@@ -8,10 +8,6 @@ import { ViewToggle } from "@/components/ViewToggle";
 import type { Section } from "@/lib/prefs";
 import type { Sort } from "@/lib/sort";
 
-/**
- * The head of a section in grid layout: its engraved name and count, then search, filters, sort,
- * layout and New, then the tag chips. The same controls as the split view's list column.
- */
 export function GridHead({
   section,
   label,
@@ -33,12 +29,10 @@ export function GridHead({
   placeholder: string;
   newLabel: string;
   languageFilter?: boolean;
-  /** A line under the head, like Credentials' "agents can never read these". */
   note?: string;
   tags: { tag: string; count: number }[];
   activeTag?: string;
   tagHref: (tag: string | undefined) => string;
-  /** The tag filter, kept when the search form submits. */
   hiddenTag?: string;
 }) {
   return (
@@ -54,7 +48,6 @@ export function GridHead({
           </div>
           {languageFilter && <LanguageFilter className="min-w-0 flex-1 sm:w-40 sm:flex-none" />}
           {hiddenTag && <input type="hidden" name="tag" value={hiddenTag} />}
-          {/* Phones: sort and layout drop to their own row under search and the filters. */}
           <div className="order-last flex basis-full items-center justify-between gap-2 sm:order-none sm:basis-auto sm:justify-start">
             <SortSelect sort={sort} section={section} />
             <ViewToggle view="grid" section={section} />
@@ -69,7 +62,6 @@ export function GridHead({
         </div>
       </form>
       {note && <p className="text-ui text-muted">{note}</p>}
-      {/* On phones the chips are one row you swipe along, so they don't push the cards off screen. */}
       {tags.length > 0 && (
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>*]:shrink-0">
           {tags.map(({ tag, count: n }) => {

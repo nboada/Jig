@@ -1,7 +1,3 @@
-/**
- * The app's button styles, as class strings so a <button>, a <Link> or a Radix trigger can all
- * wear them. Every control is one of three heights: 28 (sm), 32 (md) or 40 (lg).
- */
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
@@ -22,7 +18,6 @@ export function button({ variant = "secondary", size = "md", className = "" }: {
   return `inline-flex shrink-0 items-center justify-center whitespace-nowrap transition disabled:pointer-events-none disabled:opacity-60 ${VARIANTS[variant]} ${SIZES[size]} ${className}`;
 }
 
-/** A square icon-only button: quiet until hovered. Give it an aria-label. */
 export function iconButton({ size = "sm", className = "" }: { size?: "sm" | "md"; className?: string } = {}) {
   return `grid shrink-0 place-items-center rounded-md text-muted transition hover:bg-raised hover:text-text data-[state=open]:bg-raised data-[state=open]:text-text ${
     size === "sm" ? "size-7" : "size-8"

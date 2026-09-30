@@ -7,7 +7,6 @@ import { FormBar, type FormHeader } from "@/components/FormBar";
 import { field, label } from "@/components/SnippetForm";
 import type { Credential } from "@/lib/credentials";
 
-/** One editable field. `stored` means a secret value already exists on the server. */
 type Row = { key: number; id?: string; label: string; secret: boolean; value: string; stored: boolean };
 
 const small = "h-7 rounded-md px-2 text-meta text-muted transition hover:bg-raised hover:text-text disabled:opacity-40";

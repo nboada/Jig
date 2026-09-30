@@ -28,11 +28,8 @@ import { requireAuth } from "@/lib/auth";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ v?: string }> };
 
-/** A `?v=` version number, or undefined for the latest. */
 const toVersion = (v?: string) => (v && Number.isInteger(Number(v)) ? Number(v) : undefined);
 
-// The page title and the page both need the snippet; cache() makes that one query per request.
-// Both pass the same arguments, version included, so they share the cached result.
 const loadSnippet = cache(async (slug: string, version: number | undefined) => getSnippet(await getDb(), slug, version));
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
@@ -55,7 +52,6 @@ export default async function SnippetPage({ params, searchParams }: Props) {
 
   return (
     <EnterOnReturn className="min-w-0 space-y-6">
-      {/* In the split view the list is right there; keep the link for phones and the grid view. */}
       <BackLink href="/snippets" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Snippets
       </BackLink>
@@ -152,7 +148,6 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         meta={
           <Meta>
             {[
-              // Who saved it, only worth a mention when it was an agent rather than you.
               snippet.source !== "web" && formatSource(snippet.source),
               <span key="t" suppressHydrationWarning>
                 {timeAgo(snippet.versionCreatedAt)}

@@ -5,7 +5,6 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { SearchIcon } from "@/components/NavIcons";
 
-/** Replaces one search param in the current URL without a full page load, keeping the others. */
 export function useSetParam() {
   const router = useRouter();
   const pathname = usePathname();
@@ -21,14 +20,12 @@ export function useSetParam() {
   return { params, setParam, pending };
 }
 
-/** A search box that filters as you type, 250ms after the last keystroke. Enter applies it at once. */
 export function SearchInput({ placeholder }: { placeholder: string }) {
   const { params, setParam, pending } = useSetParam();
   const q = params.get("q") ?? "";
   const [value, setValue] = useState(q);
   const input = useRef<HTMLInputElement>(null);
 
-  // Follow the URL when it changes from elsewhere (e.g. "Clear filters"), but never while the user is typing.
   useEffect(() => {
     if (document.activeElement !== input.current) setValue(q);
   }, [q]);
@@ -37,7 +34,6 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
     if (value.trim() === q) return;
     const timer = setTimeout(() => setParam("q", value.trim()), 250);
     return () => clearTimeout(timer);
-    // setParam changes identity with every render; the timer only needs to reset when the text or URL does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, q]);
 
@@ -70,7 +66,6 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
   );
 }
 
-/** The language filter: applies as soon as the choice changes. */
 export function LanguageFilter({ className }: { className?: string }) {
   const { params, setParam } = useSetParam();
   return (

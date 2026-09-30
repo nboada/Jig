@@ -1,4 +1,3 @@
-/** Turns a title into a URL- and file-name-safe slug: "Same height divs" → "same-height-divs". */
 export function slugify(text: string): string {
   const slug = text
     .normalize("NFKD")
@@ -11,11 +10,6 @@ export function slugify(text: string): string {
   return slug || "snippet";
 }
 
-/**
- * Keeps automatically named files in step with the title. A file is automatic when its name
- * (before the extension) is "snippet" or the slug of the previous title; hand-picked names stay.
- * A rename that would collide with another file is skipped.
- */
 export function renameForTitle<T extends { name: string }>(files: T[], from: string, to: string): T[] {
   const automatic = new Set(["snippet", slugify(from)]);
   const stem = slugify(to);

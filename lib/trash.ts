@@ -2,13 +2,6 @@ import type { Db } from "./db";
 import { availableSlug, SnippetError } from "./snippets";
 import { slugSchema } from "./validation";
 
-/**
- * Recently deleted items. Deleting moves an item out of its table into `trash`, with every version
- * alongside it, so nothing else (lists, search, MCP, share links) has to skip deleted rows: they
- * simply aren't there. Restoring moves it back, id and all, so its history, lock and share links
- * return with it. After 30 days it goes for good, along with its share links. Each move is one
- * statement (see lib/db.ts), and the row's own encryption (locked notes, secrets) travels as is.
- */
 
 export type TrashKind = "snippets" | "notes" | "credentials";
 
@@ -26,7 +19,6 @@ export type TrashedItem = {
   slug: string;
   title: string;
   deletedAt: string;
-  /** When it goes for good. */
   purgeAt: string;
 };
 
@@ -42,10 +34,8 @@ function toItem(row: Record<string, unknown>): TrashedItem {
   };
 }
 
-/** Moves an item and its versions into the trash. Returns its id, for an undo. */
 export async function trashItem(db: Db, kind: TrashKind, slug: string): Promise<string> {
   const { table, versions } = TABLES[kind];
-  // The versions are read in the same statement as the delete, so they're still visible to it.
   const history = versions
     ? `coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.version) FROM ${versions.table} v WHERE v.${versions.key} = d.id), '[]'::jsonb)`
     : `'[]'::jsonb`;
@@ -61,10 +51,6 @@ export async function trashItem(db: Db, kind: TrashKind, slug: string): Promise<
   return rows[0].id;
 }
 
-/**
- * Puts a deleted item back where it was. If its slug was taken in the meantime it comes back
- * under the next free one (lenis-2). Returns the slug it has now.
- */
 export async function restoreItem(db: Db, id: string): Promise<{ kind: TrashKind; slug: string }> {
   const found = await db.query<{ kind: TrashKind; slug: string }>(`SELECT kind, slug FROM trash WHERE id = $1`, [id]);
   if (!found.length) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
@@ -85,14 +71,12 @@ export async function restoreItem(db: Db, id: string): Promise<{ kind: TrashKind
   return { kind, slug: rows[0].slug };
 }
 
-/** Everything in the trash, most recently deleted first. Clears out anything past its 30 days. */
 export async function listTrash(db: Db): Promise<TrashedItem[]> {
   await purgeExpired(db);
   const rows = await db.query(`SELECT id, kind, slug, title, deleted_at FROM trash ORDER BY deleted_at DESC`);
   return rows.map(toItem);
 }
 
-/** Deletes one trashed item for good, with its share links. */
 export async function purgeItem(db: Db, id: string): Promise<void> {
   const rows = await db.query(
     `WITH p AS (DELETE FROM trash WHERE id = $1 RETURNING id, kind),
@@ -103,7 +87,6 @@ export async function purgeItem(db: Db, id: string): Promise<void> {
   if (!rows.length) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
 }
 
-/** Deletes for good whatever has been in the trash for more than 30 days, with its share links. */
 export async function purgeExpired(db: Db): Promise<void> {
   await db.query(
     `WITH p AS (DELETE FROM trash WHERE deleted_at < now() - make_interval(days => $1) RETURNING id, kind)

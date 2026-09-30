@@ -1,4 +1,3 @@
-/** The small credit line at the foot of the pages other people see: login and share links. */
 export function Credit({ className = "" }: { className?: string }) {
   return (
     <p className={`text-xs text-muted/70 ${className}`}>

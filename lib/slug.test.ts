@@ -20,7 +20,6 @@ test("automatic names follow the title, hand-picked ones stay", () => {
 test("a name that followed the old title follows the new one", () => {
   const files = [{ name: "same-height-divs.js" }];
   expect(names(renameForTitle(files, "Same height divs", "Equal heights"))).toEqual(["equal-heights.js"]);
-  // Clearing the title goes back to snippet.js.
   expect(names(renameForTitle(files, "Same height divs", ""))).toEqual(["snippet.js"]);
 });
 

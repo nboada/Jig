@@ -48,25 +48,18 @@ import { getAiSettings, removeAiKey, saveAiKey, setActivePlatform, setAiModel, t
 export type FormState = { error?: string };
 export type Result = { error?: string };
 
-/*
- * Every export here is a public endpoint: anyone can call it with any arguments, whatever the
- * TypeScript types say. So each one calls requireAuth() first (lib/actions.test.ts checks), apart
- * from the few that run before there's a session, and checks its arguments before using them.
- */
 
 const Slug = z.string().min(1).max(200);
 const Id = z.string().min(1).max(200);
 const Section = z.enum(["snippets", "notes", "credentials"]);
 const Versioned = z.enum(["snippets", "notes"]);
 
-/** Arguments that don't fit their schema never reach lib/. */
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (!result.success) throw new SnippetError("That request doesn't look right.", "invalid");
   return result.data;
 }
 
-/** A SnippetError's message for the person, anything else logged and replaced by `fallback`. */
 function failure(error: unknown, fallback: string): { error: string } {
   if (error instanceof SnippetError || error instanceof DecryptError || error instanceof CredentialsUnavailable) {
     return { error: error.message };
@@ -85,12 +78,6 @@ async function clientIp() {
   return clientIpFrom(h.get("x-forwarded-for"), h.get("x-real-ip"));
 }
 
-/**
- * Records an attempt at the password (or a passkey) and says whether it may go ahead. The attempt
- * is recorded before it's counted, so parallel requests can't all slip through; `everywhere` also
- * applies the limit across all IPs (password attempts only: a passkey can't be guessed). Fails
- * closed: when the check itself fails, the attempt is refused.
- */
 async function guardAttempt(ip: string, everywhere: boolean): Promise<string | null> {
   try {
     const db = await getDb();
@@ -123,11 +110,9 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
 
 async function signIn() {
   await startSession();
-  // Bring this browser's layout (tab order, views, sorts) in line with the saved one.
   await applyStoredPreferences().catch((error) => console.error("[jig] could not load preferences", error));
 }
 
-/** Leaves `message` for the page the action redirects to, shown there as a toast (Next encodes the cookie value itself). Not exported: every export here is callable. */
 async function flash(message: string) {
   (await cookies()).set(FLASH_COOKIE, message, { path: "/", maxAge: 60, sameSite: "lax" });
 }
@@ -135,11 +120,6 @@ async function flash(message: string) {
 const PREF_COOKIE = { path: "/", maxAge: 31_536_000, sameSite: "lax" as const };
 const SYNC_SECONDS = 5 * 60;
 
-/**
- * Copies the saved preferences into this browser's cookies (true if anything changed). A choice
- * this browser has that was never saved, like one made before preferences were saved at all, is
- * saved now, so it reaches the other browsers too.
- */
 async function applyStoredPreferences(): Promise<boolean> {
   const store = await cookies();
   const db = await getDb();
@@ -158,11 +138,6 @@ async function applyStoredPreferences(): Promise<boolean> {
   return changed;
 }
 
-/**
- * Catches this browser up with preferences changed on another device, and renews the session so
- * it only runs out after a week away. The page calls it in the background at most every few
- * minutes; it returns true when the page should redraw.
- */
 export async function syncPreferences(): Promise<boolean> {
   const session = await requireAuth();
   try {
@@ -174,7 +149,6 @@ export async function syncPreferences(): Promise<boolean> {
   }
 }
 
-/** Saves a preference (tab order, a list's sort) here and for every other browser. */
 export async function savePreference(key: string, value: string): Promise<void> {
   await requireAuth();
   if (typeof key !== "string" || typeof value !== "string" || !validSetting(key, value)) return;
@@ -182,7 +156,6 @@ export async function savePreference(key: string, value: string): Promise<void> 
   await saveSetting(await getDb(), key, value);
 }
 
-/** Forgets this browser's session, unlock and any passkey prompt in progress. */
 async function forgetThisBrowser() {
   const store = await cookies();
   store.delete(SESSION_COOKIE);
@@ -195,7 +168,6 @@ export async function logout() {
   redirect("/login");
 }
 
-/** Signs out every browser and device, this one included (a lost laptop, a shared computer). */
 export async function signOutEverywhere() {
   await requireAuth();
   await endAllSessions(await getDb());
@@ -203,14 +175,12 @@ export async function signOutEverywhere() {
   redirect("/login");
 }
 
-/** The snippet form posts its fields as one JSON blob so the file list stays structured. */
 export async function saveSnippet(_: FormState, form: FormData): Promise<FormState> {
   await requireAuth();
   const slug = String(form.get("slug") ?? "");
   let target: string;
   try {
     const data = JSON.parse(String(form.get("payload") ?? "{}"));
-    // Files still on the generic snippet.* name take the title's, e.g. same-height-divs.js.
     if (Array.isArray(data.files) && typeof data.title === "string") {
       data.files = renameForTitle(data.files, "", data.title);
     }
@@ -252,7 +222,6 @@ export async function deleteToken(form: FormData) {
   revalidatePath("/connect");
 }
 
-/** The note form posts its fields as one JSON blob, like the snippet form. */
 export async function saveNote(_: FormState, form: FormData): Promise<FormState> {
   await requireAuth();
   const slug = String(form.get("slug") ?? "");
@@ -300,13 +269,8 @@ export async function saveCredential(_: FormState, form: FormData): Promise<Form
   redirect(`/credentials/${target}`);
 }
 
-/** What a secret-revealing action says while this browser hasn't unlocked. */
 const LOCKED = "Unlock first: secrets need your passkey or password.";
 
-/**
- * Decrypts one secret for the Reveal and Copy buttons. Like a locked note, it needs a recent
- * unlock (a passkey or the password), so a stolen session alone can't read every secret.
- */
 export async function revealSecret(slug: string, fieldId: string): Promise<{ value?: string; error?: string; locked?: boolean }> {
   await requireAuth();
   if (!(await isUnlocked())) return { error: LOCKED, locked: true };
@@ -317,11 +281,6 @@ export async function revealSecret(slug: string, fieldId: string): Promise<{ val
   }
 }
 
-/**
- * Local development only: writes a new encryption key into .env.local and
- * starts using it straight away. A deployed server can't change its own
- * environment, so there the page generates a key for the user to add instead.
- */
 export async function createEncryptionKey(): Promise<{ error?: string }> {
   await requireAuth();
   if (process.env.NODE_ENV === "production") {
@@ -349,37 +308,29 @@ export async function createEncryptionKey(): Promise<{ error?: string }> {
     return { error: "Could not write .env.local. Add the key to it yourself, then restart the server." };
   }
   process.env.JIG_ENCRYPTION_KEY = key;
-  // The key is part of what signs sessions, so this browser's session is signed again with it.
   await startSession();
   revalidatePath("/", "layout");
   return {};
 }
 
-/** Slugs of the snippets matching a search, code included, for the snippet list's search box. */
 export async function searchSnippetSlugs(query: string): Promise<string[]> {
   await requireAuth();
   const found = await listSnippets(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((s) => s.slug);
 }
 
-/** Slugs of the notes matching a search, full text included, for the note list's search box. */
 export async function searchNoteSlugs(query: string): Promise<string[]> {
   await requireAuth();
   const found = await listNotes(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((n) => n.slug);
 }
 
-/**
- * Slugs of the credentials matching a search, for the credential list's search box. Like the
- * list itself it matches titles, URLs, tags, labels, notes and non-secret values, never secrets.
- */
 export async function searchCredentialSlugs(query: string): Promise<string[]> {
   await requireAuth();
   const found = await listCredentials(await getDb(), { query: String(query).slice(0, 500), limit: 500 });
   return found.map((c) => c.slug);
 }
 
-/** Copies a snippet or note from the list's right-click menu; returns the copy's slug to open. */
 export async function cloneItem(kind: "snippets" | "notes", slug: string): Promise<{ slug?: string; error?: string }> {
   await requireAuth();
   try {
@@ -392,14 +343,6 @@ export async function cloneItem(kind: "snippets" | "notes", slug: string): Promi
   }
 }
 
-/**
- * Deletes an item from the list's right-click menu. Unlike the item page's delete, it does not
- * redirect: the menu decides where to go (nowhere, unless the deleted item was open).
- */
-/**
- * Moves an item to Recently deleted, where it stays for 30 days. Returns its id, so the toast
- * can offer to undo it.
- */
 export async function deleteItem(kind: TrashKind, slug: string): Promise<Result & { id?: string }> {
   await requireAuth();
   let id: string;
@@ -412,7 +355,6 @@ export async function deleteItem(kind: TrashKind, slug: string): Promise<Result 
   return { id };
 }
 
-/** Puts a deleted item back. Returns where it is now (its slug changes if the old one was taken). */
 export async function restoreDeleted(id: string): Promise<Result & { kind?: TrashKind; slug?: string }> {
   await requireAuth();
   let restored: { kind: TrashKind; slug: string };
@@ -425,7 +367,6 @@ export async function restoreDeleted(id: string): Promise<Result & { kind?: Tras
   return restored;
 }
 
-/** Deletes an item in Recently deleted for good. */
 export async function purgeDeleted(id: string): Promise<Result> {
   await requireAuth();
   try {
@@ -437,7 +378,6 @@ export async function purgeDeleted(id: string): Promise<Result> {
   return {};
 }
 
-/** Pins a snippet or note to the top of its list, or unpins it. */
 export async function setPinned(kind: "snippets" | "notes", slug: string, pinned: boolean): Promise<Result> {
   await requireAuth();
   try {
@@ -458,10 +398,6 @@ const ShareOptionsSchema = z.object({
   label: z.string().max(200).optional(),
 });
 
-/**
- * Makes a share link for an item. The token and passcode come back once; only hashes are kept. A
- * credential's link hands out its secrets, so it needs an unlock like revealing them does.
- */
 export async function createShareLink(
   kind: "snippets" | "notes" | "credentials",
   slug: string,
@@ -478,13 +414,11 @@ export async function createShareLink(
   }
 }
 
-/** An item's share links, for the share dialog. */
 export async function listItemShares(kind: "snippets" | "notes" | "credentials", slug: string): Promise<Share[]> {
   await requireAuth();
   return listShares(await getDb(), parse(Section, kind), parse(Slug, slug));
 }
 
-/** A link and passcode again, for copying from the share dialog. A credential's needs an unlock. */
 export async function revealShareLink(id: string): Promise<{ token?: string; passcode?: string; error?: string; locked?: boolean }> {
   await requireAuth();
   try {
@@ -526,10 +460,6 @@ export async function revokeShareLink(id: string): Promise<Result> {
   }
 }
 
-/**
- * Saves a list page's grid/list choice and redraws its layout (the split view lives in the
- * section's layout, which a plain navigation doesn't re-render). With `goTo`, lands there too.
- */
 export async function setViewPreference(section: string, view: string, goTo?: string): Promise<void> {
   await requireAuth();
   if (!SECTION_ORDER.includes(section as never) || (view !== "grid" && view !== "list")) return;
@@ -540,7 +470,6 @@ export async function setViewPreference(section: string, view: string, goTo?: st
   if (goTo !== undefined) redirect(safeNext(goTo));
 }
 
-// --- Passkeys, and unlocking --------------------------------------------------------------------
 
 async function site() {
   const h = await headers();
@@ -559,7 +488,6 @@ async function rememberChallenge(use: ChallengeUse, challenge: string) {
   (await cookies()).set(CHALLENGE_COOKIE, await makeChallengeCookie(await getDb(), use, challenge), shortCookie(CHALLENGE_SECONDS));
 }
 
-/** Reads the pending challenge for this use and forgets it, so an answer can only be used once. */
 async function takeChallenge(use: ChallengeUse): Promise<string | null> {
   const store = await cookies();
   const challenge = await readChallengeCookie(await getDb(), use, store.get(CHALLENGE_COOKIE)?.value);
@@ -572,7 +500,6 @@ export async function myPasskeys(): Promise<Passkey[]> {
   return listPasskeys(await getDb());
 }
 
-/** Starts adding a passkey on this device (the Touch ID prompt follows in the browser). */
 export async function passkeySetupOptions() {
   await requireAuth();
   const options = await registrationOptions(await getDb(), await site());
@@ -598,17 +525,12 @@ export async function deletePasskey(id: string): Promise<void> {
   await removePasskey(await getDb(), parse(Id, id));
 }
 
-/**
- * Options for a passkey prompt, to sign in or to unlock. Public, because signing in uses it
- * before there's a session; it reveals nothing (no list of passkeys: the device offers its own).
- */
 export async function passkeyPromptOptions(use: "login" | "unlock") {
   const options = await authenticationOptions(await site());
   await rememberChallenge(use === "unlock" ? "unlock" : "login", options.challenge);
   return options;
 }
 
-/** Signs in with a passkey. Counted like a password attempt, so it can't be hammered either. */
 export async function loginWithPasskey(response: AuthenticationResponseJSON, next: string): Promise<{ error?: string }> {
   const ip = await clientIp();
   const blocked = await guardAttempt(ip, false);
@@ -629,14 +551,11 @@ export async function loginWithPasskey(response: AuthenticationResponseJSON, nex
 
 async function startUnlock() {
   const session = await requireAuth();
-  // A session cookie (no maxAge), so closing the browser locks again; the 30 minutes are
-  // enforced by the expiry signed into the value, which also ties it to this session.
   const { value } = await makeUnlock(await getDb(), session.issuedAt);
   (await cookies()).set(UNLOCK_COOKIE, value, shortCookie());
   revalidatePath("/", "layout");
 }
 
-/** Unlocks locked notes and credential secrets with a passkey, for 30 minutes or until the browser closes. */
 export async function unlockWithPasskey(response: AuthenticationResponseJSON): Promise<{ error?: string }> {
   await requireAuth();
   const challenge = await takeChallenge("unlock");
@@ -647,7 +566,6 @@ export async function unlockWithPasskey(response: AuthenticationResponseJSON): P
   return {};
 }
 
-/** Unlocks with the dashboard password instead, for a device without a passkey. Rate limited like login. */
 export async function unlockWithPassword(password: string): Promise<{ error?: string }> {
   await requireAuth();
   const problem = passwordProblem();
@@ -661,17 +579,12 @@ export async function unlockWithPassword(password: string): Promise<{ error?: st
   return {};
 }
 
-/** Locks notes and secrets again straight away, before the 30 minutes are up. */
 export async function relockNotes(): Promise<void> {
   await requireAuth();
   (await cookies()).delete(UNLOCK_COOKIE);
   revalidatePath("/", "layout");
 }
 
-/**
- * Locks a note (encrypting its whole history) or removes its lock. Removing a lock needs the notes
- * unlocked first, so a stolen session alone can't strip one.
- */
 export async function setNoteLock(slug: string, locked: boolean): Promise<{ error?: string }> {
   await requireAuth();
   if (!encryptionReady()) return { error: "Locking notes needs JIG_ENCRYPTION_KEY, the same key as Credentials." };
@@ -686,11 +599,6 @@ export async function setNoteLock(slug: string, locked: boolean): Promise<{ erro
   return {};
 }
 
-/**
- * The consent screen's answer. Both re-check the request (the form's fields came from the page, so
- * they're only as trusted as any other input) and send the browser back to the app: with a code
- * when allowed, with access_denied when not.
- */
 async function authorizeRequestFrom(form: FormData) {
   let params: Record<string, string>;
   try {
@@ -713,23 +621,17 @@ export async function denyApp(form: FormData) {
   redirect("redirect" in request ? request.redirect : redirectError(request.redirectUri, "access_denied", "The owner declined.", request.state));
 }
 
-/** Ends an approved app's access (Connect page). */
 export async function disconnectApp(form: FormData) {
   await requireAuth();
   await revokeGrant(await getDb(), parse(Id, String(form.get("id"))));
   revalidatePath("/connect");
 }
 
-/** Turns an AI failure into the message the dashboard shows; anything unexpected is logged. */
 function aiFailure(error: unknown): { error: string } {
   if (error instanceof AiError) return { error: error.message };
   return failure(error, "The AI couldn't answer just now. Try again.");
 }
 
-/**
- * Rewrites some of a note's text (rephrase, shorten or fix). Nothing is saved: the editor shows the
- * suggestion and the note's own Save keeps it. A locked note's text is never sent.
- */
 export async function aiRewrite(mode: RewriteMode, text: string, slug?: string): Promise<{ text?: string; error?: string }> {
   await requireAuth();
   try {
@@ -745,7 +647,6 @@ export async function aiRewrite(mode: RewriteMode, text: string, slug?: string):
   }
 }
 
-/** Checks a snippet for errors, as it stands in the editor (unsaved changes included). */
 export async function aiReview(snippet: {
   title: string;
   language: string;
@@ -770,7 +671,6 @@ export async function aiReview(snippet: {
   }
 }
 
-/** Rewrites one file with the chosen review issues fixed. Nothing is saved: the editor shows it first. */
 export async function aiFix(input: {
   file: { name: string; content: string };
   language: string;
@@ -805,17 +705,11 @@ export async function aiFix(input: {
 
 const PlatformIdSchema = z.enum(PLATFORM_IDS);
 
-/** The AI settings dialog's view: which platforms have keys (never the keys themselves). */
 export async function aiSettings(): Promise<AiSettings> {
   await requireAuth();
   return getAiSettings(await getDb());
 }
 
-/**
- * Saves a platform's key and model from the AI settings dialog. A new key is tried first with one
- * tiny request, so a wrong one is caught before it's stored; the platform then becomes the one in
- * use. An empty key keeps the one already there and only changes the model.
- */
 export async function saveAiPlatform(id: string, input: { key: string; model: string }): Promise<{ settings?: AiSettings; error?: string }> {
   await requireAuth();
   try {
@@ -836,7 +730,6 @@ export async function saveAiPlatform(id: string, input: { key: string; model: st
   return { settings: await getAiSettings(await getDb()) };
 }
 
-/** Forgets the key saved in Jig for a platform (its environment variable, if any, still works). */
 export async function removeAiPlatformKey(id: string): Promise<{ settings?: AiSettings; error?: string }> {
   await requireAuth();
   try {
@@ -848,7 +741,6 @@ export async function removeAiPlatformKey(id: string): Promise<{ settings?: AiSe
   return { settings: await getAiSettings(await getDb()) };
 }
 
-/** Picks the platform the AI helpers use. */
 export async function chooseAiPlatform(id: string): Promise<{ settings?: AiSettings; error?: string }> {
   await requireAuth();
   try {

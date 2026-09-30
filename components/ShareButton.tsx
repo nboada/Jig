@@ -7,7 +7,6 @@ import { ShareDialog } from "@/components/ShareDialog";
 import { Tip } from "@/components/Tooltip";
 import type { ShareKind } from "@/lib/shares";
 
-/** The item page's Share button. */
 export function ShareButton({ kind, slug, title }: { kind: ShareKind; slug: string; title: string }) {
   const [open, setOpen] = useState(false);
   return (

@@ -13,7 +13,6 @@ import {
 
 export type SnippetFile = { name: string; content: string };
 
-/** The listing view of a snippet: its latest metadata, without file contents. */
 export type SnippetSummary = {
   slug: string;
   title: string;
@@ -27,7 +26,6 @@ export type SnippetSummary = {
   updatedAt: string;
 };
 
-/** One saved version of a snippet: a full snapshot, not a delta. */
 export type SnippetVersion = {
   slug: string;
   version: number;
@@ -100,15 +98,10 @@ function toVersion(row: Row): SnippetVersion {
   };
 }
 
-/** A version's file names, in order, without their contents. */
 const FILE_NAMES = `coalesce((SELECT jsonb_agg(f->'name' ORDER BY i) FROM jsonb_array_elements(v.files) WITH ORDINALITY AS e(f, i)), '[]'::jsonb)`;
 
 export type ListOptions = { query?: string; language?: string; tag?: string; limit?: number; sort?: Sort };
 
-/**
- * Lists snippets, newest first. Every word of `query` must appear somewhere in
- * the title, slug, description, tags or file contents; title and slug hits rank first.
- */
 export async function listSnippets(db: Db, options: ListOptions = {}): Promise<SnippetSummary[]> {
   const where: string[] = [];
   const params: unknown[] = [];
@@ -133,7 +126,6 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   const limit = param(Math.min(Math.max(options.limit ?? 100, 1), 500));
 
   const rows = await db.query(
-    // Only the file names leave the database: the contents are searched there, never sent.
     `SELECT s.slug, s.title, s.description, s.language, s.tags, s.current_version, s.created_at, s.updated_at, s.pinned_at,
        ${FILE_NAMES} AS file_names
      FROM snippets s
@@ -146,7 +138,6 @@ export async function listSnippets(db: Db, options: ListOptions = {}): Promise<S
   return rows.map(toSummary);
 }
 
-/** All tags in use, with how many snippets carry each. */
 export async function listTags(db: Db): Promise<{ tag: string; count: number }[]> {
   const rows = await db.query<{ tag: string; count: number | string }>(
     `SELECT tag, count(*) AS count FROM snippets, jsonb_array_elements_text(tags) AS tag
@@ -155,7 +146,6 @@ export async function listTags(db: Db): Promise<{ tag: string; count: number }[]
   return rows.map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }
 
-/** Returns the latest version of a snippet, or a specific one when `version` is given. */
 export async function getSnippet(db: Db, slug: string, version?: number): Promise<Snippet | null> {
   const rows = await db.query(
     `SELECT s.slug, s.current_version, s.created_at AS snippet_created_at, s.updated_at, s.pinned_at,
@@ -187,7 +177,6 @@ async function requireSnippet(db: Db, slug: string, version?: number): Promise<S
   );
 }
 
-/** The base slug, or base-2, base-3 and so on when it is taken in `table`. */
 export async function availableSlug(
   db: Db,
   base: string,
@@ -252,11 +241,6 @@ export async function createSnippet(db: Db, input: SnippetInput, source = "web")
 
 const CONTENT_FIELDS = ["title", "description", "language", "tags", "instructions", "dependencies", "files"] as const;
 
-/**
- * Saves a new version. Fields left out of the patch carry over from the latest
- * version; `files`, when given, replaces the whole file list. Nothing is saved
- * when the result is identical to the latest version.
- */
 export async function updateSnippet(
   db: Db,
   slug: string,
@@ -290,11 +274,6 @@ export async function updateSnippet(
   return { snippet: await requireSnippet(db, slug), changed: true };
 }
 
-/**
- * Bumps the snippet to a new version with the given content in one statement.
- * The `current_version = expected` check makes a concurrent save fail loudly
- * instead of silently overwriting.
- */
 async function insertVersion(
   db: Db,
   slug: string,
@@ -357,10 +336,6 @@ export async function getVersionPair(db: Db, slug: string, from: number, to?: nu
   return [a, b] as const;
 }
 
-/**
- * Rolls back by saving a new version whose content is a copy of an older one.
- * History is never rewritten, so a restore can itself be undone.
- */
 export async function restoreVersion(
   db: Db,
   slug: string,
@@ -381,15 +356,10 @@ export async function deleteSnippet(db: Db, slug: string): Promise<void> {
   if (!rows.length) throw new SnippetError(`No snippet with the slug "${slug}"`, "not_found");
 }
 
-/** The title a copy gets: "Lenis defaults" → "Lenis defaults copy", kept within the title limit. */
 export function copyTitle(title: string): string {
   return `${title.slice(0, 115)} copy`;
 }
 
-/**
- * Saves a copy of a snippet's latest version as a new snippet, with its own slug and history.
- * Files named after the old title take the new one (lenis-defaults.js → lenis-defaults-copy.js).
- */
 export async function cloneSnippet(db: Db, slug: string, source = "web"): Promise<Snippet> {
   const original = await getSnippet(db, slug);
   if (!original) throw new SnippetError(`No snippet called "${slug}".`, "not_found");
@@ -410,7 +380,6 @@ export async function cloneSnippet(db: Db, slug: string, source = "web"): Promis
   );
 }
 
-/** Pins a snippet to the top of the list, or unpins it. Not a new version: nothing in it changes. */
 export async function setSnippetPinned(db: Db, slug: string, pinned: boolean): Promise<void> {
   const rows = await db.query(
     `UPDATE snippets SET pinned_at = CASE WHEN $2 THEN coalesce(pinned_at, now()) END WHERE slug = $1 RETURNING slug`,

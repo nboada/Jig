@@ -4,10 +4,6 @@ import * as ContextMenu from "@radix-ui/react-context-menu";
 import { menuContentClass, menuItemClass, useItemActions } from "@/components/ItemActions";
 import type { Section } from "@/lib/prefs";
 
-/**
- * The right-click menu on a list item (a split-view row or a grid card). It offers the same
- * actions as the item page's ⋯ menu, in the same order. Wrap the item's link in it.
- */
 export function ItemMenu({
   kind,
   slug,
@@ -21,12 +17,9 @@ export function ItemMenu({
   kind: Section;
   slug: string;
   title: string;
-  /** A credential's URL, offered as "Copy URL". */
   url?: string;
   pinned?: boolean;
-  /** A locked note: no clone or share. Its lock is changed from the note's own page. */
   locked?: boolean;
-  /** Locked notes are open right now: a locked note offers "Lock again now". */
   unlocked?: boolean;
   children: React.ReactNode;
 }) {

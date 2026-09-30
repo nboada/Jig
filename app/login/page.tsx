@@ -11,9 +11,7 @@ export const metadata: Metadata = { title: "Log in" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
-  // The passkey button only appears once there is a passkey to sign in with.
   const passkey = await getDb().then(hasPasskeys).catch(() => false);
-  // A missing or too-short ADMIN_PASSWORD stops password sign-in; say so before anyone types.
   const problem = passwordProblem();
   return (
     <main className="bench relative grid min-h-dvh place-items-center px-4">
@@ -29,7 +27,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <PasskeyLogin next={next ?? "/"} />
           </div>
         )}
-        {/* The password lives in Vercel, so whoever can sign in there can recover it. */}
         <details className="group mt-6 text-ui text-muted">
           <summary className="w-fit cursor-pointer list-none transition hover:text-text [&::-webkit-details-marker]:hidden">
             Forgot your password?
