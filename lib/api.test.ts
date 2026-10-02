@@ -122,6 +122,18 @@ describe("notes api", () => {
   });
 });
 
+test("lists take a limit, so the app can fetch everything for offline use", async () => {
+  for (let i = 0; i < 3; i++) {
+    await snippetsApi.create(db, { ...debounce, title: `Snippet ${i}` }, SOURCE);
+    await notesApi.create(db, { title: `Note ${i}`, body: "x" }, SOURCE);
+  }
+  expect((await snippetsApi.list(db, q({ limit: "2" }))).length).toBe(2);
+  expect((await notesApi.list(db, q({ limit: "2" }))).length).toBe(2);
+  expect((await snippetsApi.list(db, q({ limit: "500" }))).length).toBe(3);
+  expect(await code(snippetsApi.list(db, q({ limit: "abc" })))).toBe("invalid");
+  expect(await code(notesApi.list(db, q({ limit: "501" })))).toBe("invalid");
+});
+
 test("tags counts snippets and unlocked notes", async () => {
   await snippetsApi.create(db, debounce, SOURCE);
   await notesApi.create(db, { title: "Ops", body: "x", tags: ["ops"] }, SOURCE);

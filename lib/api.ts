@@ -50,12 +50,18 @@ function bodyVersion(body: Body): number {
   return required(version(body.version, "version"), "version");
 }
 
+function limit(q: URLSearchParams): number | undefined {
+  const n = version(q.get("limit"), "limit");
+  if (n !== undefined && n > 500) throw new SnippetError("limit must be a whole number from 1 to 500.", "invalid");
+  return n;
+}
+
 const message = (body: Body) => (typeof body.message === "string" ? body.message : undefined);
 const missing = (kind: string, slug: string) => new SnippetError(`No ${kind} with the slug "${slug}".`, "not_found");
 
 export const snippetsApi = {
-  list: (db: Db, q: URLSearchParams) =>
-    listSnippets(db, { query: text(q, "q"), language: text(q, "language"), tag: text(q, "tag"), sort: parseSort(q.get("sort")) }),
+  list: async (db: Db, q: URLSearchParams) =>
+    listSnippets(db, { query: text(q, "q"), language: text(q, "language"), tag: text(q, "tag"), sort: parseSort(q.get("sort")), limit: limit(q) }),
 
   async get(db: Db, slug: string, q: URLSearchParams) {
     const snippet = await getSnippet(db, slug, version(q.get("v"), "v"));
@@ -85,8 +91,8 @@ async function readableNote(db: Db, slug: string) {
 }
 
 export const notesApi = {
-  list: (db: Db, q: URLSearchParams) =>
-    listNotes(db, { query: text(q, "q"), tag: text(q, "tag"), sort: parseSort(q.get("sort")), hideLocked: true }),
+  list: async (db: Db, q: URLSearchParams) =>
+    listNotes(db, { query: text(q, "q"), tag: text(q, "tag"), sort: parseSort(q.get("sort")), hideLocked: true, limit: limit(q) }),
 
   async get(db: Db, slug: string, q: URLSearchParams) {
     await readableNote(db, slug);
