@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { notesApi, restoreFromTrash, snippetsApi } from "./api";
 import type { Caller } from "./api-http";
-import { exchangeUnlockCode, issueUnlockCode, lockedNotesApi, unlockValid } from "./api-locked";
+import { exchangeUnlockCode, issueUnlockCode, lockedNotesApi, passkeyUnlockOptions, unlockValid, unlockWithPasskey, unlockWithPassword } from "./api-locked";
 import { pgliteDb, prepare, type Db } from "./db";
 import { endAllSessions } from "./session";
 import { SnippetError } from "./snippets";
@@ -21,7 +21,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await db.query(`TRUNCATE snippets, snippet_versions, notes, note_versions, trash, oauth_unlock_codes, app_secrets, oauth_grants`);
+  await db.query(`TRUNCATE snippets, snippet_versions, notes, note_versions, trash, oauth_unlock_codes, app_secrets, oauth_grants, login_attempts`);
   await grant("grant-1", "client-1", "app");
 });
 
@@ -144,4 +144,43 @@ test("every route that can read a locked note asks for an unlock token in every 
     const handlers = source.match(/export async function \w+/g) ?? [];
     expect({ route, gated: (source.match(/requireUnlock\(db, req\)/g) ?? []).length }).toEqual({ route, gated: handlers.length });
   }
+});
+
+describe("unlocking natively, without the browser", () => {
+  const site = { rpID: "jig.example.com", origin: "https://jig.example.com" };
+  const assertion = (challenge: string) => ({
+    id: "unknown-credential",
+    rawId: "unknown-credential",
+    type: "public-key",
+    clientExtensionResults: {},
+    response: {
+      clientDataJSON: Buffer.from(JSON.stringify({ type: "webauthn.get", challenge, origin: site.origin })).toString("base64url"),
+      authenticatorData: "",
+      signature: "",
+    },
+  });
+
+  test("the dashboard password gives the app an unlock token for its own grant", async () => {
+    expect(await code(unlockWithPassword(db, me, { password: "wrong" }, "1.1.1.1"))).toBe("invalid");
+    const { unlockToken, expiresIn } = await unlockWithPassword(db, me, { password: process.env.ADMIN_PASSWORD }, "1.1.1.1");
+    expect(expiresIn).toBeGreaterThan(0);
+    expect(await unlockValid(db, me, unlockToken)).toBe(true);
+    expect(await unlockValid(db, { ...me, grantId: "grant-2" }, unlockToken)).toBe(false);
+  });
+
+  test("wrong passwords are rate limited like the login", async () => {
+    for (let i = 0; i < 10; i++) await code(unlockWithPassword(db, me, { password: "wrong" }, "2.2.2.2"));
+    await expect(unlockWithPassword(db, me, { password: process.env.ADMIN_PASSWORD }, "2.2.2.2")).rejects.toThrow(/Too many attempts/);
+  });
+
+  test("a passkey challenge is used once, and only by the app that asked for it", async () => {
+    const { challenge } = await passkeyUnlockOptions(db, me, site);
+    await grant("grant-2", "client-2", "app");
+    const other = { ...me, grantId: "grant-2", clientId: "client-2" };
+    await expect(unlockWithPasskey(db, other, site, { response: assertion(challenge) }, "3.3.3.3")).rejects.toThrow(/expired/);
+    await expect(unlockWithPasskey(db, me, site, { response: assertion(challenge) }, "3.3.3.3")).rejects.toThrow(/didn't work/);
+    await expect(unlockWithPasskey(db, me, site, { response: assertion(challenge) }, "3.3.3.3")).rejects.toThrow(/expired/);
+    await expect(unlockWithPasskey(db, me, site, { response: assertion("made-up") }, "3.3.3.3")).rejects.toThrow(/expired/);
+    await expect(unlockWithPasskey(db, me, site, {}, "3.3.3.3")).rejects.toThrow(/expired/);
+  });
 });

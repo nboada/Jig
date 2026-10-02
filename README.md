@@ -232,6 +232,7 @@ The others are ignored while you type, and on new and edit pages, so they can't 
 | `DATABASE_URL` | Set for you | Postgres connection string. The Deploy button's Neon database sets it. Leave it empty locally to use a built-in database stored in `.data/`. |
 | `JIG_ENCRYPTION_KEY` | For credentials | Encrypts saved secrets: 32 random bytes in base64. The Credentials page generates one for you. If it is lost, saved secrets cannot be recovered. |
 | `SESSION_SECRET` | No | Mixed into the key that signs the login cookie, together with a random secret Jig makes for itself in the database. Defaults to `ADMIN_PASSWORD`. Set a random value (`openssl rand -hex 32`) if you want changing the password to be independent of sessions. |
+| `JIG_APPLE_APP_IDS` | No | For your own iPhone or Mac build of the Jig app: its `TEAMID.bundle.id`, comma separated if more than one. Lets the app unlock locked notes with your passkey directly, without opening the browser. |
 | `JIG_ORIGIN` | No | The site's address, e.g. `https://snippets.example.com`, if passkeys should always belong to it rather than to whichever address the page was opened at. |
 | `JIG_TIMEZONE` | No | Time zone for dates in the dashboard, e.g. `Europe/London`. Defaults to `Australia/Sydney`. |
 
