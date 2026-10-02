@@ -36,6 +36,11 @@ export async function endAllSessions(db: Db, now = Date.now()): Promise<void> {
   );
 }
 
+export async function sessionsValidAfter(db: Db): Promise<number> {
+  const rows = await db.query<{ value: string }>(`SELECT value FROM app_secrets WHERE name = $1`, [VALID_AFTER]);
+  return rows[0] ? Number(rows[0].value) : 0;
+}
+
 export function sessionLooksCurrent(value: string | undefined, now = Date.now()): boolean {
   const parts = value?.split(".") ?? [];
   return parts.length === 3 && Number(parts[1]) * 1000 > now;

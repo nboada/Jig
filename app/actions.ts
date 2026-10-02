@@ -39,7 +39,8 @@ import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealSha
 import { createToken, revokeToken } from "@/lib/tokens";
 import { FLASH_COOKIE } from "@/lib/flash";
 import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
-import { approve, checkAuthorizeRequest, redirectError, revokeGrant } from "@/lib/oauth";
+import { approve, checkAuthorizeRequest, getClient, isAppRedirect, redirectError, revokeGrant } from "@/lib/oauth";
+import { issueUnlockCode } from "@/lib/api-locked";
 import { resourceUrlFrom } from "@/lib/oauth-http";
 import { AiError, fixFile, review as reviewSnippet, rewrite, testKey, type Review, type RewriteMode } from "@/lib/ai";
 import { PLATFORM_IDS, platformById } from "@/lib/ai-providers";
@@ -619,6 +620,31 @@ export async function denyApp(form: FormData) {
   await requireAuth();
   const request = await authorizeRequestFrom(form);
   redirect("redirect" in request ? request.redirect : redirectError(request.redirectUri, "access_denied", "The owner declined.", request.state));
+}
+
+async function appUnlockRequest(form: FormData) {
+  const params = parse(z.record(z.string(), z.string()), JSON.parse(String(form.get("params") ?? "{}")));
+  const client = params.client_id ? await getClient(await getDb(), params.client_id) : null;
+  if (!client || !params.redirect_uri || !client.redirectUris.includes(params.redirect_uri) || !isAppRedirect(params.redirect_uri)) {
+    throw new SnippetError("That app isn't connected to this Jig.", "invalid");
+  }
+  return { client, redirectUri: params.redirect_uri, state: params.state };
+}
+
+export async function allowAppUnlock(form: FormData) {
+  await requireAuth();
+  const { client, redirectUri, state } = await appUnlockRequest(form);
+  if (!(await isUnlocked())) redirect(`/oauth/unlock?${new URLSearchParams(JSON.parse(String(form.get("params"))))}`);
+  const back = new URL(redirectUri);
+  back.searchParams.set("code", await issueUnlockCode(await getDb(), client.id));
+  if (state) back.searchParams.set("state", state);
+  redirect(back.toString());
+}
+
+export async function denyAppUnlock(form: FormData) {
+  await requireAuth();
+  const { redirectUri, state } = await appUnlockRequest(form);
+  redirect(redirectError(redirectUri, "access_denied", "The owner declined.", state));
 }
 
 export async function disconnectApp(form: FormData) {

@@ -69,6 +69,7 @@ export type NoteListOptions = {
   limit?: number;
   sort?: Sort;
   hideLocked?: boolean;
+  onlyLocked?: boolean;
 };
 
 export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<NoteSummary[]> {
@@ -85,6 +86,7 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
     where.push(`(n.title ILIKE ${p} OR n.slug ILIKE ${p} OR n.tags::text ILIKE ${p} OR (n.locked_at IS NULL AND v.body ILIKE ${p}))`);
   }
   if (options.hideLocked) where.push("n.locked_at IS NULL");
+  if (options.onlyLocked) where.push("n.locked_at IS NOT NULL");
   if (options.tag) where.push(`n.tags @> jsonb_build_array(${param(options.tag.toLowerCase())}::text)`);
 
   const order = termParams.map((p) => `(n.title ILIKE ${p} OR n.slug ILIKE ${p})::int`);

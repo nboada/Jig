@@ -149,6 +149,13 @@ const SCHEMA = [
   )`,
   `ALTER TABLE oauth_codes ADD COLUMN IF NOT EXISTS scope text NOT NULL DEFAULT 'mcp'`,
   `ALTER TABLE oauth_grants ADD COLUMN IF NOT EXISTS scope text NOT NULL DEFAULT 'mcp'`,
+  `CREATE TABLE IF NOT EXISTS oauth_unlock_codes (
+    code_hash text PRIMARY KEY,
+    client_id text NOT NULL,
+    expires_at timestamptz NOT NULL
+  )`,
+  `ALTER TABLE oauth_unlock_codes ADD COLUMN IF NOT EXISTS grant_id text`,
+  `ALTER TABLE oauth_unlock_codes ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
     name text PRIMARY KEY,
     value text NOT NULL,

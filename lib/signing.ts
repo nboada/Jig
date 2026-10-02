@@ -1,7 +1,7 @@
 import type { Db } from "./db";
 
 
-export type Purpose = "session" | "share-pass" | "webauthn" | "unlock";
+export type Purpose = "session" | "share-pass" | "webauthn" | "unlock" | "app-unlock";
 
 const ROOT_SECRET = "signing-root";
 

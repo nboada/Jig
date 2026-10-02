@@ -13,3 +13,8 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/v1/snippets/[s
   const [db, { slug }] = await Promise.all([getDb(), ctx.params]);
   return respond(db, req, async ({ source, body }) => snippetsApi.update(db, slug, await body(), source));
 }
+
+export async function DELETE(req: Request, ctx: RouteContext<"/api/v1/snippets/[slug]">) {
+  const [db, { slug }] = await Promise.all([getDb(), ctx.params]);
+  return respond(db, req, () => snippetsApi.remove(db, slug));
+}

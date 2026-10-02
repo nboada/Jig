@@ -203,18 +203,18 @@ export async function refreshTokens(db: Db, { refreshToken, clientId }: { refres
   return tokens(access, refresh, rows[0].scope as string);
 }
 
-export async function verifyAccessToken(db: Db, token: string | undefined): Promise<{ name: string; expiresAt: number; scope: Scope } | null> {
+export async function verifyAccessToken(db: Db, token: string | undefined): Promise<{ id: string; clientId: string; name: string; expiresAt: number; scope: Scope } | null> {
   if (!token?.startsWith(ACCESS_PREFIX)) return null;
-  const rows = await db.query<{ name: string; access_expires_at: string; scope: Scope }>(
+  const rows = await db.query<{ id: string; client_id: string; name: string; access_expires_at: string; scope: Scope }>(
     `WITH used AS (
        UPDATE oauth_grants SET last_used_at = now()
        WHERE access_hash = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '5 minutes')
      )
-     SELECT name, access_expires_at, scope FROM oauth_grants WHERE access_hash = $1 AND access_expires_at > now()`,
+     SELECT id, client_id, name, access_expires_at, scope FROM oauth_grants WHERE access_hash = $1 AND access_expires_at > now()`,
     [await sha256(token)],
   );
   if (!rows[0]) return null;
-  return { name: rows[0].name, expiresAt: Math.floor(new Date(rows[0].access_expires_at).getTime() / 1000), scope: rows[0].scope };
+  return { id: rows[0].id, clientId: rows[0].client_id, name: rows[0].name, expiresAt: Math.floor(new Date(rows[0].access_expires_at).getTime() / 1000), scope: rows[0].scope };
 }
 
 export async function revokeByToken(db: Db, token: string): Promise<void> {

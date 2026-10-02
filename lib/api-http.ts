@@ -9,13 +9,15 @@ function reply(body: unknown, status = 200, headers: Record<string, string> = {}
   return Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
 
-const failure = (code: string, message: string, status: number, headers?: Record<string, string>) =>
+export const failure = (code: string, message: string, status: number, headers?: Record<string, string>) =>
   reply({ error: { code, message } }, status, headers);
 
-export async function authorize(db: Db, req: Request): Promise<{ source: string } | null> {
+export type Caller = { source: string; grantId: string; clientId: string };
+
+export async function authorize(db: Db, req: Request): Promise<Caller | null> {
   const bearer = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
   const grant = await verifyAccessToken(db, bearer);
-  return grant?.scope === "app" ? { source: `app:${grant.name}` } : null;
+  return grant?.scope === "app" ? { source: `app:${grant.name}`, grantId: grant.id, clientId: grant.clientId } : null;
 }
 
 async function readBody(req: Request): Promise<Body> {
@@ -29,15 +31,18 @@ async function readBody(req: Request): Promise<Body> {
 export async function respond(
   db: Db,
   req: Request,
-  fn: (ctx: { source: string; body: () => Promise<Body> }) => Promise<unknown>,
+  fn: (ctx: Caller & { body: () => Promise<Body> }) => Promise<unknown>,
   status = 200,
+  gate?: (caller: Caller) => Promise<Response | null>,
 ): Promise<Response> {
   const auth = await authorize(db, req);
   if (!auth) {
     return failure("unauthorized", "Sign in to Jig again.", 401, { "WWW-Authenticate": 'Bearer error="invalid_token"' });
   }
+  const refused = gate ? await gate(auth) : null;
+  if (refused) return refused;
   try {
-    return reply(await fn({ source: auth.source, body: () => readBody(req) }), status);
+    return reply(await fn({ ...auth, body: () => readBody(req) }), status);
   } catch (error) {
     if (error instanceof SnippetError) return failure(error.code, error.message, STATUS[error.code]);
     console.error("API request failed:", error);
