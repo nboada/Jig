@@ -108,7 +108,7 @@ export async function createShare(
   slug: string,
   options: ShareOptions,
 ): Promise<{ token: string; passcode?: string; share: Share }> {
-  if (!(options.expiry in EXPIRIES)) throw new SnippetError("Pick how long the link lasts.", "invalid");
+  if (!Object.hasOwn(EXPIRIES, options.expiry)) throw new SnippetError("Pick how long the link lasts.", "invalid");
   if (options.maxViews != null && !(Number.isInteger(options.maxViews) && options.maxViews >= 1 && options.maxViews <= 100)) {
     throw new SnippetError("A view limit is a whole number from 1 to 100.", "invalid");
   }

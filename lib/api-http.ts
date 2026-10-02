@@ -12,6 +12,13 @@ function reply(body: unknown, status = 200, headers: Record<string, string> = {}
 export const failure = (code: string, message: string, status: number, headers?: Record<string, string>) =>
   reply({ error: { code, message } }, status, headers);
 
+/** Thrown when a request needs the unlock token but didn't carry a valid one. */
+export class UnlockRequired extends Error {
+  constructor() {
+    super("Unlock to continue.");
+  }
+}
+
 export type Caller = { source: string; grantId: string; clientId: string };
 
 export async function authorize(db: Db, req: Request): Promise<Caller | null> {
@@ -45,6 +52,10 @@ export async function respond(
     return reply(await fn({ ...auth, body: () => readBody(req) }), status);
   } catch (error) {
     if (error instanceof SnippetError) return failure(error.code, error.message, STATUS[error.code]);
+    if (error instanceof UnlockRequired) return failure("locked", "Unlock to continue.", 403);
+    if (error instanceof Error && error.constructor.name === "CredentialsUnavailable") {
+      return failure("invalid", "Credentials need JIG_ENCRYPTION_KEY on the server.", 400);
+    }
     console.error("API request failed:", error);
     return failure("server_error", "Something went wrong. Try again.", 500);
   }

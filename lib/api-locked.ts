@@ -138,7 +138,7 @@ export async function unlockValid(db: Db, caller: Caller, token: string | null, 
 export const requireUnlock = (db: Db, req: Request) => async (caller: Caller) =>
   (await unlockValid(db, caller, req.headers.get(UNLOCK_HEADER)))
     ? null
-    : failure("locked", "Unlock locked notes to continue.", 403);
+    : failure("locked", "Unlock to continue.", 403);
 
 function version(value: string | null): number | undefined {
   if (value === null || value === "") return undefined;

@@ -172,9 +172,7 @@ export const notesApi = {
 export async function restoreFromTrash(db: Db, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
   const rows = await db.query<{ kind: string }>(`SELECT kind FROM trash WHERE id = $1`, [id]);
-  if (rows[0]?.kind !== "snippets" && rows[0]?.kind !== "notes") {
-    throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
-  }
+  if (!rows[0]) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
   return restoreItem(db, id);
 }
 

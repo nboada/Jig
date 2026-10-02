@@ -68,8 +68,7 @@ describe("pin, duplicate, delete and undo", () => {
     expect((await notesApi.locked(db, q()))[0].slug).toBe("keys");
   });
 
-  test("restore only brings back snippets and notes", async () => {
-    await db.query(`INSERT INTO trash (id, kind, slug, title, item, versions) VALUES ('00000000-0000-0000-0000-000000000001', 'credentials', 'bank', 'Bank', '{}', '[]')`);
+  test("restore refuses ids that aren't in Recently deleted", async () => {
     expect(await code(restoreFromTrash(db, "00000000-0000-0000-0000-000000000001"))).toBe("not_found");
     expect(await code(restoreFromTrash(db, "not-an-id"))).toBe("not_found");
   });
@@ -97,6 +96,8 @@ describe("unlocking for the app", () => {
     expect(await code(issueUnlockCode(db, "client-mcp"))).toBe("invalid");
 
     await grant("grant-1b", "client-1", "app");
+    // Two sign-ins made in the same millisecond would tie; make grant-1b clearly the newer one.
+    await db.query(`UPDATE oauth_grants SET created_at = now() + interval '1 minute' WHERE id = 'grant-1b'`);
     const c = await issueUnlockCode(db, "client-1");
     expect(await code(exchangeUnlockCode(db, me, { code: c }))).toBe("invalid");
     const d = await issueUnlockCode(db, "client-1");
