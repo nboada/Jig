@@ -113,9 +113,10 @@ export async function listNotes(db: Db, options: NoteListOptions = {}): Promise<
   }));
 }
 
-export async function listNoteTags(db: Db): Promise<{ tag: string; count: number }[]> {
+export async function listNoteTags(db: Db, { hideLocked = false }: { hideLocked?: boolean } = {}): Promise<{ tag: string; count: number }[]> {
   const rows = await db.query<{ tag: string; count: number | string }>(
     `SELECT tag, count(*) AS count FROM notes, jsonb_array_elements_text(tags) AS tag
+     ${hideLocked ? "WHERE locked_at IS NULL" : ""}
      GROUP BY tag ORDER BY count(*) DESC, tag`,
   );
   return rows.map((r) => ({ tag: r.tag, count: Number(r.count) }));

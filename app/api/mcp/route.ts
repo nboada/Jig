@@ -2,7 +2,7 @@ import { originValidationResponse } from "@modelcontextprotocol/server";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { getDb } from "@/lib/db";
 import { registerTools, SERVER_INSTRUCTIONS } from "@/lib/mcp";
-import { SCOPE, verifyAccessToken } from "@/lib/oauth";
+import { verifyAccessToken } from "@/lib/oauth";
 import { verifyToken } from "@/lib/tokens";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ const authed = withMcpAuth(
     const token = await verifyToken(db, bearer);
     if (token) return { token: bearer, clientId: token.name, scopes: [] };
     const app = await verifyAccessToken(db, bearer);
-    return app ? { token: bearer, clientId: app.name, scopes: [SCOPE], expiresAt: app.expiresAt } : undefined;
+    return app ? { token: bearer, clientId: app.name, scopes: [app.scope], expiresAt: app.expiresAt } : undefined;
   },
   { required: true, resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp", resourceUrl: process.env.JIG_ORIGIN?.replace(/\/+$/, "") || undefined },
 );

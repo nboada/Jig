@@ -5,7 +5,9 @@ import { sha256 } from "./signing";
 
 export const ACCESS_TTL_SECONDS = 3600;
 const CODE_TTL_SECONDS = 300;
-export const SCOPE = "mcp";
+export const SCOPES = ["mcp", "app"] as const;
+export type Scope = (typeof SCOPES)[number];
+export const SCOPE: Scope = "mcp";
 
 const ACCESS_PREFIX = "jigo_at_";
 const REFRESH_PREFIX = "jigo_rt_";
@@ -28,6 +30,9 @@ export async function pkceChallenge(verifier: string): Promise<string> {
   return Buffer.from(digest).toString("base64url");
 }
 
+// RFC 8252 §7.1: native apps use a private-use scheme in reverse-domain form, with no host.
+const APP_SCHEME = /^[a-z][a-z0-9+-]*(\.[a-z0-9+-]+)+:$/;
+
 export function allowedRedirect(uri: string): boolean {
   let url: URL;
   try {
@@ -37,8 +42,11 @@ export function allowedRedirect(uri: string): boolean {
   }
   if (url.hash || url.username || url.password) return false;
   if (url.protocol === "https:") return true;
-  return url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (url.protocol === "http:") return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  return APP_SCHEME.test(url.protocol) && !url.host && uri.startsWith(`${url.protocol}/`) && !uri.startsWith(`${url.protocol}//`);
 }
+
+export const isAppRedirect = (uri: string) => !["http:", "https:"].includes(new URL(uri.trim()).protocol);
 
 export type OAuthClient = { id: string; name: string; redirectUris: string[] };
 
@@ -83,6 +91,7 @@ export type AuthorizeRequest = {
   codeChallenge: string;
   state?: string;
   resource?: string;
+  scope: Scope;
 };
 
 export async function checkAuthorizeRequest(
@@ -101,8 +110,13 @@ export async function checkAuthorizeRequest(
   if (!params.code_challenge || params.code_challenge_method !== "S256") {
     return back("invalid_request", "PKCE with code_challenge_method=S256 is required.");
   }
+  const asked = (params.scope ?? "").split(/\s+/).filter(Boolean);
+  if (asked.some((word) => !SCOPES.includes(word as Scope))) {
+    return back("invalid_scope", `The scope must be made of: ${SCOPES.join(", ")}.`);
+  }
+  const scope: Scope = asked.includes("app") ? "app" : SCOPE;
   if (params.resource && params.resource !== resourceUrl) return back("invalid_target", `The resource must be ${resourceUrl}.`);
-  return { client, redirectUri, codeChallenge: params.code_challenge, state: params.state, resource: params.resource };
+  return { client, redirectUri, codeChallenge: params.code_challenge, state: params.state, resource: params.resource, scope };
 }
 
 export function redirectError(redirectUri: string, error: string, description: string, state?: string): string {
@@ -117,9 +131,9 @@ export async function approve(db: Db, request: AuthorizeRequest): Promise<string
   const code = random(CODE_PREFIX);
   await db.query(
     `WITH expired AS (DELETE FROM oauth_codes WHERE expires_at < now())
-     INSERT INTO oauth_codes (code_hash, client_id, redirect_uri, code_challenge, resource, expires_at)
-     VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6))`,
-    [await sha256(code), request.client.id, request.redirectUri, request.codeChallenge, request.resource ?? null, CODE_TTL_SECONDS],
+     INSERT INTO oauth_codes (code_hash, client_id, redirect_uri, code_challenge, resource, scope, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $7, now() + make_interval(secs => $6))`,
+    [await sha256(code), request.client.id, request.redirectUri, request.codeChallenge, request.resource ?? null, CODE_TTL_SECONDS, request.scope],
   );
   const url = new URL(request.redirectUri);
   url.searchParams.set("code", code);
@@ -135,8 +149,8 @@ export type Tokens = {
   scope: string;
 };
 
-function tokens(access: string, refresh: string): Tokens {
-  return { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL_SECONDS, refresh_token: refresh, scope: SCOPE };
+function tokens(access: string, refresh: string, scope: string): Tokens {
+  return { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL_SECONDS, refresh_token: refresh, scope };
 }
 
 const VERIFIER = /^[A-Za-z0-9\-._~]{43,128}$/;
@@ -151,13 +165,13 @@ export async function exchangeCode(
   const refresh = random(REFRESH_PREFIX);
   const rows = await db.query(
     `WITH c AS (DELETE FROM oauth_codes WHERE code_hash = $1 RETURNING *)
-     INSERT INTO oauth_grants (id, client_id, name, access_hash, access_expires_at, refresh_hash)
-     SELECT $2, c.client_id, cl.name, $3, now() + make_interval(secs => $4), $5
+     INSERT INTO oauth_grants (id, client_id, name, access_hash, access_expires_at, refresh_hash, scope)
+     SELECT $2, c.client_id, cl.name, $3, now() + make_interval(secs => $4), $5, c.scope
      FROM c JOIN oauth_clients cl ON cl.id = c.client_id
      WHERE c.expires_at > now() AND c.client_id = $6 AND c.code_challenge = $7
        AND ($8::text IS NULL OR c.redirect_uri = $8)
        AND ($9::text IS NULL OR c.resource IS NULL OR c.resource = $9)
-     RETURNING id`,
+     RETURNING id, scope`,
     [
       await sha256(code),
       crypto.randomUUID(),
@@ -171,7 +185,7 @@ export async function exchangeCode(
     ],
   );
   if (!rows.length) throw new OAuthError("invalid_grant", "The code is invalid, expired or already used.");
-  return tokens(access, refresh);
+  return tokens(access, refresh, rows[0].scope as string);
 }
 
 export async function refreshTokens(db: Db, { refreshToken, clientId }: { refreshToken?: string; clientId?: string }): Promise<Tokens> {
@@ -182,25 +196,25 @@ export async function refreshTokens(db: Db, { refreshToken, clientId }: { refres
     `UPDATE oauth_grants
      SET access_hash = $3, access_expires_at = now() + make_interval(secs => $4), refresh_hash = $5, last_used_at = now()
      WHERE refresh_hash = $1 AND client_id = $2
-     RETURNING id`,
+     RETURNING id, scope`,
     [await sha256(refreshToken), clientId, await sha256(access), ACCESS_TTL_SECONDS, await sha256(refresh)],
   );
   if (!rows.length) throw new OAuthError("invalid_grant", "The refresh token is invalid or was revoked.");
-  return tokens(access, refresh);
+  return tokens(access, refresh, rows[0].scope as string);
 }
 
-export async function verifyAccessToken(db: Db, token: string | undefined): Promise<{ name: string; expiresAt: number } | null> {
+export async function verifyAccessToken(db: Db, token: string | undefined): Promise<{ name: string; expiresAt: number; scope: Scope } | null> {
   if (!token?.startsWith(ACCESS_PREFIX)) return null;
-  const rows = await db.query<{ name: string; access_expires_at: string }>(
+  const rows = await db.query<{ name: string; access_expires_at: string; scope: Scope }>(
     `WITH used AS (
        UPDATE oauth_grants SET last_used_at = now()
        WHERE access_hash = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '5 minutes')
      )
-     SELECT name, access_expires_at FROM oauth_grants WHERE access_hash = $1 AND access_expires_at > now()`,
+     SELECT name, access_expires_at, scope FROM oauth_grants WHERE access_hash = $1 AND access_expires_at > now()`,
     [await sha256(token)],
   );
   if (!rows[0]) return null;
-  return { name: rows[0].name, expiresAt: Math.floor(new Date(rows[0].access_expires_at).getTime() / 1000) };
+  return { name: rows[0].name, expiresAt: Math.floor(new Date(rows[0].access_expires_at).getTime() / 1000), scope: rows[0].scope };
 }
 
 export async function revokeByToken(db: Db, token: string): Promise<void> {

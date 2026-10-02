@@ -147,6 +147,8 @@ const SCHEMA = [
     created_at timestamptz NOT NULL DEFAULT now(),
     last_used_at timestamptz
   )`,
+  `ALTER TABLE oauth_codes ADD COLUMN IF NOT EXISTS scope text NOT NULL DEFAULT 'mcp'`,
+  `ALTER TABLE oauth_grants ADD COLUMN IF NOT EXISTS scope text NOT NULL DEFAULT 'mcp'`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
     name text PRIMARY KEY,
     value text NOT NULL,

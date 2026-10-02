@@ -1,5 +1,5 @@
 import { getPublicOrigin } from "mcp-handler";
-import { OAuthError, SCOPE } from "./oauth";
+import { OAuthError, SCOPE, SCOPES } from "./oauth";
 
 
 export function publicOrigin(req: Request): string {
@@ -75,6 +75,6 @@ export function authorizationServerMetadata(req: Request) {
     code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"],
     revocation_endpoint_auth_methods_supported: ["none"],
-    scopes_supported: [SCOPE],
+    scopes_supported: [...SCOPES],
   };
 }

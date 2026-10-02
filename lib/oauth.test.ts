@@ -1,10 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { pgliteDb, prepare, type Db } from "./db";
+import { protectedResourceMetadata } from "./oauth-http";
 import {
   allowedRedirect,
   approve,
   checkAuthorizeRequest,
   exchangeCode,
+  isAppRedirect,
   listGrants,
   OAuthError,
   pkceChallenge,
@@ -129,5 +131,86 @@ describe("oauth", () => {
     await revokeGrant(db, grant.id);
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
     await expect(refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
+  });
+
+  const APP_CALLBACK = "com.example.jig:/oauth";
+
+  test("redirect addresses: reverse-domain app schemes are allowed, other schemes are not", () => {
+    expect(allowedRedirect(APP_CALLBACK)).toBe(true);
+    expect(allowedRedirect("com.example.app:/cb")).toBe(true);
+    expect(allowedRedirect("myapp:/cb")).toBe(false);
+    expect(allowedRedirect("javascript:alert(1)")).toBe(false);
+    expect(allowedRedirect("data:text/html,hi")).toBe(false);
+    expect(allowedRedirect("com.example.app://evil.example/cb")).toBe(false);
+    expect(allowedRedirect("com.example.app:/cb#frag")).toBe(false);
+  });
+
+  async function authorizeApp(scope?: string) {
+    const client = await registerClient(db, { client_name: "Jig for iPhone", redirect_uris: [APP_CALLBACK] });
+    const request = await checkAuthorizeRequest(
+      db,
+      {
+        client_id: client.id,
+        redirect_uri: APP_CALLBACK,
+        response_type: "code",
+        code_challenge: await pkceChallenge(verifier),
+        code_challenge_method: "S256",
+        ...(scope === undefined ? {} : { scope }),
+      },
+      RESOURCE,
+    );
+    return { client, request };
+  }
+
+  test("an app grant keeps its scope through the code, the token and a refresh", async () => {
+    const { client, request } = await authorizeApp("app");
+    if ("redirect" in request) throw new Error(request.redirect);
+    expect(request.scope).toBe("app");
+    const back = new URL(await approve(db, request));
+    expect(back.protocol).toBe("com.example.jig:");
+
+    const tokens = await exchangeCode(db, { code: back.searchParams.get("code")!, clientId: client.id, codeVerifier: verifier });
+    expect(tokens.scope).toBe("app");
+    expect((await verifyAccessToken(db, tokens.access_token))?.scope).toBe("app");
+
+    const next = await refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id });
+    expect(next.scope).toBe("app");
+    expect((await verifyAccessToken(db, next.access_token))?.scope).toBe("app");
+  });
+
+  test("no scope means mcp, and unknown scopes go back to the app", async () => {
+    const plain = await authorizeApp();
+    if ("redirect" in plain.request) throw new Error(plain.request.redirect);
+    expect(plain.request.scope).toBe("mcp");
+
+    const bad = await authorizeApp("admin");
+    expect("redirect" in bad.request && new URL(bad.request.redirect).searchParams.get("error")).toBe("invalid_scope");
+  });
+
+  test("existing flows still get mcp tokens", async () => {
+    const { client, code } = await authorize();
+    const tokens = await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier, resource: RESOURCE });
+    expect(tokens.scope).toBe("mcp");
+    expect((await verifyAccessToken(db, tokens.access_token))?.scope).toBe("mcp");
+  });
+
+  test("scope is a space-separated list: app wins, mcp app is what SDK clients send, unknown words are refused", async () => {
+    const both = await authorizeApp("mcp app");
+    expect("redirect" in both.request ? null : both.request.scope).toBe("app");
+    const mcp = await authorizeApp(" mcp ");
+    expect("redirect" in mcp.request ? null : mcp.request.scope).toBe("mcp");
+    const bad = await authorizeApp("mcp admin");
+    expect("redirect" in bad.request && new URL(bad.request.redirect).searchParams.get("error")).toBe("invalid_scope");
+  });
+
+  test("the MCP resource only advertises the mcp scope, so connectors don't ask for app", () => {
+    expect(protectedResourceMetadata(new Request("https://jig.example/.well-known/oauth-protected-resource/api/mcp")).scopes_supported).toEqual(["mcp"]);
+  });
+
+  test("https redirects are never mistaken for app ones, whatever their case or spacing", () => {
+    expect(isAppRedirect("HTTPS://evil.com/cb")).toBe(false);
+    expect(isAppRedirect(" https://evil.com/cb")).toBe(false);
+    expect(isAppRedirect("http://localhost:1/cb")).toBe(false);
+    expect(isAppRedirect("com.example.jig:/oauth")).toBe(true);
   });
 });

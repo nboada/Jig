@@ -7,7 +7,7 @@ import { button } from "@/components/Button";
 import { Logo } from "@/components/Logo";
 import { requireAuth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { checkAuthorizeRequest, OAuthError } from "@/lib/oauth";
+import { checkAuthorizeRequest, isAppRedirect, OAuthError } from "@/lib/oauth";
 import { resourceUrlFrom } from "@/lib/oauth-http";
 
 export const metadata: Metadata = { title: "Connect an app" };
@@ -44,9 +44,19 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
             <div className="space-y-2">
               <h1 className="text-[17px] font-semibold">{`${request.client.name} wants to connect to your Jig`}</h1>
               <p className="text-body text-text-2">
-                {"Approving sends access back to "}
-                <span className="font-mono text-text">{new URL(request.redirectUri).host}</span>
-                {". Only allow it if you just started connecting from there."}
+                {isAppRedirect(request.redirectUri) ? (
+                  <>
+                    {"Approving sends access back to the app that registered "}
+                    <span className="font-mono text-text">{new URL(request.redirectUri).protocol.slice(0, -1)}</span>
+                    {" on this device. Only allow it if you just started signing in from that app."}
+                  </>
+                ) : (
+                  <>
+                    {"Approving sends access back to "}
+                    <span className="font-mono text-text">{new URL(request.redirectUri).host}</span>
+                    {". Only allow it if you just started connecting from there."}
+                  </>
+                )}
               </p>
             </div>
             <div className="space-y-2 rounded-xl border border-line bg-panel p-4 text-ui leading-6 text-text-2">

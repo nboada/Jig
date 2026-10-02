@@ -90,9 +90,9 @@ describe("credentials stay out of MCP", () => {
     expect([...sample.matchAll(IMPORT_RE)].map((m) => m[1])).toEqual(["notes", "init", "lazy", "crypto"]);
   });
 
-  test("mcp.ts does not import the credentials or crypto modules, even indirectly", () => {
+  function reachable(entry: string): Set<string> {
     const seen = new Set<string>();
-    const stack = ["mcp.ts"];
+    const stack = [entry];
     while (stack.length) {
       const file = stack.pop()!;
       if (seen.has(file)) continue;
@@ -103,9 +103,16 @@ describe("credentials stay out of MCP", () => {
         if (existsSync(join(import.meta.dir, candidate))) stack.push(candidate);
       }
     }
-    expect(seen.has("notes.ts")).toBe(true);
-    expect(seen.has("credentials.ts")).toBe(false);
-    expect(seen.has("crypto.ts")).toBe(false);
-    expect(seen.has("locked-notes.ts")).toBe(false);
-  });
+    return seen;
+  }
+
+  for (const entry of ["mcp.ts", "api.ts"]) {
+    test(`${entry} does not import the credentials, crypto, shares or locked-notes modules, even indirectly`, () => {
+      const seen = reachable(entry);
+      expect(seen.has("notes.ts")).toBe(true);
+      for (const forbidden of ["credentials.ts", "crypto.ts", "shares.ts", "locked-notes.ts"]) {
+        expect(seen.has(forbidden)).toBe(false);
+      }
+    });
+  }
 });
