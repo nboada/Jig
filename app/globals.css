@@ -67,6 +67,8 @@
 html {
   color-scheme: dark;
   scrollbar-gutter: stable;
+  /* iOS Safari ignores user-scalable=no; this is what stops pinch and double-tap zoom there. */
+  touch-action: pan-x pan-y;
 }
 
 html body[data-scroll-locked] {

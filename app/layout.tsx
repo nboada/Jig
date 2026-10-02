@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Jig", statusBarStyle: "black-translucent" },
 };
 
-export const viewport: Viewport = { themeColor: "#181818" };
+export const viewport: Viewport = { themeColor: "#181818", maximumScale: 1, userScalable: false };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   await connection();
