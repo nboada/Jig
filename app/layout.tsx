@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Schibsted_Grotesk } from "next/font/google";
 import { connection } from "next/server";
+import { OfflineSupport } from "@/components/OfflineSupport";
 import { Toaster } from "@/components/Toaster";
 import { TooltipProvider } from "@/components/Tooltip";
 import "./globals.css";
@@ -24,6 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh">
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
+        <OfflineSupport />
       </body>
     </html>
   );

@@ -22,6 +22,10 @@ const config: NextConfig = {
         return [
             { source: "/:path*", headers: everywhere },
             {
+                source: "/sw.js",
+                headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+            },
+            {
                 source: "/s/:token*",
                 headers: [
                     { key: "Cache-Control", value: "private, no-store, max-age=0" },

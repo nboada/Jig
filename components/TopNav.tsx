@@ -146,7 +146,9 @@ export function SectionTitle({ order, className = "" }: { order: Section[]; clas
     ? "Connect"
     : pathname.startsWith("/deleted")
       ? "Recently deleted"
-      : sections[index]?.label;
+      : pathname === "/share"
+        ? "Save shared"
+        : sections[index]?.label;
   const [last, setLast] = useState({ title, index, from: 0, changed: false });
   if (last.title !== title) {
     setLast({ title, index, from: index >= 0 && last.index >= 0 ? Math.sign(index - last.index) : 0, changed: true });

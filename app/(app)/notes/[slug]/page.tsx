@@ -57,6 +57,7 @@ export default async function NotePage({ params, searchParams }: Props) {
 
   return (
     <EnterOnReturn className="min-w-0 space-y-7">
+      {note.locked && <meta name="jig-offline" content="skip" />}
       <BackLink href="/notes" className={`mb-3 ${view === "list" ? "md:hidden" : ""}`}>
         Notes
       </BackLink>

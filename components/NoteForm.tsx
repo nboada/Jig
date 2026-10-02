@@ -8,11 +8,21 @@ import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { field, label } from "@/components/SnippetForm";
 import type { Note } from "@/lib/notes";
 
-export function NoteForm({ note, header, ai = false }: { note?: Note; header: FormHeader; ai?: boolean }) {
+export function NoteForm({
+  note,
+  initial,
+  header,
+  ai = false,
+}: {
+  note?: Note;
+  initial?: { title?: string; body?: string };
+  header: FormHeader;
+  ai?: boolean;
+}) {
   const [state, action, pending] = useActionState(saveNote, {});
-  const [title, setTitle] = useState(note?.title ?? "");
+  const [title, setTitle] = useState(note?.title ?? initial?.title ?? "");
   const [tags, setTags] = useState(note?.tags.join(", ") ?? "");
-  const [body, setBody] = useState(note?.body ?? "");
+  const [body, setBody] = useState(note?.body ?? initial?.body ?? "");
   const [message, setMessage] = useState("");
 
   const payload = JSON.stringify({

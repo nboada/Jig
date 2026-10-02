@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, sessionLooksCurrent } from "./lib/session";
 
 
-const PUBLIC = /^\/(login|s\/|manifest\.webmanifest|icon\.svg|apple-icon|app-icons\/|favicon\.ico|\.well-known\/|oauth\/(register|token|revoke)$)/;
+const PUBLIC = /^\/(login|s\/|manifest\.webmanifest|sw\.js|icon\.svg|apple-icon|app-icons\/|favicon\.ico|\.well-known\/|oauth\/(register|token|revoke)$)/;
 
 function contentSecurityPolicy(nonce: string) {
   const dev = process.env.NODE_ENV !== "production";

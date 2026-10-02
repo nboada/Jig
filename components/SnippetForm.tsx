@@ -23,9 +23,19 @@ const splitList = (value: string) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet; header: FormHeader; ai?: boolean }) {
+export function SnippetForm({
+  snippet,
+  initial,
+  header,
+  ai = false,
+}: {
+  snippet?: Snippet;
+  initial?: { title?: string; content?: string };
+  header: FormHeader;
+  ai?: boolean;
+}) {
   const [state, action, pending] = useActionState(saveSnippet, {});
-  const [title, setTitle] = useState(snippet?.title ?? "");
+  const [title, setTitle] = useState(snippet?.title ?? initial?.title ?? "");
   const [description, setDescription] = useState(snippet?.description ?? "");
   const [language, setLanguage] = useState(snippet?.language ?? "javascript");
   const [tags, setTags] = useState(snippet?.tags.join(", ") ?? "");
@@ -33,7 +43,7 @@ export function SnippetForm({ snippet, header, ai = false }: { snippet?: Snippet
   const [instructions, setInstructions] = useState(snippet?.instructions ?? "");
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<SnippetFile[]>(() =>
-    snippet ? renameForTitle(snippet.files, "", snippet.title) : [{ name: defaultFileName("javascript"), content: "" }],
+    snippet ? renameForTitle(snippet.files, "", snippet.title) : [{ name: defaultFileName("javascript"), content: initial?.content ?? "" }],
   );
   const hasDetails = Boolean(
     snippet && (snippet.description || snippet.tags.length || snippet.dependencies.length || snippet.instructions),
