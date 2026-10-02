@@ -9,7 +9,7 @@ export function ItemHeader({
   meta,
   description,
 }: {
-  kicker: React.ReactNode;
+  kicker?: React.ReactNode;
   title: string;
   actions?: React.ReactNode;
   meta?: React.ReactNode;
@@ -17,11 +17,13 @@ export function ItemHeader({
 }) {
   return (
     <header className="flex flex-col gap-2 sm:block sm:space-y-2">
-      <p className="engraved flex h-5 items-center gap-1.5">{kicker}</p>
+      {kicker && <p className="engraved flex h-5 items-center gap-1.5">{kicker}</p>}
       <div className="contents sm:flex sm:flex-row sm:items-center sm:gap-4">
         <h1 className="min-w-0 text-title font-semibold break-words sm:flex-1">{title}</h1>
         {actions && (
-          <div className="order-1 mt-1 flex w-full shrink-0 items-center gap-0.5 sm:order-none sm:mt-0 sm:w-auto">{actions}</div>
+          <div className="order-1 mt-1 flex w-full shrink-0 items-center gap-0.5 max-sm:gap-1 max-sm:[&_.h-8]:h-10 max-sm:[&_.size-4]:size-[18px] max-sm:[&_.size-7]:size-10 sm:order-none sm:mt-0 sm:w-auto">
+            {actions}
+          </div>
         )}
       </div>
       {meta}
@@ -36,7 +38,7 @@ export function ActionDivider() {
 
 export function EditLink({ href }: { href: string }) {
   return (
-    <Link href={href} className={button({ variant: "primary" })} title="Edit (E)">
+    <Link href={href} className={button({ variant: "primary", className: "ml-1" })} title="Edit (E)">
       Edit
       <Kbd onAccent className="hidden sm:inline">
         E

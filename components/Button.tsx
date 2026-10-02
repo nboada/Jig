@@ -23,3 +23,6 @@ export function iconButton({ size = "sm", className = "" }: { size?: "sm" | "md"
     size === "sm" ? "size-7" : "size-8"
   } ${className}`;
 }
+
+export const newItemButton =
+  "grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-ink transition hover:brightness-110";

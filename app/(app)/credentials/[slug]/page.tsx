@@ -52,14 +52,13 @@ export default async function CredentialPage({ params }: Props) {
         Credentials
       </BackLink>
       <ItemHeader
-        kicker={where ? `Credential · ${where}` : "Credential"}
+        kicker={where}
         title={credential.title}
         actions={
           <>
             <ShareButton kind="credentials" slug={slug} title={credential.title} />
             <ActionDivider />
-            <EditLink href={`/credentials/${slug}/edit`} />
-            <span className="ml-1">
+            <span>
               <MoreMenu
                 kind="credentials"
                 slug={slug}
@@ -76,6 +75,7 @@ export default async function CredentialPage({ params }: Props) {
                 }
               />
             </span>
+            <EditLink href={`/credentials/${slug}/edit`} />
           </>
         }
         meta={

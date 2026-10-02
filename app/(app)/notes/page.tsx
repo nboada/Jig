@@ -88,13 +88,11 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
                 <Card
                   href={`/notes/${n.slug}`}
                   kicker={
-                    n.locked ? (
+                    n.locked && (
                       <>
                         <LockIcon className="size-3" />
-                        Note · Locked
+                        Locked
                       </>
-                    ) : (
-                      "Note"
                     )
                   }
                   pinned={n.pinned}

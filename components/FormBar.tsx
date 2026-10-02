@@ -79,7 +79,7 @@ export function FormBar({
             onChange={(e) => title.onChange(e.target.value)}
             placeholder={title.placeholder}
             autoFocus={title.autoFocus}
-            className="-my-[7px] -ml-[13px] w-[calc(100%+13px)] truncate rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-title font-semibold text-text outline-none transition placeholder:text-faint hover:border-line focus:border-line-strong focus:bg-well"
+            className="w-full truncate rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-xl font-semibold sm:text-title text-text outline-none transition placeholder:text-faint hover:border-line focus:border-line-strong focus:bg-well"
           />
         </h1>
         <div className="form-actions flex shrink-0 items-center gap-1.5">

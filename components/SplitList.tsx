@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { iconButton } from "@/components/Button";
+import { newItemButton } from "@/components/Button";
 import { ItemMenu } from "@/components/ItemMenu";
 import { Kbd } from "@/components/Kbd";
 import { ListContext, useList, type Item } from "@/components/ListContext";
@@ -146,7 +146,7 @@ export function ListColumn<T extends Item>({
         href={`${base}/new`}
         aria-label={`${newLabel} (N)`}
         title={`${newLabel} (N)`}
-        className={iconButton({ size: "md", className: "border border-line text-text hover:border-line-strong" })}
+        className={newItemButton}
       >
         <PlusIcon className="size-4" />
       </Link>

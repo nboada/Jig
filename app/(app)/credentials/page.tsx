@@ -88,7 +88,7 @@ export default async function CredentialsPage({ searchParams }: { searchParams: 
               <ItemMenu kind="credentials" slug={c.slug} title={c.title} url={c.url}>
                 <Card
                   href={`/credentials/${c.slug}`}
-                  kicker={c.url ? c.url.replace(/^https?:\/\//, "").split("/")[0] : "Credential"}
+                  kicker={c.url?.replace(/^https?:\/\//, "").split("/")[0]}
                   title={c.title}
                   body={c.labels.length > 0 && <span className="font-mono text-meta text-muted">{c.labels.join(" · ")}</span>}
                   meta={

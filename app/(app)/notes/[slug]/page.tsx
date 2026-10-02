@@ -82,14 +82,11 @@ export default async function NotePage({ params, searchParams }: Props) {
 
       <ItemHeader
         kicker={
-          note.locked ? (
+          note.locked && (
             <>
-              Note<span className="text-faint">·</span>
               <LockIcon className="size-3.5" />
               {readable ? "Unlocked" : "Locked"}
             </>
-          ) : (
-            "Note"
           )
         }
         title={note.title}
@@ -108,15 +105,10 @@ export default async function NotePage({ params, searchParams }: Props) {
                   </Tip>
                 )}
                 {!note.locked && <ShareButton kind="notes" slug={slug} title={note.title} />}
-                {readable && (
-                  <>
-                    <ActionDivider />
-                    <EditLink href={`/notes/${slug}/edit`} />
-                  </>
-                )}
               </>
             )}
-            <span className="ml-1">
+            {isLatest && readable && <ActionDivider />}
+            <span>
               <MoreMenu
                 kind="notes"
                 slug={slug}
@@ -146,6 +138,7 @@ export default async function NotePage({ params, searchParams }: Props) {
                 }
               />
             </span>
+            {isLatest && readable && <EditLink href={`/notes/${slug}/edit`} />}
           </>
         }
         meta={

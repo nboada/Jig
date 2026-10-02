@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { button } from "@/components/Button";
@@ -12,6 +13,7 @@ import { countLibrary } from "@/lib/library";
 import { listNotes } from "@/lib/notes";
 import { listSnippets } from "@/lib/snippets";
 import { requireAuth } from "@/lib/auth";
+import { HOME_COOKIE, parseHome } from "@/lib/prefs";
 
 type Search = { q?: string; lang?: string; tag?: string };
 
@@ -25,6 +27,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   await requireAuth();
   const search = await searchParams;
   if (search.lang || search.tag) redirect(`/snippets?${new URLSearchParams(search as Record<string, string>)}`);
+  const home = parseHome((await cookies()).get(HOME_COOKIE)?.value);
+  if (home !== "overview" && !search.q?.trim()) redirect(`/${home}`);
 
   const db = await getDb();
   const q = search.q?.trim() ?? "";

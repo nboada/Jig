@@ -23,4 +23,11 @@ export function parseNavOrder(value: string | undefined): Section[] {
   return valid ? (parts as Section[]) : [...SECTION_ORDER];
 }
 
+export const HOME_COOKIE = "jig-home";
+export type Home = "overview" | Section;
+
+export function parseHome(value: string | undefined): Home {
+  return SECTION_ORDER.includes(value as Section) ? (value as Section) : "overview";
+}
+
 export const PREFS_SYNCED_COOKIE = "jig-prefs-synced";

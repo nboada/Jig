@@ -197,6 +197,15 @@ export function CopyIcon(props: { className?: string }) {
   );
 }
 
+export function HomeIcon(props: { className?: string }) {
+  return (
+    <Icon {...props}>
+      <path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <path d="M9 22V12h6v10" />
+    </Icon>
+  );
+}
+
 export function CheckIcon(props: { className?: string }) {
   return (
     <Icon {...props}>

@@ -20,6 +20,9 @@ describe("settings", () => {
     expect(validSetting("jig-view-notes", "table")).toBe(false);
     expect(validSetting("jig-sort-snippets", "title")).toBe(true);
     expect(validSetting("jig-sort-snippets", "random")).toBe(false);
+    expect(validSetting("jig-home", "notes")).toBe(true);
+    expect(validSetting("jig-home", "overview")).toBe(true);
+    expect(validSetting("jig-home", "connect")).toBe(false);
     expect(validSetting("jig_session", "anything")).toBe(false);
   });
 

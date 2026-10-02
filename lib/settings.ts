@@ -1,15 +1,17 @@
 import type { Db } from "./db";
-import { NAV_ORDER_COOKIE, parseNavOrder, prefCookie, SECTION_ORDER } from "./prefs";
+import { HOME_COOKIE, NAV_ORDER_COOKIE, parseHome, parseNavOrder, prefCookie, SECTION_ORDER } from "./prefs";
 import { SORTS } from "./sort";
 
 
 export const SETTING_KEYS: string[] = [
   NAV_ORDER_COOKIE,
+  HOME_COOKIE,
   ...SECTION_ORDER.flatMap((section) => [prefCookie("view", section), prefCookie("sort", section)]),
 ];
 
 export function validSetting(key: string, value: string): boolean {
   if (key === NAV_ORDER_COOKIE) return parseNavOrder(value).join(",") === value;
+  if (key === HOME_COOKIE) return parseHome(value) === value;
   if (key.startsWith("jig-view-")) return SETTING_KEYS.includes(key) && (value === "grid" || value === "list");
   if (key.startsWith("jig-sort-")) return SETTING_KEYS.includes(key) && SORTS.some((s) => s.id === value);
   return false;

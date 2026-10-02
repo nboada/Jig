@@ -6,11 +6,13 @@ import { Logo } from "@/components/Logo";
 import { PrefsSync } from "@/components/PrefsSync";
 import { BottomNav, SectionTitle, TopNav } from "@/components/TopNav";
 import { requireAuth } from "@/lib/auth";
-import { NAV_ORDER_COOKIE, parseNavOrder } from "@/lib/prefs";
+import { HOME_COOKIE, NAV_ORDER_COOKIE, parseHome, parseNavOrder } from "@/lib/prefs";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   await requireAuth();
-  const order = parseNavOrder((await cookies()).get(NAV_ORDER_COOKIE)?.value);
+  const store = await cookies();
+  const order = parseNavOrder(store.get(NAV_ORDER_COOKIE)?.value);
+  const home = parseHome(store.get(HOME_COOKIE)?.value);
   return (
     <div className="min-h-dvh pb-24 md:pb-0">
       <header className="sticky top-0 z-20 mx-auto max-w-[90rem] px-3 pt-(--header-gap) md:px-6">
@@ -21,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <TopNav order={order} className="hidden md:flex" />
           <SectionTitle order={order} className="col-start-2 md:hidden" />
           <div className="col-start-3 justify-self-end">
-            <HeaderActions />
+            <HeaderActions home={home} />
           </div>
         </div>
       </header>

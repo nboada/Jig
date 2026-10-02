@@ -61,3 +61,13 @@ If `DATABASE_URL` is unset, the app uses PGlite (Postgres compiled to WASM) and 
 **Build config** (`next.config.ts`): PGlite must remain in `serverExternalPackages`, because bundling it breaks its WASM file lookups. `outputFileTracingRoot` and the Turbopack root are pinned to this directory so a lockfile in a parent folder is never picked up.
 
 **Distribution**: each user deploys their own copy with the README's Deploy with Vercel button, which also provisions a Neon database (`stores` param) and asks only for `ADMIN_PASSWORD` and `JIG_TIMEZONE`. Keep new required configuration optional or self-provisioning, and never add schema changes that aren't idempotent, since existing copies apply them on their next request.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { button } from "@/components/Button";
-import { Kbd } from "@/components/Kbd";
+import { newItemButton } from "@/components/Button";
 import { PlusIcon } from "@/components/NavIcons";
 import { LanguageFilter, SearchInput } from "@/components/SearchInput";
 import { SortSelect } from "@/components/SortSelect";
@@ -35,30 +34,41 @@ export function GridHead({
   tagHref: (tag: string | undefined) => string;
   hiddenTag?: string;
 }) {
+  const controls = (
+    <>
+      <ViewToggle view="grid" section={section} />
+      <Link href={`/${section}/new`} aria-label={`${newLabel} (N)`} title={`${newLabel} (N)`} className={newItemButton}>
+        <PlusIcon className="size-4" />
+      </Link>
+    </>
+  );
+
   return (
     <div className="space-y-4">
-      <form action={`/${section}`} className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="flex items-baseline gap-2 lg:mr-auto">
-          <span className="engraved text-text-2">{label}</span>
-          <span className="engraved">{count >= 100 ? "100+" : count}</span>
+      <form
+        action={`/${section}`}
+        className="space-y-2 rounded-xl border border-line bg-panel p-3 lg:flex lg:items-center lg:gap-3 lg:space-y-0"
+      >
+        <div className="flex items-center justify-between gap-2 pl-0.5 lg:mr-auto lg:justify-start lg:gap-3">
+          <span className="engraved">
+            <span className="text-text-2">{label}</span>
+            {` · ${count >= 100 ? "100+" : count}`}
+          </span>
+          <SortSelect sort={sort} section={section} />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-0 basis-full sm:w-80 sm:basis-auto sm:flex-none">
+        <div className="flex flex-wrap items-center gap-1.5 lg:flex-nowrap">
+          <div className="flex min-w-0 flex-1 lg:w-80 lg:flex-none">
             <SearchInput placeholder={placeholder} />
           </div>
-          {languageFilter && <LanguageFilter className="min-w-0 flex-1 sm:w-40 sm:flex-none" />}
           {hiddenTag && <input type="hidden" name="tag" value={hiddenTag} />}
-          <div className="order-last flex basis-full items-center justify-between gap-2 sm:order-none sm:basis-auto sm:justify-start">
-            <SortSelect sort={sort} section={section} />
-            <ViewToggle view="grid" section={section} />
-          </div>
-          <Link href={`/${section}/new`} className={button({ variant: "primary" })} title={`${newLabel} (N)`}>
-            <PlusIcon className="size-4" />
-            {newLabel}
-            <Kbd onAccent className="hidden sm:inline">
-              N
-            </Kbd>
-          </Link>
+          {languageFilter ? (
+            <div className="flex basis-full items-center gap-1.5 lg:basis-auto">
+              <LanguageFilter className="min-w-0 flex-1 lg:w-40 lg:flex-none" />
+              {controls}
+            </div>
+          ) : (
+            controls
+          )}
         </div>
       </form>
       {note && <p className="text-ui text-muted">{note}</p>}

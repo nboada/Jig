@@ -79,7 +79,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
         kicker={
           <>
             <LanguageIcon language={snippet.language} className="size-3.5" />
-            {`Snippet · ${languageLabel(snippet.language)}`}
+            {languageLabel(snippet.language)}
           </>
         }
         title={snippet.title}
@@ -94,11 +94,10 @@ export default async function SnippetPage({ params, searchParams }: Props) {
                   </Link>
                 </Tip>
                 <ShareButton kind="snippets" slug={slug} title={snippet.title} />
-                <ActionDivider />
-                <EditLink href={`/snippets/${slug}/edit`} />
               </>
             )}
-            <span className="ml-1">
+            {isLatest && <ActionDivider />}
+            <span>
               <MoreMenu
                 kind="snippets"
                 slug={slug}
@@ -143,6 +142,7 @@ export default async function SnippetPage({ params, searchParams }: Props) {
                 }
               />
             </span>
+            {isLatest && <EditLink href={`/snippets/${slug}/edit`} />}
           </>
         }
         meta={

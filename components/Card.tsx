@@ -10,7 +10,7 @@ export function Card({
   meta,
 }: {
   href: string;
-  kicker: React.ReactNode;
+  kicker?: React.ReactNode;
   pinned?: boolean;
   title: string;
   body?: React.ReactNode;
@@ -19,14 +19,19 @@ export function Card({
   return (
     <Link
       href={href}
-      className="flex h-full min-w-0 flex-col gap-2 sm:min-h-48 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-px hover:border-line-strong"
+      className="flex h-full min-w-0 flex-col gap-2 sm:min-h-40 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-px hover:border-line-strong"
     >
-      <span className="flex items-center justify-between gap-3">
-        <span className="engraved flex min-w-0 items-center gap-1.5 truncate">{kicker}</span>
-        {pinned && <PinIcon className="size-3.5 shrink-0 fill-current text-accent" />}
+      {kicker ? (
+        <span className="flex items-center justify-between gap-3">
+          <span className="engraved flex min-w-0 items-center gap-1.5 truncate">{kicker}</span>
+          {pinned && <PinIcon className="size-3.5 shrink-0 fill-current text-accent" />}
+        </span>
+      ) : null}
+      <span className="flex items-start justify-between gap-3">
+        <span className="text-[15px] leading-[21px] font-medium text-text">{title}</span>
+        {pinned && !kicker && <PinIcon className="mt-[3px] size-3.5 shrink-0 fill-current text-accent" />}
       </span>
-      <span className="text-[15px] leading-[21px] font-medium text-text">{title}</span>
-      {body && <span className="line-clamp-3 text-ui text-text-2">{body}</span>}
+      {body && <span className="line-clamp-2 text-ui text-text-2">{body}</span>}
       <span className="mt-auto pt-2">{meta}</span>
     </Link>
   );

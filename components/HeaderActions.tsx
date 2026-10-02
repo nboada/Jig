@@ -4,19 +4,27 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { logout, signOutEverywhere } from "@/app/actions";
+import { logout, savePreference, signOutEverywhere } from "@/app/actions";
 import { ConfirmDialog, DialogAction } from "@/components/ConfirmButton";
 import { menuContentClass, menuItemClass } from "@/components/ItemActions";
 import { Kbd } from "@/components/Kbd";
 import { Modal } from "@/components/Modal";
-import { ConnectIcon, FingerprintIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon, TrashIcon } from "@/components/NavIcons";
+import { CheckIcon, ChevronDownIcon, ConnectIcon, FingerprintIcon, HomeIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon, TrashIcon } from "@/components/NavIcons";
 import { PasskeysDialog } from "@/components/Passkeys";
 import { AiSettingsDialog } from "@/components/AiSettings";
 import { SparkleIcon } from "@/components/NoteAi";
+import { HOME_COOKIE, type Home } from "@/lib/prefs";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";
 
-export function HeaderActions() {
+const HOMES: { id: Home; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "snippets", label: "Snippets" },
+  { id: "notes", label: "Notes" },
+  { id: "credentials", label: "Credentials" },
+];
+
+export function HeaderActions({ home }: { home: Home }) {
   const [searching, setSearching] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [passkeys, setPasskeys] = useState(false);
@@ -24,6 +32,7 @@ export function HeaderActions() {
   const [leaving, setLeaving] = useState<"here" | "everywhere" | null>(null);
   const [loggingOut, startLogout] = useTransition();
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -83,6 +92,30 @@ export function HeaderActions() {
                 Recently deleted
               </Link>
             </DropdownMenu.Item>
+            <DropdownMenu.Sub>
+              <DropdownMenu.SubTrigger className={`${menuItemClass()} data-[state=open]:bg-raised data-[state=open]:text-text`}>
+                <HomeIcon className="size-4 text-muted" />
+                <span className="flex-1">Start page</span>
+                <ChevronDownIcon className="size-3.5 -rotate-90 text-muted" />
+              </DropdownMenu.SubTrigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.SubContent sideOffset={6} className={`${menuContentClass} min-w-40`}>
+                  <DropdownMenu.RadioGroup
+                    value={home}
+                    onValueChange={(value) => savePreference(HOME_COOKIE, value).then(() => router.refresh())}
+                  >
+                    {HOMES.map(({ id, label }) => (
+                      <DropdownMenu.RadioItem key={id} value={id} className={menuItemClass()}>
+                        <span className="flex-1">{label}</span>
+                        <DropdownMenu.ItemIndicator>
+                          <CheckIcon className="size-3.5 text-accent" />
+                        </DropdownMenu.ItemIndicator>
+                      </DropdownMenu.RadioItem>
+                    ))}
+                  </DropdownMenu.RadioGroup>
+                </DropdownMenu.SubContent>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Sub>
             <DropdownMenu.Item onSelect={() => setShortcuts(true)} className={menuItemClass()}>
               <KeyboardIcon className="size-4 text-muted" />
               <span className="flex-1">Keyboard shortcuts</span>
