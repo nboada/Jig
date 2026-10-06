@@ -2,7 +2,7 @@ import type { Db, Row } from "./db";
 import { plainText } from "./format";
 import { orderBy, parseSort, type Sort } from "./sort";
 import { availableSlug, copyTitle, parse, slugify, SnippetError } from "./snippets";
-import { noteInputSchema, notePatchSchema, slugSchema, type NoteInput, type NotePatch } from "./validation";
+import { noteInputSchema, notePatchSchema, slugSchema, titleFromBody, type NoteInput, type NotePatch } from "./validation";
 
 export type NoteSummary = {
   slug: string;
@@ -203,10 +203,11 @@ export async function updateNote(
     );
   }
 
+  const body = data.body ?? current.body;
   const next = {
-    title: data.title ?? current.title,
+    title: data.title === "" ? titleFromBody(body) || "Untitled" : (data.title ?? current.title),
     tags: data.tags ?? current.tags,
-    body: data.body ?? current.body,
+    body,
   };
   const changed = NOTE_FIELDS.some((f) => JSON.stringify(next[f]) !== JSON.stringify(current[f]));
   if (!changed) return { note: current, changed: false };

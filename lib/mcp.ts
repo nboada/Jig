@@ -355,7 +355,10 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       title: "Create note",
       description: "Save a new note: free-form markdown such as setup steps, client details or decisions. Version 1 is created.",
       inputSchema: z.object({
-        title: z.string().describe("Short human title, e.g. \"Acme hosting setup\"."),
+        title: z
+          .string()
+          .optional()
+          .describe("Short human title, e.g. \"Acme hosting setup\". Left out, the body's first line becomes the title."),
         slug: z.string().optional().describe("Optional; derived from the title when left out."),
         tags: z.array(z.string()).optional().describe("Lowercase keywords, e.g. [\"acme\", \"hosting\"]."),
         body: z.string().describe("The note, in markdown. Never include passwords or API keys."),
@@ -376,7 +379,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       description: "Save a new version of a note. Only pass the fields that change; `body` replaces the whole text.",
       inputSchema: z.object({
         slug: noteSlugArg,
-        title: z.string().optional(),
+        title: z.string().optional().describe("An empty string makes the body's first line the title."),
         tags: z.array(z.string()).optional(),
         body: z.string().optional().describe("The complete new text, in markdown."),
         message: z.string().describe("What changed and why."),

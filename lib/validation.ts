@@ -60,16 +60,35 @@ export const snippetPatchSchema = z.object({
 
 const noteBodySchema = z.string().max(200_000, "Notes are capped at 200,000 characters");
 
-export const noteInputSchema = z.object({
-  title: z.string().trim().min(1, "Give the note a title").max(120),
-  slug: slugSchema.optional(),
-  tags: tagsSchema.default([]),
-  body: noteBodySchema,
-  message: z.string().trim().max(500).default(""),
-});
+/** A note's first line of text, like Apple Notes, for notes saved without a title. */
+export function titleFromBody(body: string): string {
+  for (const raw of body.split("\n")) {
+    const line = raw
+      .replace(/^\s*(?:```.*|>+|#{1,6}|[-*+]|\d+[.)])?\s*(?:\[[ xX]\]\s*)?/, "")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/<[^>]+>/g, "")
+      .replace(/(\*\*|__|~~|`|\*|_)/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (line) return line.length > 120 ? `${line.slice(0, 119).trimEnd()}…` : line;
+  }
+  return "";
+}
+
+export const noteInputSchema = z
+  .object({
+    title: z.string().trim().max(120).default(""),
+    slug: slugSchema.optional(),
+    tags: tagsSchema.default([]),
+    body: noteBodySchema,
+    message: z.string().trim().max(500).default(""),
+  })
+  .transform((note) => ({ ...note, title: note.title || titleFromBody(note.body) || "Untitled" }));
 
 export const notePatchSchema = z.object({
-  title: z.string().trim().min(1).max(120).optional(),
+  title: z.string().trim().max(120).optional(),
   tags: tagsSchema.optional(),
   body: noteBodySchema.optional(),
   message: z.string().trim().max(500).default(""),

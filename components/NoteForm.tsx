@@ -7,6 +7,11 @@ import { FormBar, type FormHeader } from "@/components/FormBar";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { field, label } from "@/components/SnippetForm";
 import type { Note } from "@/lib/notes";
+import { titleFromBody } from "@/lib/validation";
+
+function autoTitled(note: Note) {
+  return note.title === (titleFromBody(note.body) || "Untitled");
+}
 
 export function NoteForm({
   note,
@@ -20,7 +25,7 @@ export function NoteForm({
   ai?: boolean;
 }) {
   const [state, action, pending] = useActionState(saveNote, {});
-  const [title, setTitle] = useState(note?.title ?? initial?.title ?? "");
+  const [title, setTitle] = useState(note ? (autoTitled(note) ? "" : note.title) : (initial?.title ?? ""));
   const [tags, setTags] = useState(note?.tags.join(", ") ?? "");
   const [body, setBody] = useState(note?.body ?? initial?.body ?? "");
   const [message, setMessage] = useState("");
@@ -42,7 +47,7 @@ export function NoteForm({
         pending={pending}
         label={note ? "Save" : "Create"}
         {...header}
-        title={{ value: title, onChange: setTitle, placeholder: "Note title", autoFocus: !note }}
+        title={{ value: title, onChange: setTitle, placeholder: titleFromBody(body) || "Note title", autoFocus: !note }}
       />
 
       <div>

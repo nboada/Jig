@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { pgliteDb, prepare, type Db } from "./db";
 import { compareNotes } from "./diff";
+import { titleFromBody } from "./validation";
 import {
   cloneNote,
   createNote,
@@ -165,4 +166,17 @@ test("a pinned note lists first", async () => {
     ["newer", false],
   ]);
   expect((await getNote(db, "older"))?.pinned).toBe(true);
+});
+
+test("a note without a title takes its first line, and keeps following it", async () => {
+  expect(titleFromBody("\n\n## **Acme** [hosting](https://x.y) setup\nmore")).toBe("Acme hosting setup");
+  expect(titleFromBody("- [ ] buy milk")).toBe("buy milk");
+  expect(titleFromBody("  \n")).toBe("");
+  const note = await createNote(db, { body: "Plesk login steps\nStep one" });
+  expect([note.title, note.slug]).toEqual(["Plesk login steps", "plesk-login-steps"]);
+  const { note: renamed } = await updateNote(db, note.slug, { title: "", body: "cPanel steps\nStep one" });
+  expect(renamed.title).toBe("cPanel steps");
+  const { note: kept } = await updateNote(db, note.slug, { body: "Other" });
+  expect(kept.title).toBe("cPanel steps");
+  expect((await createNote(db, { title: "", body: "" })).title).toBe("Untitled");
 });
