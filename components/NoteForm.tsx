@@ -47,7 +47,7 @@ export function NoteForm({
         pending={pending}
         label={note ? "Save" : "Create"}
         {...header}
-        title={{ value: title, onChange: setTitle, placeholder: titleFromBody(body) || "Note title", autoFocus: !note }}
+        title={{ value: title, onChange: setTitle, placeholder: titleFromBody(body) || "Note title" }}
       />
 
       <div>
@@ -62,6 +62,7 @@ export function NoteForm({
         <MarkdownEditor
           value={body}
           onChange={setBody}
+          autoFocus
           ai={ai && !note?.locked ? { slug: note?.slug } : undefined}
           placeholder="Steps, decisions, client details. Keep passwords and API keys in Credentials."
         />

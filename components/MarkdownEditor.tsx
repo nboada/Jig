@@ -12,11 +12,13 @@ export function MarkdownEditor({
   onChange,
   placeholder,
   ai,
+  autoFocus = false,
 }: {
   value: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
   ai?: { slug?: string };
+  autoFocus?: boolean;
 }) {
   const [source, setSource] = useState(false);
   const editor = useEditor({
@@ -24,6 +26,7 @@ export function MarkdownEditor({
     content: value,
     contentType: "markdown",
     immediatelyRender: false,
+    autofocus: autoFocus ? "end" : false,
     editorProps: { attributes: { class: `${readProseClass} min-h-96 px-5 py-4 outline-none sm:px-7 sm:py-6`, "aria-label": "Note" } },
     onUpdate: ({ editor }) => onChange(editor.getMarkdown()),
   });
