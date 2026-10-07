@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { notesApi, snippetsApi, tagsApi } from "./api";
+import { notesApi, settingsApi, snippetsApi, tagsApi } from "./api";
 import { pgliteDb, prepare, type Db } from "./db";
+import { saveSetting } from "./settings";
 import { SnippetError } from "./snippets";
 
 let db: Db;
@@ -138,4 +139,26 @@ test("tags counts snippets and unlocked notes", async () => {
   await snippetsApi.create(db, debounce, SOURCE);
   await notesApi.create(db, { title: "Ops", body: "x", tags: ["ops"] }, SOURCE);
   expect(await tagsApi(db)).toEqual({ snippets: [{ tag: "util", count: 1 }], notes: [{ tag: "ops", count: 1 }] });
+});
+
+describe("settings", () => {
+  beforeEach(async () => {
+    await db.query(`TRUNCATE settings`);
+  });
+
+  test("the sort chosen in one client is what the others read", async () => {
+    expect(await settingsApi.get(db)).toEqual({ sort: { snippets: "updated", notes: "updated", credentials: "updated" } });
+    expect(await settingsApi.update(db, { sort: { notes: "title" } })).toEqual({
+      sort: { snippets: "updated", notes: "title", credentials: "updated" },
+    });
+    await saveSetting(db, "jig-sort-snippets", "created");
+    expect((await settingsApi.get(db)).sort.snippets).toBe("created");
+  });
+
+  test("refuses unknown sections and sorts without saving any of the change", async () => {
+    expect(await code(settingsApi.update(db, { sort: { notes: "title", tags: "title" } }))).toBe("invalid");
+    expect(await code(settingsApi.update(db, { sort: { notes: "oldest" } }))).toBe("invalid");
+    expect(await code(settingsApi.update(db, { sort: ["title"] }))).toBe("invalid");
+    expect((await settingsApi.get(db)).sort.notes).toBe("updated");
+  });
 });

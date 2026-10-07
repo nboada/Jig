@@ -12,7 +12,9 @@ import {
   setNotePinned,
   updateNote,
 } from "./notes";
-import { parseSort } from "./sort";
+import { prefCookie, SECTION_ORDER, type Section } from "./prefs";
+import { loadSettings, saveSetting } from "./settings";
+import { parseSort, SORTS } from "./sort";
 import { restoreItem, trashItem } from "./trash";
 import {
   cloneSnippet,
@@ -180,3 +182,26 @@ export async function tagsApi(db: Db) {
   const [snippets, notes] = await Promise.all([listTags(db), listNoteTags(db, { hideLocked: true })]);
   return { snippets, notes };
 }
+
+async function sorts(db: Db) {
+  const saved = await loadSettings(db);
+  return Object.fromEntries(SECTION_ORDER.map((section) => [section, parseSort(saved[prefCookie("sort", section)])]));
+}
+
+export const settingsApi = {
+  get: async (db: Db) => ({ sort: await sorts(db) }),
+
+  async update(db: Db, body: Body) {
+    const sort = body.sort ?? {};
+    if (typeof sort !== "object" || Array.isArray(sort)) throw new SnippetError("sort must be an object.", "invalid");
+    const entries = Object.entries(sort as Body);
+    for (const [section, value] of entries) {
+      if (!SECTION_ORDER.includes(section as Section)) throw new SnippetError(`Unknown section "${section}".`, "invalid");
+      if (!SORTS.some((s) => s.id === value)) {
+        throw new SnippetError(`sort.${section} must be one of ${SORTS.map((s) => s.id).join(", ")}.`, "invalid");
+      }
+    }
+    for (const [section, value] of entries) await saveSetting(db, prefCookie("sort", section as Section), value as string);
+    return settingsApi.get(db);
+  },
+};
