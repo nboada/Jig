@@ -19,6 +19,17 @@ export class UnlockRequired extends Error {
   }
 }
 
+/** A refusal with its own code and status, for errors that aren't a SnippetError (an AI provider that's down). */
+export class ApiFailure extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 export type Caller = { source: string; grantId: string; clientId: string };
 
 export async function authorize(db: Db, req: Request): Promise<Caller | null> {
@@ -52,6 +63,7 @@ export async function respond(
     return reply(await fn({ ...auth, body: () => readBody(req) }), status);
   } catch (error) {
     if (error instanceof SnippetError) return failure(error.code, error.message, STATUS[error.code]);
+    if (error instanceof ApiFailure) return failure(error.code, error.message, error.status);
     if (error instanceof UnlockRequired) return failure("locked", "Unlock to continue.", 403);
     if (error instanceof Error && error.constructor.name === "CredentialsUnavailable") {
       return failure("invalid", "Credentials need JIG_ENCRYPTION_KEY on the server.", 400);

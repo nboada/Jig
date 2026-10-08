@@ -43,6 +43,7 @@ import { approve, checkAuthorizeRequest, getClient, isAppRedirect, redirectError
 import { issueUnlockCode } from "@/lib/api-locked";
 import { resourceUrlFrom } from "@/lib/oauth-http";
 import { AiError, fixFile, review as reviewSnippet, rewrite, testKey, type Review, type RewriteMode } from "@/lib/ai";
+import { FixInput, ReviewInput, RewriteInput } from "@/lib/ai-input";
 import { PLATFORM_IDS, platformById } from "@/lib/ai-providers";
 import { getAiSettings, removeAiKey, saveAiKey, setActivePlatform, setAiModel, type AiSettings } from "@/lib/ai-settings";
 
@@ -661,8 +662,7 @@ function aiFailure(error: unknown): { error: string } {
 export async function aiRewrite(mode: RewriteMode, text: string, slug?: string): Promise<{ text?: string; error?: string }> {
   await requireAuth();
   try {
-    const kind = parse(z.enum(["rephrase", "shorten", "fix"]), mode);
-    const body = parse(z.string().trim().min(1, "Select some text first."), text);
+    const { mode: kind, text: body } = parse(RewriteInput, { mode, text });
     if (slug) {
       const note = await getNote(await getDb(), parse(Slug, slug));
       if (note?.locked) return { error: "Locked notes are never sent to the AI." };
@@ -681,15 +681,7 @@ export async function aiReview(snippet: {
 }): Promise<{ review?: Review; error?: string }> {
   await requireAuth();
   try {
-    const input = parse(
-      z.object({
-        title: z.string().max(200),
-        language: z.string().max(40),
-        instructions: z.string().max(20_000),
-        files: z.array(z.object({ name: z.string().max(200), content: z.string() })).min(1).max(50),
-      }),
-      snippet,
-    );
+    const input = parse(ReviewInput, snippet);
     if (!input.files.some((f) => f.content.trim())) return { error: "There's no code to check yet." };
     return { review: await reviewSnippet(input) };
   } catch (error) {
@@ -704,25 +696,7 @@ export async function aiFix(input: {
 }): Promise<{ content?: string; error?: string }> {
   await requireAuth();
   try {
-    const { file, language, issues } = parse(
-      z.object({
-        file: z.object({ name: z.string().max(200), content: z.string().min(1) }),
-        language: z.string().max(40),
-        issues: z
-          .array(
-            z.object({
-              file: z.string().max(200),
-              line: z.number().int().nullable(),
-              severity: z.enum(["error", "warning", "suggestion"]),
-              message: z.string().max(2000),
-              fix: z.string().max(2000),
-            }),
-          )
-          .min(1, "Pick at least one issue to fix.")
-          .max(50),
-      }),
-      input,
-    );
+    const { file, language, issues } = parse(FixInput, input);
     return { content: await fixFile(file, language, issues) };
   } catch (error) {
     return aiFailure(error);

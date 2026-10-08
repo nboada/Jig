@@ -115,4 +115,9 @@ describe("credentials stay out of MCP", () => {
       }
     });
   }
+
+  test("api-ai.ts does not import the credentials, shares or locked-notes modules, even indirectly", () => {
+    const seen = reachable("api-ai.ts");
+    for (const forbidden of ["credentials.ts", "shares.ts", "locked-notes.ts"]) expect(seen.has(forbidden)).toBe(false);
+  });
 });
