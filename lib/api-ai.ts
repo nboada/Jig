@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import { AiError, fixFile, review, rewrite } from "./ai";
-import { FixInput, ReviewInput, RewriteInput } from "./ai-input";
+import { AiError, editFile, fixFile, review, rewrite } from "./ai";
+import { EditInput, FixInput, ReviewInput, RewriteInput } from "./ai-input";
 import { resolveAi } from "./ai-settings";
 import type { Body } from "./api";
 import { ApiFailure } from "./api-http";
@@ -30,19 +30,24 @@ export const aiApi = {
   status: async (db: Db) => ({ enabled: (await resolveAi(db)) !== null }),
 
   async rewrite(db: Db, body: Body) {
-    const { mode, text } = parse(RewriteInput, body);
+    const { mode, text, instruction } = parse(RewriteInput, body);
     if (body.slug !== undefined && body.slug !== null) {
       if (typeof body.slug !== "string") throw new SnippetError("slug must be a string.", "invalid");
       const note = await getNote(db, body.slug);
       if (note?.locked) throw new SnippetError("Locked notes are never sent to the AI.", "invalid");
     }
-    return { text: await ask(() => rewrite(mode, text)) };
+    return { text: await ask(() => rewrite(mode, text, instruction)) };
   },
 
   async review(body: Body) {
     const input = parse(ReviewInput, body);
     if (!input.files.some((f) => f.content.trim())) throw new SnippetError("There's no code to check yet.", "invalid");
     return ask(() => review(input));
+  },
+
+  async edit(body: Body) {
+    const { file, language, instruction } = parse(EditInput, body);
+    return { content: await ask(() => editFile(file, language, instruction)) };
   },
 
   async fix(body: Body) {

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { aiSettings, chooseAiPlatform, removeAiPlatformKey, saveAiPlatform } from "@/app/actions";
 import { button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
-import { SparkleIcon } from "@/components/NoteAi";
+import { SparkleIcon } from "@/components/AiPrompt";
 import { toast } from "@/components/Toaster";
 import { PLATFORMS, type Platform, type PlatformId } from "@/lib/ai-providers";
 import type { AiSettings, PlatformStatus } from "@/lib/ai-settings";

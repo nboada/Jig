@@ -197,18 +197,22 @@ function chatError(platform: Platform, status: number, error: ChatReply["error"]
   return new AiError("The AI couldn't answer just now. Try again.");
 }
 
-export type RewriteMode = "rephrase" | "shorten" | "fix";
+export type RewriteMode = "rephrase" | "shorten" | "fix" | "custom";
 
-const REWRITE: Record<RewriteMode, string> = {
+const REWRITE: Record<Exclude<RewriteMode, "custom">, string> = {
   rephrase: "Rephrase it so it reads clearly and naturally. Keep the meaning, facts and level of detail.",
   shorten: "Make it shorter and tighter. Keep every fact, step, name, number and link; cut only repetition and filler.",
   fix: "Fix spelling, grammar and punctuation only. Change nothing else: not the wording, tone or structure.",
 };
 
-export async function rewrite(mode: RewriteMode, text: string): Promise<string> {
+export async function rewrite(mode: RewriteMode, text: string, instruction?: string): Promise<string> {
+  const task =
+    mode === "custom"
+      ? `Do what the user asks: "${instruction ?? ""}". Change only what that needs; keep everything else, including the facts, names, numbers and links, as it is.`
+      : REWRITE[mode];
   const system = [
     "You edit text from the user's personal notes.",
-    REWRITE[mode],
+    task,
     "Write in the same language as the text.",
     "Keep its markdown formatting: headings, lists, checklists, links, inline code and code blocks. Never change what's inside code.",
     "Return only the rewritten text: no introduction, no explanation, no quotes or code fence around it.",
@@ -279,6 +283,23 @@ export async function review(snippet: {
   return result.data;
 }
 
+export async function editFile(file: { name: string; content: string }, language: string, instruction: string): Promise<string> {
+  const system = [
+    "You change a file from a developer's snippet library the way the user asks.",
+    "Change only what the request needs: keep every other line, comment, name and the formatting as they are.",
+    "If the request would break the code, make the closest change that doesn't.",
+    "Return only the complete changed file: no explanation, and no code fence around it.",
+  ].join(" ");
+  const prompt = [`File: ${file.name} (${language})`, `Request: ${instruction}`, "File contents:", file.content].join("\n\n");
+  return completeFile(file.content, await generate(system, prompt));
+}
+
+function completeFile(original: string, answer: string) {
+  const fenced = answer.match(/^```[\w-]*\n([\s\S]*)\n```$/);
+  const body = fenced ? fenced[1] : answer;
+  return original.endsWith("\n") && !body.endsWith("\n") ? `${body}\n` : body;
+}
+
 export async function fixFile(file: { name: string; content: string }, language: string, issues: ReviewIssue[]): Promise<string> {
   const system = [
     "You fix a file from a developer's snippet library.",
@@ -293,8 +314,5 @@ export async function fixFile(file: { name: string; content: string }, language:
     "File contents:",
     file.content,
   ].join("\n\n");
-  const fixed = await generate(system, prompt);
-  const fenced = fixed.match(/^```[\w-]*\n([\s\S]*)\n```$/);
-  const body = fenced ? fenced[1] : fixed;
-  return file.content.endsWith("\n") && !body.endsWith("\n") ? `${body}\n` : body;
+  return completeFile(file.content, await generate(system, prompt));
 }

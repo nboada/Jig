@@ -2,10 +2,10 @@
 
 import { diffLines } from "diff";
 import { useState, useTransition } from "react";
-import { aiFix, aiReview } from "@/app/actions";
+import { aiEdit, aiFix, aiReview } from "@/app/actions";
+import { AiPrompt, RefineBar, SparkleIcon } from "@/components/AiPrompt";
 import { button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
-import { SparkleIcon } from "@/components/NoteAi";
 import type { Review, ReviewIssue } from "@/lib/ai";
 
 const SEVERITY: Record<ReviewIssue["severity"], { label: string; className: string }> = {
@@ -36,6 +36,7 @@ export function SnippetReview({
   const [chosen, setChosen] = useState<Set<number>>(new Set());
   const [fixed, setFixed] = useState<{ before: string; after: string } | null>(null);
   const [fixing, startFix] = useTransition();
+  const [asked, setAsked] = useState<string | null>(null);
 
   const issues = [...(review?.issues ?? [])].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
 
@@ -43,6 +44,7 @@ export function SnippetReview({
     setError("");
     setReview(null);
     setFixed(null);
+    setAsked(null);
     setOpen(true);
     start(async () => {
       const result = await aiReview(draft());
@@ -64,6 +66,23 @@ export function SnippetReview({
     });
   }
 
+  // The owner's own request changes the file straight away; a refinement works on the AI's last answer.
+  function ask(instruction: string, from?: { before: string; after: string }) {
+    const { language, files } = draft();
+    const file = files[0];
+    const before = from?.before ?? file.content;
+    setError("");
+    setReview(null);
+    setAsked(instruction);
+    if (!from) setFixed(null);
+    setOpen(true);
+    startFix(async () => {
+      const result = await aiEdit({ file: { name: file.name, content: from?.after ?? file.content }, language, instruction });
+      if (result.content === undefined) return setError(result.error ?? "The AI couldn't answer just now. Try again.");
+      setFixed({ before, after: result.content });
+    });
+  }
+
   const toggle = (i: number) =>
     setChosen((prev) => {
       const next = new Set(prev);
@@ -74,25 +93,27 @@ export function SnippetReview({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={check}
-        disabled={disabled || checking}
-        title="Check this file for errors with AI"
-        className={button({ variant: "ghost", size: "sm", className: "disabled:opacity-40" })}
-      >
-        <SparkleIcon className={`size-3.5 ${checking ? "animate-pulse text-accent" : ""}`} />
-        {checking ? "Checking" : "AI check"}
-      </button>
+      <AiPrompt
+        working={checking || fixing}
+        disabled={disabled}
+        title="AI: tell it what to change in this file, or check it for errors"
+        placeholder={`What should change in ${draft().files[0]?.name ?? "this file"}? e.g. fix the spacing`}
+        onAsk={(instruction) => ask(instruction)}
+        shortcuts={[{ label: "Review for errors", run: check }]}
+      />
       <Modal
         open={open}
         onOpenChange={setOpen}
         size="md"
-        title={`AI check: ${draft().files[0]?.name ?? "file"}`}
-        description="An AI review of this file as it is now, unsaved changes included. It can be wrong: treat it as a second pair of eyes."
+        title={`${asked ? "AI" : "AI check"}: ${draft().files[0]?.name ?? "file"}`}
+        description={
+          asked
+            ? `\u201c${asked}\u201d`
+            : "An AI review of this file as it is now, unsaved changes included. It can be wrong: treat it as a second pair of eyes."
+        }
       >
         <div className="mt-4 space-y-4">
-          {checking && (
+          {(checking || (fixing && !fixed && asked)) && (
             <p className="flex items-center gap-2 text-body text-muted">
               <SparkleIcon className="size-4 animate-pulse text-accent" />
               Reading the code…
@@ -140,12 +161,19 @@ export function SnippetReview({
             </>
           )}
           {fixed && <FixDiff before={fixed.before} after={fixed.after} />}
+          {fixed && <RefineBar working={fixing} placeholder="Ask for another change, e.g. keep the comments" onRefine={(instruction) => ask(instruction, fixed)} />}
           <div className="flex flex-wrap justify-end gap-2">
             {fixed ? (
               <>
-                <button type="button" onClick={() => setFixed(null)} className={button()}>
-                  Back
-                </button>
+                {review ? (
+                  <button type="button" onClick={() => setFixed(null)} className={button()}>
+                    Back
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setOpen(false)} className={button()}>
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

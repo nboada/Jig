@@ -1,29 +1,20 @@
 "use client";
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import type { Editor } from "@tiptap/react";
 import { diffWordsWithSpace } from "diff";
 import { useMemo, useState, useTransition } from "react";
 import { aiRewrite } from "@/app/actions";
+import { AiPrompt, RefineBar } from "@/components/AiPrompt";
 import { button } from "@/components/Button";
-import { menuContentClass, menuItemClass } from "@/components/ItemActions";
 import { Markdown } from "@/components/Markdown";
 import { Modal } from "@/components/Modal";
 import type { RewriteMode } from "@/lib/ai";
 
-const MODES: { mode: RewriteMode; label: string; done: string }[] = [
+const MODES: { mode: Exclude<RewriteMode, "custom">; label: string; done: string }[] = [
   { mode: "rephrase", label: "Rephrase", done: "Rephrased" },
   { mode: "shorten", label: "Shorten", done: "Shortened" },
   { mode: "fix", label: "Fix spelling and grammar", done: "Fixed" },
 ];
-
-export function SparkleIcon({ className = "size-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8zM5 2l.6 1.4L7 4l-1.4.6L5 6l-.6-1.4L3 4l1.4-.6z" />
-    </svg>
-  );
-}
 
 function Changes({ original, text }: { original: string; text: string }) {
   const parts = useMemo(() => diffWordsWithSpace(original, text), [original, text]);
@@ -50,31 +41,38 @@ function Changes({ original, text }: { original: string; text: string }) {
   );
 }
 
-type Suggestion = { mode: RewriteMode; original: string; text: string; range: { from: number; to: number } | null };
+type Request = { mode: RewriteMode; instruction?: string };
+type Suggestion = Request & { original: string; text: string; range: { from: number; to: number } | null };
+type Target = { original: string; range: { from: number; to: number } | null };
 
 export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState("");
-  const [working, setWorking] = useState<RewriteMode | null>(null);
+  const [working, setWorking] = useState(false);
   const [view, setView] = useState<"changes" | "result">("changes");
+  const [target, setTarget] = useState<Target | null>(null);
   const [, start] = useTransition();
 
-  function run(mode: RewriteMode, from?: Suggestion) {
+  // Read when the box opens: typing the request moves the focus, but the editor keeps its selection.
+  function capture(): Target {
     const { from: a, to: b, empty } = editor.state.selection;
-    const range = from ? from.range : empty ? null : { from: a, to: b };
-    const original = from
-      ? from.original
-      : range
-        ? (editor.markdown?.serialize({ type: "doc", content: editor.state.doc.slice(range.from, range.to).content.toJSON() }) ?? "")
-        : editor.getMarkdown();
-    if (!original.trim()) return setError("There's no text to work on yet.");
+    const range = empty ? null : { from: a, to: b };
+    const original = range
+      ? (editor.markdown?.serialize({ type: "doc", content: editor.state.doc.slice(range.from, range.to).content.toJSON() }) ?? "")
+      : editor.getMarkdown();
+    return { original, range };
+  }
+
+  // A refinement sends the AI's last answer with the new request; the diff still compares with the note.
+  function run(request: Request, on: Target = target ?? capture(), from?: string) {
+    if (!on.original.trim()) return setError("There's no text to work on yet.");
     setError("");
-    setWorking(mode);
+    setWorking(true);
     start(async () => {
-      const result = await aiRewrite(mode, original, slug);
-      setWorking(null);
+      const result = await aiRewrite(request.mode, from ?? on.original, slug, request.instruction);
+      setWorking(false);
       if (result.error || result.text === undefined) return setError(result.error ?? "The AI couldn't answer just now. Try again.");
-      setSuggestion({ mode, original, text: result.text, range });
+      setSuggestion({ ...request, original: on.original, text: result.text, range: on.range });
       setView("changes");
     });
   }
@@ -89,31 +87,19 @@ export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
     setSuggestion(null);
   }
 
-  const label = MODES.find((m) => m.mode === (suggestion?.mode ?? working))?.done;
+  const done = suggestion?.mode === "custom" ? "Edited" : MODES.find((m) => m.mode === suggestion?.mode)?.done;
 
   return (
     <>
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger
-          onMouseDown={(e) => e.preventDefault()}
-          disabled={working !== null}
-          title="AI check: rephrase, shorten or fix the selection (or the whole note)"
-          className={button({ variant: "ghost", size: "sm", className: "disabled:opacity-60 data-[state=open]:bg-raised data-[state=open]:text-text" })}
-        >
-          <SparkleIcon className={`size-3.5 ${working ? "animate-pulse text-accent" : ""}`} />
-          {working ? "Checking" : "AI check"}
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content align="start" sideOffset={6} className={menuContentClass} onCloseAutoFocus={(e) => e.preventDefault()}>
-            {MODES.map(({ mode, label }) => (
-              <DropdownMenu.Item key={mode} onSelect={() => run(mode)} className={menuItemClass()}>
-                {label}
-              </DropdownMenu.Item>
-            ))}
-            <p className="px-2.5 pt-1 pb-1.5 text-meta text-faint">Works on the selection, or the whole note.</p>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+      <AiPrompt
+        working={working}
+        title="AI: tell it what to change in the selection (or the whole note)"
+        placeholder="Tell the AI what to do, e.g. fix the spacing"
+        hint="Works on the selection, or the whole note."
+        onOpen={() => setTarget(capture())}
+        onAsk={(instruction) => run({ mode: "custom", instruction })}
+        shortcuts={MODES.map(({ mode, label }) => ({ label, run: () => run({ mode }) }))}
+      />
 
       <Modal open={Boolean(error)} onOpenChange={(open) => !open && setError("")} title="The AI couldn't help">
         <p className="mt-3 text-body text-text-2">{error}</p>
@@ -123,8 +109,8 @@ export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
         open={suggestion !== null}
         onOpenChange={(open) => !open && setSuggestion(null)}
         size="md"
-        title={label ? `${label} ${suggestion?.range ? "selection" : "note"}` : "Suggestion"}
-        description="Nothing changes until you replace it, and the note keeps its old version when you save."
+        title={done ? `${done} ${suggestion?.range ? "selection" : "note"}` : "Suggestion"}
+        description={suggestion?.instruction ? `“${suggestion.instruction}”` : "Nothing changes until you replace it, and the note keeps its old version when you save."}
       >
         {suggestion && (
           <div className="mt-4 space-y-4">
@@ -148,8 +134,13 @@ export function NoteAi({ editor, slug }: { editor: Editor; slug?: string }) {
                 <Markdown>{suggestion.text}</Markdown>
               </div>
             )}
+            <RefineBar
+              working={working}
+              placeholder="Ask for a change to this, e.g. less formal"
+              onRefine={(instruction) => run({ mode: "custom", instruction }, suggestion, suggestion.text)}
+            />
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => run(suggestion.mode, suggestion)} disabled={working !== null} className={button({ variant: "ghost" })}>
+              <button type="button" onClick={() => run(suggestion, suggestion)} disabled={working} className={button({ variant: "ghost" })}>
                 {working ? "Trying again…" : "Try again"}
               </button>
               <button type="button" onClick={() => setSuggestion(null)} className={button()}>

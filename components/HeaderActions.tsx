@@ -12,7 +12,7 @@ import { Modal } from "@/components/Modal";
 import { CheckIcon, ChevronDownIcon, ConnectIcon, FingerprintIcon, HomeIcon, KeyboardIcon, LogoutIcon, MoreIcon, SearchIcon, TrashIcon } from "@/components/NavIcons";
 import { PasskeysDialog } from "@/components/Passkeys";
 import { AiSettingsDialog } from "@/components/AiSettings";
-import { SparkleIcon } from "@/components/NoteAi";
+import { SparkleIcon } from "@/components/AiPrompt";
 import { HOME_COOKIE, type Home } from "@/lib/prefs";
 
 const round = "grid size-9 shrink-0 place-items-center rounded-full text-text-2 transition hover:bg-raised hover:text-text";

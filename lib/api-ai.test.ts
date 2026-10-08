@@ -7,11 +7,12 @@ class AiError extends Error {}
 const sent: string[] = [];
 mock.module("./ai", () => ({
   AiError,
-  rewrite: async (mode: string, text: string) => {
+  rewrite: async (mode: string, text: string, instruction?: string) => {
     sent.push(text);
     if (text === "busy") throw new AiError("Gemini is busy right now. Try again in a moment.");
-    return `${mode}: ${text}`;
+    return instruction ? `${instruction}: ${text}` : `${mode}: ${text}`;
   },
+  editFile: async (file: { content: string }, _language: string, instruction: string) => `${file.content}// ${instruction}\n`,
   review: async () => ({ summary: "Looks fine.", issues: [] }),
   fixFile: async (file: { content: string }) => `${file.content}// fixed\n`,
 }));
@@ -39,6 +40,16 @@ describe("app AI", () => {
     sent.length = 0;
     expect(await code(aiApi.rewrite(db, { mode: "fix", text: "hidden", slug: "secret" }))).toBe("invalid");
     expect(sent).toEqual([]);
+  });
+
+  test("follows the owner's own instruction", async () => {
+    expect(await aiApi.rewrite(db, { mode: "custom", text: "a  b", instruction: "fix the spacing" })).toEqual({ text: "fix the spacing: a  b" });
+    expect(await code(aiApi.rewrite(db, { mode: "custom", text: "a  b" }))).toBe("invalid");
+    expect(await code(aiApi.rewrite(db, { mode: "custom", text: "a  b", instruction: "  " }))).toBe("invalid");
+    expect(await aiApi.edit({ file: { name: "a.js", content: "let a\n" }, language: "js", instruction: "add a comment" })).toEqual({
+      content: "let a\n// add a comment\n",
+    });
+    expect(await code(aiApi.edit({ file: { name: "a.js", content: "let a\n" }, language: "js", instruction: "" }))).toBe("invalid");
   });
 
   test("checks its input like the dashboard", async () => {

@@ -42,8 +42,8 @@ import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
 import { approve, checkAuthorizeRequest, getClient, isAppRedirect, redirectError, revokeGrant } from "@/lib/oauth";
 import { issueUnlockCode } from "@/lib/api-locked";
 import { resourceUrlFrom } from "@/lib/oauth-http";
-import { AiError, fixFile, review as reviewSnippet, rewrite, testKey, type Review, type RewriteMode } from "@/lib/ai";
-import { FixInput, ReviewInput, RewriteInput } from "@/lib/ai-input";
+import { AiError, editFile, fixFile, review as reviewSnippet, rewrite, testKey, type Review, type RewriteMode } from "@/lib/ai";
+import { EditInput, FixInput, ReviewInput, RewriteInput } from "@/lib/ai-input";
 import { PLATFORM_IDS, platformById } from "@/lib/ai-providers";
 import { getAiSettings, removeAiKey, saveAiKey, setActivePlatform, setAiModel, type AiSettings } from "@/lib/ai-settings";
 
@@ -659,15 +659,20 @@ function aiFailure(error: unknown): { error: string } {
   return failure(error, "The AI couldn't answer just now. Try again.");
 }
 
-export async function aiRewrite(mode: RewriteMode, text: string, slug?: string): Promise<{ text?: string; error?: string }> {
+export async function aiRewrite(
+  mode: RewriteMode,
+  text: string,
+  slug?: string,
+  instruction?: string,
+): Promise<{ text?: string; error?: string }> {
   await requireAuth();
   try {
-    const { mode: kind, text: body } = parse(RewriteInput, { mode, text });
+    const { mode: kind, text: body, instruction: ask } = parse(RewriteInput, { mode, text, instruction });
     if (slug) {
       const note = await getNote(await getDb(), parse(Slug, slug));
       if (note?.locked) return { error: "Locked notes are never sent to the AI." };
     }
-    return { text: await rewrite(kind, body) };
+    return { text: await rewrite(kind, body, ask) };
   } catch (error) {
     return aiFailure(error);
   }
@@ -684,6 +689,19 @@ export async function aiReview(snippet: {
     const input = parse(ReviewInput, snippet);
     if (!input.files.some((f) => f.content.trim())) return { error: "There's no code to check yet." };
     return { review: await reviewSnippet(input) };
+  } catch (error) {
+    return aiFailure(error);
+  }
+}
+
+export async function aiEdit(input: { file: { name: string; content: string }; language: string; instruction: string }): Promise<{
+  content?: string;
+  error?: string;
+}> {
+  await requireAuth();
+  try {
+    const { file, language, instruction } = parse(EditInput, input);
+    return { content: await editFile(file, language, instruction) };
   } catch (error) {
     return aiFailure(error);
   }
