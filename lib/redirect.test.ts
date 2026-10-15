@@ -10,6 +10,10 @@ describe("safeNext", () => {
   test("refuses anything that could leave the site", () => {
     for (const bad of [
       "//evil.com",
+      "/..//evil.com",
+      "/.//evil.com",
+      "/%2e%2e//evil.com",
+      "/a/..//evil.com",
       "/\\evil.com",
       "/\t/evil.com",
       "/\n/evil.com",

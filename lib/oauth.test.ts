@@ -82,7 +82,6 @@ describe("oauth", () => {
     const next = await refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id });
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
     expect(await verifyAccessToken(db, next.access_token)).not.toBeNull();
-    await expect(refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
 
     await revokeByToken(db, next.refresh_token);
     expect(await verifyAccessToken(db, next.access_token)).toBeNull();
@@ -139,10 +138,19 @@ describe("oauth", () => {
     expect((await exchangeCode(db, { code: omitted, clientId: only.id, codeVerifier: verifier })).token_type).toBe("Bearer");
   });
 
-  test("replaying a rotated refresh token revokes the whole grant", async () => {
+  test("a rotated refresh token still works briefly so a lost response can be retried", async () => {
+    const { client, code } = await authorize();
+    const first = await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier });
+    await refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id });
+    const retry = await refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id });
+    expect(await verifyAccessToken(db, retry.access_token)).not.toBeNull();
+  });
+
+  test("replaying a rotated refresh token after the grace period revokes the whole grant", async () => {
     const { client, code } = await authorize();
     const first = await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier });
     const second = await refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id });
+    await db.query(`UPDATE oauth_grants SET rotated_at = now() - interval '2 minutes'`);
     await expect(refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
     expect(await verifyAccessToken(db, second.access_token)).toBeNull();
     await expect(refreshTokens(db, { refreshToken: second.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);

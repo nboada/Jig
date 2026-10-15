@@ -11,7 +11,8 @@ export function safeNext(value: unknown): string {
     if (!sameSitePath(decodeURIComponent(next).replace(CONTROL, ""))) return "/";
     const url = new URL(next, "http://x");
     if (url.origin !== "http://x") return "/";
-    return url.pathname + url.search + url.hash;
+    const out = url.pathname + url.search + url.hash;
+    return sameSitePath(out) && sameSitePath(decodeURIComponent(out).replace(CONTROL, "")) ? out : "/";
   } catch {
     return "/";
   }

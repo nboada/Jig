@@ -206,8 +206,8 @@ export async function refreshTokens(db: Db, { refreshToken, clientId }: { refres
   const refresh = random(REFRESH_PREFIX);
   const rows = await db.query(
     `UPDATE oauth_grants
-     SET access_hash = $3, access_expires_at = now() + make_interval(secs => $4), prev_refresh_hash = refresh_hash, refresh_hash = $5, last_used_at = now()
-     WHERE refresh_hash = $1 AND client_id = $2
+     SET access_hash = $3, access_expires_at = now() + make_interval(secs => $4), prev_refresh_hash = refresh_hash, refresh_hash = $5, rotated_at = now(), last_used_at = now()
+     WHERE (refresh_hash = $1 OR (prev_refresh_hash = $1 AND rotated_at > now() - interval '60 seconds')) AND client_id = $2
      RETURNING id, scope`,
     [await sha256(refreshToken), clientId, await sha256(access), ACCESS_TTL_SECONDS, await sha256(refresh)],
   );

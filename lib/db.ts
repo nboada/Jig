@@ -158,6 +158,7 @@ const SCHEMA = [
   `ALTER TABLE oauth_unlock_codes ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`,
   `ALTER TABLE oauth_codes ADD COLUMN IF NOT EXISTS redirect_uri_sent boolean NOT NULL DEFAULT true`,
   `ALTER TABLE oauth_grants ADD COLUMN IF NOT EXISTS prev_refresh_hash text`,
+  `ALTER TABLE oauth_grants ADD COLUMN IF NOT EXISTS rotated_at timestamptz`,
   `ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS ip text`,
   `CREATE TABLE IF NOT EXISTS revoked_sessions (
     sid text PRIMARY KEY,
