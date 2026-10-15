@@ -7,13 +7,13 @@ const Instruction = z.string().trim().min(1, "Say what the AI should do.").max(2
 export const RewriteInput = z
   .object({
     mode: z.enum(["rephrase", "shorten", "fix", "custom"]),
-    text: z.string().trim().min(1, "Select some text first."),
+    text: z.string().trim().min(1, "Select some text first.").max(200_000),
     instruction: Instruction.optional(),
   })
   .refine((input) => input.mode !== "custom" || input.instruction, { message: "Say what the AI should do.", path: ["instruction"] });
 
 export const EditInput = z.object({
-  file: z.object({ name: z.string().max(200), content: z.string().min(1) }),
+  file: z.object({ name: z.string().max(200), content: z.string().min(1).max(200_000) }),
   language: z.string().max(40),
   instruction: Instruction,
 });
@@ -22,11 +22,11 @@ export const ReviewInput = z.object({
   title: z.string().max(200),
   language: z.string().max(40),
   instructions: z.string().max(20_000),
-  files: z.array(z.object({ name: z.string().max(200), content: z.string() })).min(1).max(50),
+  files: z.array(z.object({ name: z.string().max(200), content: z.string().max(200_000) })).min(1).max(20),
 });
 
 export const FixInput = z.object({
-  file: z.object({ name: z.string().max(200), content: z.string().min(1) }),
+  file: z.object({ name: z.string().max(200), content: z.string().min(1).max(200_000) }),
   language: z.string().max(40),
   issues: z
     .array(

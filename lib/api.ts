@@ -29,19 +29,17 @@ import {
   SnippetError,
   updateSnippet,
 } from "./snippets";
-import type { NoteInput, NotePatch, SnippetInput, SnippetPatch } from "./validation";
+import { MAX_VERSION, versionSchema, type NoteInput, type NotePatch, type SnippetInput, type SnippetPatch } from "./validation";
 
 export type Body = Record<string, unknown>;
 
 const text = (q: URLSearchParams, key: string) => q.get(key)?.trim() || undefined;
 
-const MAX_VERSION = 2_147_483_647;
-
 function version(value: unknown, name: string): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value === "string" && !/^\d+$/.test(value)) throw new SnippetError(`${name} must be a whole number.`, "invalid");
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > MAX_VERSION) {
+  if (!versionSchema.safeParse(n).success) {
     throw new SnippetError(`${name} must be a whole number from 1 to ${MAX_VERSION}.`, "invalid");
   }
   return n;

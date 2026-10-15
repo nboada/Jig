@@ -9,9 +9,11 @@ import { z } from "zod";
 import { renewSession, requireAuth, startSession } from "@/lib/auth";
 import { PREFS_SYNCED_COOKIE, prefCookie, SECTION_ORDER } from "@/lib/prefs";
 import { loadSettings, saveSetting, SETTING_KEYS, validSetting } from "@/lib/settings";
+import { safeNext } from "@/lib/redirect";
+import { versionSchema } from "@/lib/validation";
 import { renameForTitle } from "@/lib/slug";
 import { getDb } from "@/lib/db";
-import { checkPassword, endAllSessions, passwordProblem, SESSION_COOKIE } from "@/lib/session";
+import { checkPassword, endAllSessions, passwordProblem, readSession, revokeSession, SESSION_COOKIE } from "@/lib/session";
 import { checkLogin, clearFailures, clientIpFrom, recordFailure } from "@/lib/ratelimit";
 import { cloneSnippet, createSnippet, listSnippets, restoreVersion, setSnippetPinned, SnippetError, updateSnippet } from "@/lib/snippets";
 import { cloneNote, createNote, getNote, listNotes, restoreNoteVersion, setNoteLocked, setNotePinned, updateNote } from "@/lib/notes";
@@ -37,7 +39,7 @@ import { CredentialsUnavailable, DecryptError, encryptionReady } from "@/lib/cry
 import { withEncryptionKey } from "@/lib/envfile";
 import { createShare, deleteShare, EXPIRIES, listShares, restoreShare, revealShare, revokeShare, type Share } from "@/lib/shares";
 import { createToken, revokeToken } from "@/lib/tokens";
-import { FLASH_COOKIE } from "@/lib/flash";
+import { FLASH_COOKIE, FLASH_ERROR_COOKIE } from "@/lib/flash";
 import { purgeItem, restoreItem, trashItem, type TrashKind } from "@/lib/trash";
 import { approve, checkAuthorizeRequest, getClient, isAppRedirect, redirectError, revokeGrant } from "@/lib/oauth";
 import { issueUnlockCode } from "@/lib/api-locked";
@@ -70,14 +72,9 @@ function failure(error: unknown, fallback: string): { error: string } {
   return { error: fallback };
 }
 
-function safeNext(value: unknown) {
-  const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
-}
-
 async function clientIp() {
   const h = await headers();
-  return clientIpFrom(h.get("x-forwarded-for"), h.get("x-real-ip"));
+  return clientIpFrom(h);
 }
 
 async function guardAttempt(ip: string, everywhere: boolean): Promise<string | null> {
@@ -117,6 +114,10 @@ async function signIn() {
 
 async function flash(message: string) {
   (await cookies()).set(FLASH_COOKIE, message, { path: "/", maxAge: 60, sameSite: "lax" });
+}
+
+async function flashError(message: string) {
+  (await cookies()).set(FLASH_ERROR_COOKIE, message, { path: "/", maxAge: 60, sameSite: "lax" });
 }
 
 const PREF_COOKIE = { path: "/", maxAge: 31_536_000, sameSite: "lax" as const };
@@ -166,6 +167,16 @@ async function forgetThisBrowser() {
 }
 
 export async function logout() {
+  const value = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (value) {
+    try {
+      const db = await getDb();
+      const session = await readSession(db, value);
+      if (session) await revokeSession(db, session);
+    } catch (error) {
+      console.error("[jig] could not revoke the session", error);
+    }
+  }
   await forgetThisBrowser();
   redirect("/login");
 }
@@ -202,11 +213,22 @@ export async function saveSnippet(_: FormState, form: FormData): Promise<FormSta
   redirect(`/snippets/${target}`);
 }
 
-export async function restore(form: FormData) {
+export async function restore(form: FormData): Promise<void> {
   await requireAuth();
-  const slug = String(form.get("slug"));
-  await restoreVersion(await getDb(), slug, Number(form.get("version")));
-  await flash(`Version ${Number(form.get("version"))} restored`);
+  const parsed = z.object({ slug: Slug, version: versionSchema }).safeParse({ slug: String(form.get("slug")), version: Number(form.get("version")) });
+  if (!parsed.success) {
+    await flashError("That version doesn't exist.");
+    redirect("/snippets");
+  }
+  const { slug, version } = parsed.data;
+  try {
+    await restoreVersion(await getDb(), slug, version);
+    await flash(`Version ${version} restored`);
+  } catch (error) {
+    await flashError(failure(error, "Could not restore that version. Try again.").error);
+    revalidatePath("/", "layout");
+    redirect(`/snippets/${slug}/history`);
+  }
   revalidatePath("/", "layout");
   redirect(`/snippets/${slug}/history`);
 }
@@ -246,11 +268,22 @@ export async function saveNote(_: FormState, form: FormData): Promise<FormState>
   redirect(`/notes/${target}`);
 }
 
-export async function restoreNote(form: FormData) {
+export async function restoreNote(form: FormData): Promise<void> {
   await requireAuth();
-  const slug = String(form.get("slug"));
-  await restoreNoteVersion(await getDb(), slug, Number(form.get("version")), "web", undefined, await unlockedCodec());
-  await flash(`Version ${Number(form.get("version"))} restored`);
+  const parsed = z.object({ slug: Slug, version: versionSchema }).safeParse({ slug: String(form.get("slug")), version: Number(form.get("version")) });
+  if (!parsed.success) {
+    await flashError("That version doesn't exist.");
+    redirect("/notes");
+  }
+  const { slug, version } = parsed.data;
+  try {
+    await restoreNoteVersion(await getDb(), slug, version, "web", undefined, await unlockedCodec());
+    await flash(`Version ${version} restored`);
+  } catch (error) {
+    await flashError(failure(error, "Could not restore that version. Try again.").error);
+    revalidatePath("/", "layout");
+    redirect(`/notes/${slug}/history`);
+  }
   revalidatePath("/", "layout");
   redirect(`/notes/${slug}/history`);
 }
@@ -502,15 +535,19 @@ export async function myPasskeys(): Promise<Passkey[]> {
   return listPasskeys(await getDb());
 }
 
+const PASSKEYS_LOCKED = "Unlock first: changing passkeys needs your password or an existing passkey.";
+
 export async function passkeySetupOptions() {
   await requireAuth();
+  if (!(await isUnlocked())) return { error: PASSKEYS_LOCKED, locked: true as const };
   const options = await registrationOptions(await getDb(), await site());
   await rememberChallenge("register", options.challenge);
   return options;
 }
 
-export async function addPasskey(response: RegistrationResponseJSON, name: string): Promise<{ error?: string }> {
+export async function addPasskey(response: RegistrationResponseJSON, name: string): Promise<{ error?: string; locked?: boolean }> {
   await requireAuth();
+  if (!(await isUnlocked())) return { error: PASSKEYS_LOCKED, locked: true };
   const challenge = await takeChallenge("register");
   if (!challenge) return { error: "That took too long. Try again." };
   try {
@@ -522,9 +559,15 @@ export async function addPasskey(response: RegistrationResponseJSON, name: strin
   return {};
 }
 
-export async function deletePasskey(id: string): Promise<void> {
+export async function deletePasskey(id: string): Promise<{ error?: string; locked?: boolean }> {
   await requireAuth();
-  await removePasskey(await getDb(), parse(Id, id));
+  if (!(await isUnlocked())) return { error: PASSKEYS_LOCKED, locked: true };
+  try {
+    await removePasskey(await getDb(), parse(Id, id));
+  } catch (error) {
+    return failure(error, "Could not remove the passkey. Try again.");
+  }
+  return {};
 }
 
 export async function passkeyPromptOptions(use: "login" | "unlock") {

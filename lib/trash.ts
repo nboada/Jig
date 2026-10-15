@@ -1,5 +1,5 @@
 import type { Db } from "./db";
-import { availableSlug, SnippetError } from "./snippets";
+import { availableSlug, isUniqueViolation, SnippetError } from "./snippets";
 import { slugSchema } from "./validation";
 
 
@@ -51,24 +51,52 @@ export async function trashItem(db: Db, kind: TrashKind, slug: string): Promise<
   return rows[0].id;
 }
 
+async function columnsFor(db: Db, table: string, sample: unknown): Promise<string[]> {
+  const rows = await db.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1`,
+    [table],
+  );
+  const known = new Set(rows.map((r) => r.column_name));
+  const present = sample && typeof sample === "object" ? Object.keys(sample) : [];
+  return present.filter((name) => known.has(name)).map((name) => `"${name}"`);
+}
+
 export async function restoreItem(db: Db, id: string): Promise<{ kind: TrashKind; slug: string }> {
-  const found = await db.query<{ kind: TrashKind; slug: string }>(`SELECT kind, slug FROM trash WHERE id = $1`, [id]);
+  const found = await db.query<{ kind: TrashKind; slug: string; item: unknown; first_version: unknown }>(
+    `SELECT kind, slug, item, versions -> 0 AS first_version FROM trash WHERE id = $1`,
+    [id],
+  );
   if (!found.length) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
   const { kind } = found[0];
   const { table, versions } = TABLES[kind];
-  const slug = await availableSlug(db, found[0].slug, kind);
+  const columns = await columnsFor(db, table, found[0].item);
+  const versionColumns = versions ? await columnsFor(db, versions.table, found[0].first_version) : [];
+  const from = (alias: string, list: string[]) => list.map((name) => `${alias}.${name}`).join(", ");
   const history = versions
-    ? `, v AS (INSERT INTO ${versions.table} SELECT (jsonb_populate_recordset(null::${versions.table}, t.versions)).* FROM t)`
+    ? `, v AS (INSERT INTO ${versions.table} (${versionColumns.join(", ")}) SELECT ${from("r", versionColumns)} FROM t, jsonb_populate_recordset(null::${versions.table}, t.versions) r)`
     : "";
-  const rows = await db.query<{ slug: string }>(
-    `WITH t AS (DELETE FROM trash WHERE id = $1 RETURNING *),
-     s AS (INSERT INTO ${table} SELECT (jsonb_populate_record(null::${table}, t.item || jsonb_build_object('slug', $2::text))).* FROM t RETURNING slug)
-     ${history}
-     SELECT slug FROM s`,
-    [id, slug],
-  );
-  if (!rows.length) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
-  return { kind, slug: rows[0].slug };
+
+  for (let attempt = 1; ; attempt++) {
+    const slug = await availableSlug(db, found[0].slug, kind);
+    try {
+      const rows = await db.query<{ slug: string }>(
+        `WITH t AS (DELETE FROM trash WHERE id = $1 RETURNING *),
+         s AS (
+           INSERT INTO ${table} (${columns.join(", ")})
+           SELECT ${from("r", columns)} FROM t, jsonb_populate_record(null::${table}, t.item || jsonb_build_object('slug', $2::text)) r
+           RETURNING slug
+         )
+         ${history}
+         SELECT slug FROM s`,
+        [id, slug],
+      );
+      if (!rows.length) throw new SnippetError("That item is no longer in Recently deleted.", "not_found");
+      return { kind, slug: rows[0].slug };
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      if (attempt >= 5) throw new SnippetError(`The slug "${slug}" is already taken`, "conflict");
+    }
+  }
 }
 
 export async function listTrash(db: Db): Promise<TrashedItem[]> {

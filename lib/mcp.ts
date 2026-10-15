@@ -27,7 +27,7 @@ import {
   type Note,
   type NoteSummary,
 } from "./notes";
-import { fileSchema, languageSchema } from "./validation";
+import { fileSchema, languageSchema, versionSchema } from "./validation";
 
 export const SERVER_INSTRUCTIONS = `Jig is the user's personal library of reusable code snippets (JavaScript, PHP, CSS, Liquid and more) shared across their projects.
 
@@ -170,7 +170,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
         "Fetch a snippet's files, dependencies and integration instructions. Returns the latest version unless a version number is given.",
       inputSchema: z.object({
         slug: slugArg,
-        version: z.number().int().positive().optional().describe("A specific version from list_snippet_versions."),
+        version: versionSchema.optional().describe("A specific version from list_snippet_versions."),
       }),
       annotations: { readOnlyHint: true },
     },
@@ -226,10 +226,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
         ...editableFields,
         files: z.array(fileSchema).min(1).optional().describe("The complete new file list."),
         message: z.string().describe("What changed and why, e.g. \"Bump to GSAP 3.13, add reduced motion check\"."),
-        baseVersion: z
-          .number()
-          .int()
-          .positive()
+        baseVersion: versionSchema
           .optional()
           .describe("The version your edit is based on. The update is refused if a newer version was saved since."),
       }),
@@ -271,8 +268,8 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       description: "Show what changed between two versions of a snippet as a unified diff. Useful to find what broke.",
       inputSchema: z.object({
         slug: slugArg,
-        from: z.number().int().positive().describe("The older version."),
-        to: z.number().int().positive().optional().describe("The newer version. Defaults to the latest."),
+        from: versionSchema.describe("The older version."),
+        to: versionSchema.optional().describe("The newer version. Defaults to the latest."),
       }),
       annotations: { readOnlyHint: true },
     },
@@ -291,7 +288,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
         "Roll a snippet back to an earlier version. This saves a new version with the old content, so the rollback can itself be undone.",
       inputSchema: z.object({
         slug: slugArg,
-        version: z.number().int().positive().describe("The version to bring back."),
+        version: versionSchema.describe("The version to bring back."),
         message: z.string().optional(),
       }),
     },
@@ -334,7 +331,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       description: "Read a note. Returns the latest version unless a version number is given.",
       inputSchema: z.object({
         slug: noteSlugArg,
-        version: z.number().int().positive().optional().describe("A specific version from list_note_versions."),
+        version: versionSchema.optional().describe("A specific version from list_note_versions."),
       }),
       annotations: { readOnlyHint: true },
     },
@@ -383,10 +380,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
         tags: z.array(z.string()).optional(),
         body: z.string().optional().describe("The complete new text, in markdown."),
         message: z.string().describe("What changed and why."),
-        baseVersion: z
-          .number()
-          .int()
-          .positive()
+        baseVersion: versionSchema
           .optional()
           .describe("The version your edit is based on. The update is refused if a newer version was saved since."),
       }),
@@ -429,7 +423,7 @@ export function registerTools(server: McpServer, getDb: () => Promise<Db>) {
       description: "Roll a note back to an earlier version. This saves a new version with the old content, so it can be undone.",
       inputSchema: z.object({
         slug: noteSlugArg,
-        version: z.number().int().positive().describe("The version to bring back."),
+        version: versionSchema.describe("The version to bring back."),
         message: z.string().optional(),
       }),
     },

@@ -168,6 +168,15 @@ input:-webkit-autofill:focus {
   margin-bottom: 0;
 }
 
+.tiptap li {
+  margin-top: 0.15em;
+  margin-bottom: 0.15em;
+}
+.tiptap li > :is(ul, ol) {
+  margin-top: 0.15em;
+  margin-bottom: 0;
+}
+
 .tiptap > :is(ul, ol):first-child > li:first-child,
 .prose > :is(ul, ol):first-child > li:first-child {
   margin-top: 0;

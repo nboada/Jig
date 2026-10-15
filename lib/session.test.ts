@@ -7,6 +7,7 @@ import {
   endAllSessions,
   passwordProblem,
   readSession,
+  revokeSession,
   SESSION_ABSOLUTE_SECONDS,
   SESSION_IDLE_SECONDS,
   sessionLooksCurrent,
@@ -96,10 +97,30 @@ describe("sessions", () => {
     expect(await readSession(db, after.value, Date.now() + 1000)).not.toBeNull();
   });
 
+  test("logging out revokes just that session, and renewing keeps its identity", async () => {
+    const later = Date.now() + 5000;
+    const one = await createSession(db, later);
+    const two = await createSession(db, later + 1);
+    const session = (await readSession(db, one.value))!;
+    const renewed = await createSession(db, later, session.issuedAt, session.sid);
+    await revokeSession(db, session);
+    expect(await readSession(db, one.value)).toBeNull();
+    expect(await readSession(db, renewed.value)).toBeNull();
+    expect(await readSession(db, two.value)).not.toBeNull();
+  });
+
+  test("revoked entries are pruned once they would have expired anyway", async () => {
+    await db.query(`INSERT INTO revoked_sessions (sid, expires_at) VALUES ('old', now() - interval '1 hour')`);
+    const fresh = (await readSession(db, (await createSession(db, Date.now() + 5000)).value))!;
+    await revokeSession(db, fresh);
+    const rows = await db.query(`SELECT sid FROM revoked_sessions WHERE sid = 'old'`);
+    expect(rows).toHaveLength(0);
+  });
+
   test("the proxy's check only looks at shape and expiry", async () => {
     const { value } = await createSession(db);
     expect(sessionLooksCurrent(value)).toBe(true);
-    expect(sessionLooksCurrent(`1.${Math.floor(Date.now() / 1000) - 1}.x`)).toBe(false);
+    expect(sessionLooksCurrent(`1.sid.${Math.floor(Date.now() / 1000) - 1}.x`)).toBe(false);
     expect(sessionLooksCurrent(undefined)).toBe(false);
   });
 });

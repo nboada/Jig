@@ -26,6 +26,14 @@ describe("server actions", () => {
     }
   });
 
+  test("changing passkeys needs the same unlock as secrets, not just a session", () => {
+    const actions = exportedFunctions(read("app/actions.ts"));
+    for (const name of ["passkeySetupOptions", "addPasskey", "deletePasskey"]) {
+      const body = actions.find((a) => a.name === name)!.body;
+      expect({ name, unlocked: body.includes("await isUnlocked()") }).toEqual({ name, unlocked: true });
+    }
+  });
+
   test("the public actions are exactly the expected ones", () => {
     const unguarded = exportedFunctions(read("app/actions.ts")).filter((a) => !a.body.includes("requireAuth()"));
     expect(unguarded.map((a) => a.name).sort()).toEqual([...PUBLIC].sort());

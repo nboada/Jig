@@ -60,7 +60,10 @@ const Registration = z.object({
   token_endpoint_auth_method: z.string().optional(),
 });
 
-export async function registerClient(db: Db, input: unknown): Promise<OAuthClient> {
+const MAX_UNCONNECTED_CLIENTS = 200;
+const MAX_REGISTRATIONS_PER_IP_HOUR = 20;
+
+export async function registerClient(db: Db, input: unknown, { ip = null }: { ip?: string | null } = {}): Promise<OAuthClient> {
   const parsed = Registration.safeParse(input);
   if (!parsed.success) throw new OAuthError("invalid_client_metadata", "redirect_uris is required.");
   const { redirect_uris, client_name, token_endpoint_auth_method } = parsed.data;
@@ -74,9 +77,14 @@ export async function registerClient(db: Db, input: unknown): Promise<OAuthClien
        DELETE FROM oauth_clients c
        WHERE c.created_at < now() - interval '1 day' AND NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = c.id)
      )
-     INSERT INTO oauth_clients (id, name, redirect_uris) VALUES ($1, $2, $3::jsonb) RETURNING *`,
-    [crypto.randomUUID(), client_name?.trim() || "An app", JSON.stringify(redirect_uris)],
+     INSERT INTO oauth_clients (id, name, redirect_uris, ip)
+     SELECT $1, $2, $3::jsonb, $4
+     WHERE (SELECT count(*) FROM oauth_clients c WHERE NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = c.id)) < ${MAX_UNCONNECTED_CLIENTS}
+       AND ($4::text IS NULL OR (SELECT count(*) FROM oauth_clients WHERE ip = $4 AND created_at > now() - interval '1 hour') < ${MAX_REGISTRATIONS_PER_IP_HOUR})
+     RETURNING *`,
+    [crypto.randomUUID(), client_name?.trim() || "An app", JSON.stringify(redirect_uris), ip],
   );
+  if (!rows[0]) throw new OAuthError("temporarily_unavailable", "Too many apps are registering right now. Try again later.", 429);
   return toClient(rows[0]);
 }
 
@@ -92,6 +100,7 @@ export type AuthorizeRequest = {
   state?: string;
   resource?: string;
   scope: Scope;
+  redirectUriSent: boolean;
 };
 
 export async function checkAuthorizeRequest(
@@ -114,9 +123,12 @@ export async function checkAuthorizeRequest(
   if (asked.some((word) => !SCOPES.includes(word as Scope))) {
     return back("invalid_scope", `The scope must be made of: ${SCOPES.join(", ")}.`);
   }
+  if (asked.includes("app") && !isAppRedirect(redirectUri)) {
+    return back("invalid_scope", "The app scope is only for native apps that return to a private-use address.");
+  }
   const scope: Scope = asked.includes("app") ? "app" : SCOPE;
   if (params.resource && params.resource !== resourceUrl) return back("invalid_target", `The resource must be ${resourceUrl}.`);
-  return { client, redirectUri, codeChallenge: params.code_challenge, state: params.state, resource: params.resource, scope };
+  return { client, redirectUri, codeChallenge: params.code_challenge, state: params.state, resource: params.resource, scope, redirectUriSent: Boolean(params.redirect_uri) };
 }
 
 export function redirectError(redirectUri: string, error: string, description: string, state?: string): string {
@@ -131,9 +143,9 @@ export async function approve(db: Db, request: AuthorizeRequest): Promise<string
   const code = random(CODE_PREFIX);
   await db.query(
     `WITH expired AS (DELETE FROM oauth_codes WHERE expires_at < now())
-     INSERT INTO oauth_codes (code_hash, client_id, redirect_uri, code_challenge, resource, scope, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $7, now() + make_interval(secs => $6))`,
-    [await sha256(code), request.client.id, request.redirectUri, request.codeChallenge, request.resource ?? null, CODE_TTL_SECONDS, request.scope],
+     INSERT INTO oauth_codes (code_hash, client_id, redirect_uri, code_challenge, resource, scope, expires_at, redirect_uri_sent)
+     VALUES ($1, $2, $3, $4, $5, $7, now() + make_interval(secs => $6), $8)`,
+    [await sha256(code), request.client.id, request.redirectUri, request.codeChallenge, request.resource ?? null, CODE_TTL_SECONDS, request.scope, request.redirectUriSent],
   );
   const url = new URL(request.redirectUri);
   url.searchParams.set("code", code);
@@ -169,7 +181,7 @@ export async function exchangeCode(
      SELECT $2, c.client_id, cl.name, $3, now() + make_interval(secs => $4), $5, c.scope
      FROM c JOIN oauth_clients cl ON cl.id = c.client_id
      WHERE c.expires_at > now() AND c.client_id = $6 AND c.code_challenge = $7
-       AND ($8::text IS NULL OR c.redirect_uri = $8)
+       AND (c.redirect_uri = $8 OR ($8::text IS NULL AND NOT c.redirect_uri_sent))
        AND ($9::text IS NULL OR c.resource IS NULL OR c.resource = $9)
      RETURNING id, scope`,
     [
@@ -194,12 +206,15 @@ export async function refreshTokens(db: Db, { refreshToken, clientId }: { refres
   const refresh = random(REFRESH_PREFIX);
   const rows = await db.query(
     `UPDATE oauth_grants
-     SET access_hash = $3, access_expires_at = now() + make_interval(secs => $4), refresh_hash = $5, last_used_at = now()
+     SET access_hash = $3, access_expires_at = now() + make_interval(secs => $4), prev_refresh_hash = refresh_hash, refresh_hash = $5, last_used_at = now()
      WHERE refresh_hash = $1 AND client_id = $2
      RETURNING id, scope`,
     [await sha256(refreshToken), clientId, await sha256(access), ACCESS_TTL_SECONDS, await sha256(refresh)],
   );
-  if (!rows.length) throw new OAuthError("invalid_grant", "The refresh token is invalid or was revoked.");
+  if (!rows.length) {
+    await db.query(`DELETE FROM oauth_grants WHERE prev_refresh_hash = $1 AND client_id = $2`, [await sha256(refreshToken), clientId]);
+    throw new OAuthError("invalid_grant", "The refresh token is invalid or was revoked.");
+  }
   return tokens(access, refresh, rows[0].scope as string);
 }
 

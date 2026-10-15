@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { iconButton } from "@/components/Button";
 import { CloseIcon } from "@/components/NavIcons";
-import { FLASH_COOKIE } from "@/lib/flash";
+import { FLASH_COOKIE, FLASH_ERROR_COOKIE } from "@/lib/flash";
 
 const manager = Toast.createToastManager();
 
@@ -97,10 +97,15 @@ export function Toaster() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const cookie = document.cookie.split("; ").find((c) => c.startsWith(`${FLASH_COOKIE}=`));
-    if (!cookie) return;
-    document.cookie = `${FLASH_COOKIE}=; Max-Age=0; path=/`;
-    toast.success(decodeURIComponent(cookie.slice(FLASH_COOKIE.length + 1)));
+    for (const [name, show] of [
+      [FLASH_COOKIE, toast.success],
+      [FLASH_ERROR_COOKIE, toast.error],
+    ] as const) {
+      const cookie = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
+      if (!cookie) continue;
+      document.cookie = `${name}=; Max-Age=0; path=/`;
+      show(decodeURIComponent(cookie.slice(name.length + 1)));
+    }
   }, [pathname]);
 
   return (

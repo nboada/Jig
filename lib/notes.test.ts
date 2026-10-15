@@ -51,6 +51,25 @@ describe("notes", () => {
     await expect(createNote(db, { ...deploy, slug })).rejects.toThrow("already taken");
   });
 
+  test("a title with nothing sluggable falls back to note, not snippet", async () => {
+    expect((await createNote(db, { title: "!!!", body: "x" })).slug).toBe("note");
+    expect((await createNote(db, { title: "???", body: "x" })).slug).toBe("note-2");
+  });
+
+  test("a slug taken between the check and the insert is retried", async () => {
+    let raced = false;
+    const racing: Db = {
+      query: async (text, params) => {
+        if (/^\s*WITH n AS \(\s*INSERT INTO notes/.test(text) && !raced) {
+          raced = true;
+          await createNote(db, { title: "Setup", body: "rival" });
+        }
+        return db.query(text, params);
+      },
+    };
+    expect((await createNote(racing, { title: "Setup", body: "mine" })).slug).toBe("setup-2");
+  });
+
   test("note slugs are separate from snippet slugs", async () => {
     await createSnippet(db, { title: deploy.title, language: "text", files: [{ name: "a.txt", content: "x" }] });
     expect((await createNote(db, deploy)).slug).toBe(slug);

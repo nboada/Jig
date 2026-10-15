@@ -53,6 +53,33 @@ describe("recently deleted", () => {
     expect((await listNotes(db)).length).toBe(2);
   });
 
+  test("restoring fills columns missing from the stored copy with their defaults", async () => {
+    await createSnippet(db, lenis);
+    const id = await trashItem(db, "snippets", "lenis");
+    await db.query(`UPDATE trash SET item = item - 'current_version' - 'description', versions = (SELECT jsonb_agg(v - 'source' - 'message') FROM jsonb_array_elements(versions) v)`);
+    await restoreItem(db, id);
+    const [row] = await db.query<{ current_version: number; description: string }>(`SELECT current_version, description FROM snippets`);
+    expect(row).toEqual({ current_version: 1, description: "" });
+    const [version] = await db.query<{ source: string; message: string }>(`SELECT source, message FROM snippet_versions`);
+    expect(version).toEqual({ source: "web", message: "" });
+  });
+
+  test("a slug taken between the check and the insert is retried or reported as a conflict", async () => {
+    await createNote(db, { title: "Setup", body: "old" });
+    const id = await trashItem(db, "notes", "setup");
+    let raced = false;
+    const racing: Db = {
+      query: async (text, params) => {
+        if (/^\s*WITH t AS \(DELETE FROM trash/.test(text) && !raced) {
+          raced = true;
+          await createNote(db, { title: "Setup", body: "new" });
+        }
+        return db.query(text, params);
+      },
+    };
+    expect((await restoreItem(racing, id)).slug).toBe("setup-2");
+  });
+
   test("share links stop while an item is deleted and work again once it's restored", async () => {
     await createSnippet(db, lenis);
     const { token } = await createShare(db, "snippets", "lenis", { expiry: "7d", maxViews: null });

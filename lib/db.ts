@@ -156,12 +156,21 @@ const SCHEMA = [
   )`,
   `ALTER TABLE oauth_unlock_codes ADD COLUMN IF NOT EXISTS grant_id text`,
   `ALTER TABLE oauth_unlock_codes ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`,
+  `ALTER TABLE oauth_codes ADD COLUMN IF NOT EXISTS redirect_uri_sent boolean NOT NULL DEFAULT true`,
+  `ALTER TABLE oauth_grants ADD COLUMN IF NOT EXISTS prev_refresh_hash text`,
+  `ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS ip text`,
+  `CREATE TABLE IF NOT EXISTS revoked_sessions (
+    sid text PRIMARY KEY,
+    expires_at timestamptz NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
     name text PRIMARY KEY,
     value text NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
 ];
+
+const SCHEMA_LOCK = `SELECT pg_advisory_xact_lock(7461902)`;
 
 async function migrate(db: Db) {
   if (db.batch) {
@@ -171,7 +180,18 @@ async function migrate(db: Db) {
       console.error("[jig] batched schema setup failed; running it statement by statement", error);
     }
   }
-  for (const statement of SCHEMA) await db.query(statement);
+  for (const statement of SCHEMA) await runStatement(db, statement);
+}
+
+const RACE_CODES = new Set(["23505", "42P07", "42710", "42701", "40P01"]);
+
+async function runStatement(db: Db, statement: string) {
+  try {
+    await db.query(statement);
+  } catch (error) {
+    if (!RACE_CODES.has((error as { code?: string }).code ?? "")) throw error;
+    await db.query(statement);
+  }
 }
 
 async function neonDb(url: string): Promise<Db> {
@@ -181,7 +201,7 @@ async function neonDb(url: string): Promise<Db> {
     query: async <T extends Row>(text: string, params: unknown[] = []) =>
       (await sql.query(text, params)) as T[],
     batch: async (statements: string[]) => {
-      await sql.transaction(statements.map((statement) => sql.query(statement)));
+      await sql.transaction([SCHEMA_LOCK, ...statements].map((statement) => sql.query(statement)));
     },
   };
 }

@@ -26,6 +26,8 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
     problem = error.message;
   }
   if (request && "redirect" in request) redirect(request.redirect);
+  const native = request ? isAppRedirect(request.redirectUri) : false;
+  const where = request ? (native ? new URL(request.redirectUri).protocol.slice(0, -1) : new URL(request.redirectUri).host) : "";
 
   return (
     <main className="bench relative grid min-h-dvh place-items-center px-4">
@@ -42,30 +44,61 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
         ) : (
           <div className="space-y-6">
             <div className="space-y-2">
-              <h1 className="text-[17px] font-semibold">{`${request.client.name} wants to connect to your Jig`}</h1>
+              <h1 className="text-[17px] font-semibold">
+                {native ? "An app on this device wants to connect to your Jig" : (
+                  <>
+                    <span className="font-mono">{where}</span>
+                    {" wants to connect to your Jig"}
+                  </>
+                )}
+              </h1>
               <p className="text-body text-text-2">
-                {isAppRedirect(request.redirectUri) ? (
+                {native ? (
                   <>
                     {"Approving sends access back to the app that registered "}
-                    <span className="font-mono text-text">{new URL(request.redirectUri).protocol.slice(0, -1)}</span>
-                    {" on this device. Only allow it if you just started signing in from that app."}
+                    <span className="font-mono text-text">{where}</span>
+                    {". Only allow it if you just started signing in from that app."}
                   </>
                 ) : (
                   <>
                     {"Approving sends access back to "}
-                    <span className="font-mono text-text">{new URL(request.redirectUri).host}</span>
+                    <span className="font-mono text-text">{where}</span>
                     {". Only allow it if you just started connecting from there."}
                   </>
                 )}
               </p>
+              <p className="text-meta text-muted">
+                {"It calls itself "}
+                <span className="text-text-2">{request.client.name}</span>
+                {", but any app can pick any name."}
+              </p>
             </div>
             <div className="space-y-2 rounded-xl border border-line bg-panel p-4 text-ui leading-6 text-text-2">
-              <p className="font-medium text-text">It will be able to</p>
-              <ul className="list-disc space-y-1 pl-5">
-                <li>Search and read your snippets and notes</li>
-                <li>Create and update them (every change is saved as a new version)</li>
-              </ul>
-              <p className="pt-1 text-muted">It can't see your credentials or locked notes, or delete anything.</p>
+              <p className="font-medium text-text">
+                {"Access requested: "}
+                <span className="font-mono">{request.scope}</span>
+              </p>
+              {request.scope === "app" ? (
+                <>
+                  <ul className="list-disc space-y-1 pl-5">
+                    <li>Read, create, update, pin, copy and delete your snippets and notes</li>
+                    <li>List your credentials and restore or permanently delete items in Recently deleted</li>
+                    <li>Create and revoke share links, and list or remove API tokens, connected apps and passkeys</li>
+                    <li>Sign you out everywhere</li>
+                    <li>Use and change the AI keys saved in Jig</li>
+                    <li>Reveal secrets and locked notes only after you unlock them again</li>
+                  </ul>
+                  <p className="pt-1 text-muted">This is the full app access Jig's own iPhone and Mac apps use. Only allow it for an app you installed yourself.</p>
+                </>
+              ) : (
+                <>
+                  <ul className="list-disc space-y-1 pl-5">
+                    <li>Search and read your snippets and notes</li>
+                    <li>Create and update them (every change is saved as a new version)</li>
+                  </ul>
+                  <p className="pt-1 text-muted">It can't see your credentials or locked notes, or delete anything.</p>
+                </>
+              )}
             </div>
             <form className="flex gap-2">
               <input type="hidden" name="params" value={JSON.stringify(params)} />

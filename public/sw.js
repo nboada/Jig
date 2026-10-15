@@ -1,7 +1,7 @@
-const PAGES = "jig-pages-v1";
+const PAGES = "jig-pages-v2";
 const STATIC = "jig-static-v1";
 const MAX_PAGES = 150;
-const CACHEABLE = /^\/((snippets|notes)(\/[^/]+)?)?$/;
+const CACHEABLE = /^\/((snippets|notes)(\/(?!new$)[^/]+)?)?$/;
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -60,13 +60,20 @@ async function page(request, url) {
 async function remember(url, response) {
   const final = new URL(response.url || url.href);
   if (final.pathname === "/login") return caches.delete(PAGES);
-  if (!response.ok || !CACHEABLE.test(final.pathname)) return;
-  if ((await response.clone().text()).includes('name="jig-offline" content="skip"')) return;
+  if (!CACHEABLE.test(final.pathname)) return;
 
   const cache = await caches.open(PAGES);
   const key = final.pathname + final.search;
+  if (response.status === 404) return cache.delete(key);
+  if (!response.ok) return;
+  if ((await response.clone().text()).includes('name="jig-offline" content="skip"')) return cache.delete(key);
+
+  const headers = new Headers(response.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+  const stored = new Response(response.clone().body, { status: response.status, statusText: response.statusText, headers });
   await cache.delete(key);
-  await cache.put(key, response);
+  await cache.put(key, stored);
   if (response.redirected && url.pathname + url.search !== key) {
     await cache.put(url.pathname + url.search, Response.redirect(final.href, 302));
   }

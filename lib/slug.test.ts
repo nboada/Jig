@@ -6,6 +6,7 @@ const names = (files: { name: string }[]) => files.map((f) => f.name);
 test("slugify", () => {
   expect(slugify("Same height divs")).toBe("same-height-divs");
   expect(slugify("")).toBe("snippet");
+  expect(slugify("!!!", "note")).toBe("note");
 });
 
 test("automatic names follow the title, hand-picked ones stay", () => {

@@ -74,11 +74,13 @@ export function UnlockPanel({
   title = "This note is locked",
   line = "Its text is encrypted and hidden from agents.",
   compact = false,
+  onUnlocked,
 }: {
   hasPasskey: boolean;
   title?: string;
   line?: string;
   compact?: boolean;
+  onUnlocked?: () => void;
 }) {
   const router = useRouter();
   const supported = useWebAuthn();
@@ -91,7 +93,10 @@ export function UnlockPanel({
 
   const done = (result: { error?: string }) => {
     if (result.error) setError(result.error);
-    else router.refresh();
+    else {
+      router.refresh();
+      onUnlocked?.();
+    }
   };
 
   return (
@@ -180,10 +185,12 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [keys, setKeys] = useState<Passkey[] | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [needsUnlock, setNeedsUnlock] = useState(false);
   const [pending, start] = useTransition();
 
   useEffect(() => {
     if (open) myPasskeys().then(setKeys);
+    else setNeedsUnlock(false);
   }, [open]);
 
   function add() {
@@ -191,9 +198,14 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       setError("");
       try {
         const optionsJSON = await passkeySetupOptions();
+        if ("error" in optionsJSON) {
+          setNeedsUnlock(true);
+          return;
+        }
         const response = await startRegistration({ optionsJSON });
         const result = await addPasskey(response, name || guessDeviceName());
-        if (result.error) setError(result.error);
+        if (result.locked) setNeedsUnlock(true);
+        else if (result.error) setError(result.error);
         else {
           setName("");
           setKeys(await myPasskeys());
@@ -216,6 +228,15 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       description="Sign in, and unlock locked notes and secrets, with Touch ID, Face ID or a security key. A passkey works on the site it was made on."
     >
       <div className="mt-5 space-y-5">
+        {needsUnlock && (
+          <UnlockPanel
+            compact
+            hasPasskey={(keys?.length ?? 0) > 0}
+            title="Unlock to change passkeys"
+            line="Adding or removing a passkey needs your password or an existing passkey. Then try again."
+            onUnlocked={() => setNeedsUnlock(false)}
+          />
+        )}
         {keys === null ? (
           <p className="text-ui text-muted">Loading…</p>
         ) : keys.length === 0 ? (
@@ -239,7 +260,9 @@ export function PasskeysDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                     setKeys((current) => current?.filter((p) => p.id !== k.id) ?? current);
                     start(async () => {
                       try {
-                        await deletePasskey(k.id);
+                        const result = await deletePasskey(k.id);
+                        if (result.locked) setNeedsUnlock(true);
+                        else if (result.error) setError(result.error);
                       } finally {
                         setKeys(await myPasskeys());
                       }

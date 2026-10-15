@@ -5,8 +5,9 @@ const MAX_ATTEMPTS = 10;
 const WINDOW_MINUTES = 15;
 const MAX_ATTEMPTS_EVERYWHERE = 100;
 
-export function clientIpFrom(forwardedFor: string | null, realIp: string | null = null): string {
-  return realIp?.trim() || forwardedFor?.split(",")[0]?.trim() || "unknown";
+export function clientIpFrom(headers: Headers): string {
+  const platform = (headers.get("x-vercel-forwarded-for") ?? headers.get("x-real-ip"))?.split(",")[0]?.trim();
+  return platform || headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
 }
 
 export async function checkLogin(

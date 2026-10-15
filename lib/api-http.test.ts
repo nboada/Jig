@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, expect, test } from "bun:test";
-import { respond } from "./api-http";
+import { MAX_BODY_BYTES, respond } from "./api-http";
 import { snippetsApi } from "./api";
 import { pgliteDb, prepare, type Db } from "./db";
 import { approve, checkAuthorizeRequest, exchangeCode, pkceChallenge, registerClient } from "./oauth";
@@ -27,7 +27,7 @@ async function accessToken(scope: string) {
   );
   if ("redirect" in request) throw new Error(request.redirect);
   const code = new URL(await approve(db, request)).searchParams.get("code")!;
-  return (await exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier })).access_token;
+  return (await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier })).access_token;
 }
 
 const req = (token?: string, init: RequestInit = {}) =>
@@ -86,4 +86,17 @@ test("bodies must be JSON objects", async () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error.message).toBe("The body must be a JSON object.");
   }
+});
+
+test("a request body over the cap is refused with 413", async () => {
+  const token = await accessToken("app");
+  const run = (init: RequestInit) =>
+    respond(db, req(token, { method: "POST", ...init }), async ({ body }) => body(), 201);
+
+  const huge = JSON.stringify({ text: "x".repeat(MAX_BODY_BYTES) });
+  const streamed = await run({ body: huge });
+  expect(streamed.status).toBe(413);
+  expect((await streamed.json()).error.code).toBe("too_large");
+
+  expect((await run({ body: JSON.stringify({ ok: "yes" }) })).status).toBe(201);
 });

@@ -1,4 +1,5 @@
 import type { Body } from "./api";
+import { BodyTooLarge, readText } from "./body";
 import type { Db } from "./db";
 import { verifyAccessToken } from "./oauth";
 import { SnippetError } from "./snippets";
@@ -38,8 +39,15 @@ export async function authorize(db: Db, req: Request): Promise<Caller | null> {
   return grant?.scope === "app" ? { source: `app:${grant.name}`, grantId: grant.id, clientId: grant.clientId } : null;
 }
 
-async function readBody(req: Request): Promise<Body> {
-  const value = await req.json().catch(() => undefined);
+export const MAX_BODY_BYTES = 5_000_000;
+
+export async function readBody(req: Request): Promise<Body> {
+  let value: unknown;
+  try {
+    value = JSON.parse(await readText(req, MAX_BODY_BYTES));
+  } catch (error) {
+    if (error instanceof BodyTooLarge) throw new ApiFailure("too_large", error.message, 413);
+  }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new SnippetError("The body must be a JSON object.", "invalid");
   }

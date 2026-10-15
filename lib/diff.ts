@@ -2,7 +2,7 @@ import { structuredPatch } from "diff";
 import type { NoteVersion } from "./notes";
 import type { SnippetVersion } from "./snippets";
 
-export type DiffLine = { kind: "hunk" | "add" | "del" | "ctx"; text: string };
+export type DiffLine = { kind: "hunk" | "add" | "del" | "ctx"; text: string; noNewline?: true };
 
 export type FileDiff = {
   name: string;
@@ -31,7 +31,11 @@ export function diffFile(name: string, before: string | undefined, after: string
   for (const hunk of patch.hunks) {
     lines.push({ kind: "hunk", text: `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@` });
     for (const line of hunk.lines) {
-      if (line.startsWith("\\")) continue;
+      if (line.startsWith("\\")) {
+        const previous = lines.at(-1);
+        if (previous) previous.noNewline = true;
+        continue;
+      }
       const kind = line[0] === "+" ? "add" : line[0] === "-" ? "del" : "ctx";
       if (kind === "add") additions++;
       if (kind === "del") deletions++;
@@ -72,6 +76,7 @@ export function formatDiff(diff: VersionDiff): string {
     out.push(`+++ ${file.status === "removed" ? "/dev/null" : `b/${file.name}`}`);
     for (const line of file.lines) {
       out.push(line.kind === "hunk" ? line.text : `${line.kind === "add" ? "+" : line.kind === "del" ? "-" : " "}${line.text}`);
+      if (line.noNewline) out.push("\\ No newline at end of file");
     }
   }
   return out.join("\n");

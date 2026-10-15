@@ -33,7 +33,7 @@ export async function startSession(): Promise<void> {
 export async function renewSession(session: Session, now = Date.now()): Promise<void> {
   const secondsLeft = session.expires - Math.floor(now / 1000);
   if (secondsLeft > SESSION_IDLE_SECONDS - SESSION_RENEW_SECONDS) return;
-  const { value, maxAge } = await createSession(await getDb(), now, session.issuedAt);
+  const { value, maxAge } = await createSession(await getDb(), now, session.issuedAt, session.sid);
   if (Math.floor(now / 1000) + maxAge <= session.expires) return;
   (await cookies()).set(SESSION_COOKIE, value, sessionCookie(maxAge));
 }

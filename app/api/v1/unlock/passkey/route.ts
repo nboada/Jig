@@ -15,6 +15,6 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const db = await getDb();
-  const ip = clientIpFrom(req.headers.get("x-forwarded-for"), req.headers.get("x-real-ip"));
+  const ip = clientIpFrom(req.headers);
   return respond(db, req, async (caller) => unlockWithPasskey(db, caller, site(req), await caller.body(), ip));
 }

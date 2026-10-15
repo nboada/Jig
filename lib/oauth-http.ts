@@ -1,4 +1,5 @@
 import { getPublicOrigin } from "mcp-handler";
+import { BodyTooLarge, readText } from "./body";
 import { OAuthError, SCOPE, SCOPES } from "./oauth";
 
 
@@ -38,16 +39,39 @@ export function oauthError(error: unknown): Response {
   return json({ error: "server_error", error_description: "Something went wrong. Try again." }, 500);
 }
 
+const MAX_OAUTH_BODY_BYTES = 100_000;
+
+async function oauthText(req: Request): Promise<string> {
+  try {
+    return await readText(req, MAX_OAUTH_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof BodyTooLarge) throw new OAuthError("invalid_request", error.message, 413);
+    throw error;
+  }
+}
+
+export async function readJson(req: Request): Promise<unknown> {
+  const text = await oauthText(req);
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export async function readBody(req: Request): Promise<Record<string, string>> {
   const type = req.headers.get("content-type") ?? "";
+  const text = await oauthText(req);
   if (type.includes("application/json")) {
-    const data = await req.json().catch(() => ({}));
-    return Object.fromEntries(Object.entries(data ?? {}).filter(([, v]) => typeof v === "string")) as Record<string, string>;
+    let data: unknown = {};
+    try {
+      data = JSON.parse(text);
+    } catch {}
+    return Object.fromEntries(Object.entries(data && typeof data === "object" ? data : {}).filter(([, v]) => typeof v === "string")) as Record<string, string>;
   }
-  const form = await req.formData().catch(() => null);
   const out: Record<string, string> = {};
-  form?.forEach((value, key) => {
-    if (typeof value === "string") out[key] = value;
+  new URLSearchParams(text).forEach((value, key) => {
+    out[key] = value;
   });
   return out;
 }

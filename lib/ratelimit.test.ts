@@ -47,12 +47,14 @@ describe("login rate limiting", () => {
     expect(rows.map((r) => r.ip)).toEqual(["2.2.2.2"]);
   });
 
-  test("the client IP is the first x-forwarded-for entry", () => {
-    expect(clientIpFrom("203.0.113.5, 10.0.0.1")).toBe("203.0.113.5");
-    expect(clientIpFrom(" 203.0.113.5 ")).toBe("203.0.113.5");
-    expect(clientIpFrom(null)).toBe("unknown");
-    expect(clientIpFrom("  ")).toBe("unknown");
-    expect(clientIpFrom("203.0.113.5", "198.51.100.7")).toBe("198.51.100.7");
+  test("the client IP prefers platform headers and never the spoofable first x-forwarded-for entry", () => {
+    const ip = (headers: Record<string, string>) => clientIpFrom(new Headers(headers));
+    expect(ip({ "x-forwarded-for": "6.6.6.6, 203.0.113.5" })).toBe("203.0.113.5");
+    expect(ip({ "x-forwarded-for": " 203.0.113.5 " })).toBe("203.0.113.5");
+    expect(ip({})).toBe("unknown");
+    expect(ip({ "x-forwarded-for": "  " })).toBe("unknown");
+    expect(ip({ "x-forwarded-for": "6.6.6.6", "x-real-ip": "198.51.100.7" })).toBe("198.51.100.7");
+    expect(ip({ "x-forwarded-for": "6.6.6.6", "x-real-ip": "198.51.100.7", "x-vercel-forwarded-for": "192.0.2.9" })).toBe("192.0.2.9");
   });
 
   test("with everywhere, many IPs together are blocked too, and each IP alone isn't", async () => {

@@ -1,7 +1,7 @@
 import type { Db, Row } from "./db";
 import { plainText } from "./format";
 import { orderBy, parseSort, type Sort } from "./sort";
-import { availableSlug, copyTitle, parse, slugify, SnippetError } from "./snippets";
+import { copyTitle, insertWithSlug, parse, slugify, SnippetError } from "./snippets";
 import { noteInputSchema, notePatchSchema, slugSchema, titleFromBody, type NoteInput, type NotePatch } from "./validation";
 
 export type NoteSummary = {
@@ -163,23 +163,19 @@ async function requireNote(db: Db, slug: string, version?: number, codec?: NoteC
 export async function createNote(db: Db, input: NoteInput, source = "web"): Promise<Note> {
   const data = parse(noteInputSchema, input);
 
-  let slug: string;
-  if (data.slug) {
-    slug = data.slug;
-    if (await getNote(db, slug)) throw new SnippetError(`The slug "${slug}" is already taken`, "conflict");
-  } else {
-    slug = await availableSlug(db, slugify(data.title), "notes");
-  }
+  if (data.slug && (await getNote(db, data.slug))) throw new SnippetError(`The slug "${data.slug}" is already taken`, "conflict");
 
-  await db.query(
-    `WITH n AS (
-       INSERT INTO notes (id, slug, title, tags) VALUES ($1, $2, $3, $4::jsonb)
-       RETURNING id
-     )
-     INSERT INTO note_versions (note_id, version, title, tags, body, message, source)
-     SELECT n.id, 1, $3, $4::jsonb, $5, $6, $7 FROM n`,
-    [crypto.randomUUID(), slug, data.title, JSON.stringify(data.tags), data.body, data.message || "Created", source],
-  );
+  const slug = await insertWithSlug(db, "notes", { explicit: data.slug, base: slugify(data.title, "note") }, async (slug) => {
+    await db.query(
+      `WITH n AS (
+         INSERT INTO notes (id, slug, title, tags) VALUES ($1, $2, $3, $4::jsonb)
+         RETURNING id
+       )
+       INSERT INTO note_versions (note_id, version, title, tags, body, message, source)
+       SELECT n.id, 1, $3, $4::jsonb, $5, $6, $7 FROM n`,
+      [crypto.randomUUID(), slug, data.title, JSON.stringify(data.tags), data.body, data.message || "Created", source],
+    );
+  });
   return requireNote(db, slug);
 }
 

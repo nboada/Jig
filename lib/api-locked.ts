@@ -11,7 +11,7 @@ import { checkPassword, passwordProblem, sessionsValidAfter } from "./session";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { seal, sha256, unseal } from "./signing";
 import { SnippetError } from "./snippets";
-import type { NotePatch } from "./validation";
+import { versionSchema, type NotePatch } from "./validation";
 
 // Everything in the app API that can read a locked note's text. Kept apart from lib/api.ts so that module,
 // like lib/mcp.ts, can never reach the note key.
@@ -143,7 +143,7 @@ export const requireUnlock = (db: Db, req: Request) => async (caller: Caller) =>
 function version(value: string | null): number | undefined {
   if (value === null || value === "") return undefined;
   const n = Number(value);
-  if (!/^\d+$/.test(value) || n < 1 || n > 2_147_483_647) throw new SnippetError("v must be a whole number.", "invalid");
+  if (!/^\d+$/.test(value) || !versionSchema.safeParse(n).success) throw new SnippetError("v must be a whole number.", "invalid");
   return n;
 }
 

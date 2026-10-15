@@ -1,10 +1,11 @@
 import { getDb } from "@/lib/db";
 import { registerClient } from "@/lib/oauth";
-import { json, oauthError, preflight } from "@/lib/oauth-http";
+import { clientIpFrom } from "@/lib/ratelimit";
+import { json, oauthError, preflight, readJson } from "@/lib/oauth-http";
 
 export async function POST(req: Request) {
   try {
-    const client = await registerClient(await getDb(), await req.json().catch(() => null));
+    const client = await registerClient(await getDb(), await readJson(req), { ip: clientIpFrom(req.headers) });
     return json(
       {
         client_id: client.id,

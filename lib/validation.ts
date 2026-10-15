@@ -11,6 +11,9 @@ export const slugSchema = z
   .max(80)
   .regex(SLUG_PATTERN, "Use lowercase letters, numbers and single hyphens, e.g. gsap-scroll-trigger");
 
+export const MAX_VERSION = 2_147_483_647;
+export const versionSchema = z.number().int().positive().max(MAX_VERSION);
+
 export const fileSchema = z.object({
   name: z.string().trim().min(1, "Every file needs a name").max(200),
   content: z.string().max(200_000, "Files are capped at 200,000 characters"),
@@ -55,7 +58,7 @@ export const snippetPatchSchema = z.object({
   dependencies: dependenciesSchema.optional(),
   files: filesSchema.optional(),
   message: z.string().trim().max(500).default(""),
-  baseVersion: z.number().int().positive().optional(),
+  baseVersion: versionSchema.optional(),
 });
 
 const noteBodySchema = z.string().max(200_000, "Notes are capped at 200,000 characters");
@@ -92,7 +95,7 @@ export const notePatchSchema = z.object({
   tags: tagsSchema.optional(),
   body: noteBodySchema.optional(),
   message: z.string().trim().max(500).default(""),
-  baseVersion: z.number().int().positive().optional(),
+  baseVersion: versionSchema.optional(),
 });
 
 const credentialFieldSchema = z.object({

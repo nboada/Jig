@@ -92,20 +92,20 @@ describe("oauth", () => {
   test("a code is used up even by a failed trade, and needs the right verifier and client", async () => {
     const { client, code } = await authorize();
     const other = "b".repeat(50);
-    await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: other })).rejects.toBeInstanceOf(OAuthError);
-    await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
+    await expect(exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: other })).rejects.toBeInstanceOf(OAuthError);
+    await expect(exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
 
     const second = await authorize();
-    await expect(exchangeCode(db, { code: second.code, clientId: client.id, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
+    await expect(exchangeCode(db, { code: second.code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
   });
 
   test("expired codes and tokens don't work", async () => {
     const { client, code } = await authorize();
     await db.query(`UPDATE oauth_codes SET expires_at = now() - interval '1 second'`);
-    await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
+    await expect(exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
 
     const fresh = await authorize();
-    const tokens = await exchangeCode(db, { code: fresh.code, clientId: fresh.client.id, codeVerifier: verifier });
+    const tokens = await exchangeCode(db, { code: fresh.code, clientId: fresh.client.id, redirectUri: CALLBACK, codeVerifier: verifier });
     await db.query(`UPDATE oauth_grants SET access_expires_at = now() - interval '1 second'`);
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
     const next = await refreshTokens(db, { refreshToken: tokens.refresh_token, clientId: fresh.client.id });
@@ -124,9 +124,57 @@ describe("oauth", () => {
     expect("redirect" in wrongResource && new URL(wrongResource.redirect).searchParams.get("error")).toBe("invalid_target");
   });
 
+  test("a code made with a redirect_uri needs the same one at the token endpoint; one made without may omit it", async () => {
+    const { client, code } = await authorize();
+    await expect(exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier })).rejects.toBeInstanceOf(OAuthError);
+
+    const only = await registerClient(db, { redirect_uris: [CALLBACK] });
+    const request = await checkAuthorizeRequest(
+      db,
+      { client_id: only.id, response_type: "code", code_challenge: await pkceChallenge(verifier), code_challenge_method: "S256" },
+      RESOURCE,
+    );
+    if ("redirect" in request) throw new Error(request.redirect);
+    const omitted = new URL(await approve(db, request)).searchParams.get("code")!;
+    expect((await exchangeCode(db, { code: omitted, clientId: only.id, codeVerifier: verifier })).token_type).toBe("Bearer");
+  });
+
+  test("replaying a rotated refresh token revokes the whole grant", async () => {
+    const { client, code } = await authorize();
+    const first = await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier });
+    const second = await refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id });
+    await expect(refreshTokens(db, { refreshToken: first.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
+    expect(await verifyAccessToken(db, second.access_token)).toBeNull();
+    await expect(refreshTokens(db, { refreshToken: second.refresh_token, clientId: client.id })).rejects.toBeInstanceOf(OAuthError);
+    expect(await listGrants(db)).toEqual([]);
+  });
+
+  test("the app scope is refused for web redirects and kept for native app ones", async () => {
+    const client = await registerClient(db, { redirect_uris: [CALLBACK] });
+    const base = { client_id: client.id, redirect_uri: CALLBACK, response_type: "code", code_challenge: "x", code_challenge_method: "S256" };
+    const refused = await checkAuthorizeRequest(db, { ...base, scope: "app" }, RESOURCE);
+    expect("redirect" in refused && new URL(refused.redirect).searchParams.get("error")).toBe("invalid_scope");
+    const mixed = await checkAuthorizeRequest(db, { ...base, scope: "mcp app" }, RESOURCE);
+    expect("redirect" in mixed).toBe(true);
+    const plain = await checkAuthorizeRequest(db, { ...base, scope: "mcp" }, RESOURCE);
+    expect("redirect" in plain).toBe(false);
+  });
+
+  test("registration is limited per address and in total", async () => {
+    for (let i = 0; i < 20; i++) await registerClient(db, { redirect_uris: [CALLBACK] }, { ip: "203.0.113.5" });
+    await expect(registerClient(db, { redirect_uris: [CALLBACK] }, { ip: "203.0.113.5" })).rejects.toMatchObject({ status: 429 });
+    await registerClient(db, { redirect_uris: [CALLBACK] }, { ip: "203.0.113.6" });
+
+    await db.query(`TRUNCATE oauth_clients`);
+    await db.query(
+      `INSERT INTO oauth_clients (id, name, redirect_uris) SELECT 'c' || n, 'x', '[]'::jsonb FROM generate_series(1, 200) AS n`,
+    );
+    await expect(registerClient(db, { redirect_uris: [CALLBACK] })).rejects.toMatchObject({ status: 429 });
+  });
+
   test("revoking from the Connect page ends the app's access", async () => {
     const { client, code } = await authorize();
-    const tokens = await exchangeCode(db, { code, clientId: client.id, codeVerifier: verifier });
+    const tokens = await exchangeCode(db, { code, clientId: client.id, redirectUri: CALLBACK, codeVerifier: verifier });
     const [grant] = await listGrants(db);
     await revokeGrant(db, grant.id);
     expect(await verifyAccessToken(db, tokens.access_token)).toBeNull();
@@ -169,7 +217,7 @@ describe("oauth", () => {
     const back = new URL(await approve(db, request));
     expect(back.protocol).toBe("com.example.jig:");
 
-    const tokens = await exchangeCode(db, { code: back.searchParams.get("code")!, clientId: client.id, codeVerifier: verifier });
+    const tokens = await exchangeCode(db, { code: back.searchParams.get("code")!, clientId: client.id, redirectUri: APP_CALLBACK, codeVerifier: verifier });
     expect(tokens.scope).toBe("app");
     expect((await verifyAccessToken(db, tokens.access_token))?.scope).toBe("app");
 

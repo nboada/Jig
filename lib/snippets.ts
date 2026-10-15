@@ -193,6 +193,30 @@ export async function availableSlug(
   return `${base}-${n}`;
 }
 
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23505";
+}
+
+const SLUG_ATTEMPTS = 5;
+
+export async function insertWithSlug(
+  db: Db,
+  table: "snippets" | "notes" | "credentials",
+  { explicit, base }: { explicit?: string; base: string },
+  insert: (slug: string) => Promise<void>,
+): Promise<string> {
+  for (let attempt = 1; ; attempt++) {
+    const slug = explicit ?? (await availableSlug(db, base, table));
+    try {
+      await insert(slug);
+      return slug;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      if (explicit || attempt >= SLUG_ATTEMPTS) throw new SnippetError(`The slug "${slug}" is already taken`, "conflict");
+    }
+  }
+}
+
 export function parse<S extends z.ZodType>(schema: S, value: unknown): z.output<S> {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
@@ -205,37 +229,33 @@ export function parse<S extends z.ZodType>(schema: S, value: unknown): z.output<
 export async function createSnippet(db: Db, input: SnippetInput, source = "web"): Promise<Snippet> {
   const data = parse(snippetInputSchema, input);
 
-  let slug: string;
-  if (data.slug) {
-    slug = data.slug;
-    if (await getSnippet(db, slug)) throw new SnippetError(`The slug "${slug}" is already taken`, "conflict");
-  } else {
-    slug = await availableSlug(db, slugify(data.title));
-  }
+  if (data.slug && (await getSnippet(db, data.slug))) throw new SnippetError(`The slug "${data.slug}" is already taken`, "conflict");
 
-  await db.query(
-    `WITH s AS (
-       INSERT INTO snippets (id, slug, title, description, language, tags)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-       RETURNING id
-     )
-     INSERT INTO snippet_versions
-       (snippet_id, version, title, description, language, tags, instructions, dependencies, files, message, source)
-     SELECT s.id, 1, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9::jsonb, $10, $11 FROM s`,
-    [
-      crypto.randomUUID(),
-      slug,
-      data.title,
-      data.description,
-      data.language,
-      JSON.stringify(data.tags),
-      data.instructions,
-      JSON.stringify(data.dependencies),
-      JSON.stringify(data.files),
-      data.message || "Created",
-      source,
-    ],
-  );
+  const slug = await insertWithSlug(db, "snippets", { explicit: data.slug, base: slugify(data.title) }, async (slug) => {
+    await db.query(
+      `WITH s AS (
+         INSERT INTO snippets (id, slug, title, description, language, tags)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+         RETURNING id
+       )
+       INSERT INTO snippet_versions
+         (snippet_id, version, title, description, language, tags, instructions, dependencies, files, message, source)
+       SELECT s.id, 1, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9::jsonb, $10, $11 FROM s`,
+      [
+        crypto.randomUUID(),
+        slug,
+        data.title,
+        data.description,
+        data.language,
+        JSON.stringify(data.tags),
+        data.instructions,
+        JSON.stringify(data.dependencies),
+        JSON.stringify(data.files),
+        data.message || "Created",
+        source,
+      ],
+    );
+  });
   return requireSnippet(db, slug);
 }
 

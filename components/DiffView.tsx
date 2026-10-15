@@ -47,6 +47,7 @@ export function DiffView({ diff }: { diff: VersionDiff }) {
               <div key={i} className={`${ROW[line.kind]} min-w-max px-4`}>
                 <span className="mr-3 inline-block w-3 select-none opacity-60">{SIGN[line.kind]}</span>
                 {line.text || " "}
+                {line.noNewline && <span className="ml-3 select-none text-meta italic opacity-70">no newline at end of file</span>}
               </div>
             ))}
           </pre>

@@ -11,21 +11,38 @@ export const MIN_PASSWORD_LENGTH = 12;
 
 const VALID_AFTER = "sessions-valid-after";
 
-export type Session = { issuedAt: number; expires: number };
+export type Session = { issuedAt: number; expires: number; sid: string };
 
-export async function createSession(db: Db, now = Date.now(), issuedAt = now): Promise<{ value: string; maxAge: number }> {
+export async function createSession(
+  db: Db,
+  now = Date.now(),
+  issuedAt = now,
+  sid = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url"),
+): Promise<{ value: string; maxAge: number }> {
   const expires = Math.min(Math.floor(now / 1000) + SESSION_IDLE_SECONDS, Math.floor(issuedAt / 1000) + SESSION_ABSOLUTE_SECONDS);
-  const value = await seal(db, "session", [String(issuedAt)], expires);
+  const value = await seal(db, "session", [String(issuedAt), sid], expires);
   return { value, maxAge: Math.max(0, expires - Math.floor(now / 1000)) };
 }
 
 export async function readSession(db: Db, value: string | undefined, now = Date.now()): Promise<Session | null> {
   const fields = await unseal(db, "session", value, now);
   const issuedAt = Number(fields?.[0]);
-  if (!fields || fields.length !== 1 || !Number.isFinite(issuedAt)) return null;
-  const rows = await db.query<{ value: string }>(`SELECT value FROM app_secrets WHERE name = $1`, [VALID_AFTER]);
-  if (rows[0] && issuedAt <= Number(rows[0].value)) return null;
-  return { issuedAt, expires: Number(value!.split(".")[1]) };
+  if (!fields || fields.length !== 2 || !Number.isFinite(issuedAt)) return null;
+  const [row] = await db.query<{ valid_after: string | null; revoked: boolean }>(
+    `SELECT (SELECT value FROM app_secrets WHERE name = $1) AS valid_after,
+            EXISTS (SELECT 1 FROM revoked_sessions WHERE sid = $2) AS revoked`,
+    [VALID_AFTER, fields[1]],
+  );
+  if (row.revoked || (row.valid_after !== null && issuedAt <= Number(row.valid_after))) return null;
+  return { issuedAt, expires: Number(value!.split(".")[2]), sid: fields[1] };
+}
+
+export async function revokeSession(db: Db, session: Session): Promise<void> {
+  await db.query(
+    `WITH pruned AS (DELETE FROM revoked_sessions WHERE expires_at < now())
+     INSERT INTO revoked_sessions (sid, expires_at) VALUES ($1, to_timestamp($2)) ON CONFLICT (sid) DO NOTHING`,
+    [session.sid, session.expires],
+  );
 }
 
 export async function endAllSessions(db: Db, now = Date.now()): Promise<void> {
@@ -43,7 +60,7 @@ export async function sessionsValidAfter(db: Db): Promise<number> {
 
 export function sessionLooksCurrent(value: string | undefined, now = Date.now()): boolean {
   const parts = value?.split(".") ?? [];
-  return parts.length === 3 && Number(parts[1]) * 1000 > now;
+  return parts.length === 4 && Number(parts[2]) * 1000 > now;
 }
 
 export function passwordProblem(): string | null {

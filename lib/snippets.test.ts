@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { pgliteDb, prepare, type Db } from "./db";
 import { compareVersions, formatDiff } from "./diff";
 import {
+  SnippetError,
   cloneSnippet,
   createSnippet,
   deleteSnippet,
@@ -59,6 +60,27 @@ describe("snippets", () => {
     await createSnippet(db, gsap);
     expect((await createSnippet(db, gsap)).slug).toBe("gsap-scrolltrigger-setup-2");
     expect(createSnippet(db, { ...gsap, slug: "gsap-scrolltrigger-setup" })).rejects.toThrow("already taken");
+  });
+
+  test("a slug taken between the check and the insert is retried, or reported as a conflict", async () => {
+    let raced = false;
+    let rival: Parameters<typeof createSnippet>[1] = gsap;
+    const racing: Db = {
+      query: async (text, params) => {
+        if (/^\s*WITH s AS \(\s*INSERT INTO snippets/.test(text) && !raced) {
+          raced = true;
+          await createSnippet(db, rival);
+        }
+        return db.query(text, params);
+      },
+    };
+    expect((await createSnippet(racing, gsap)).slug).toBe("gsap-scrolltrigger-setup-2");
+
+    raced = false;
+    rival = { ...gsap, slug: "other" };
+    const error = await createSnippet(racing, { ...gsap, slug: "other" }).catch((e) => e);
+    expect(error).toBeInstanceOf(SnippetError);
+    expect(error.code).toBe("conflict");
   });
 
   test("rejects invalid input with a readable message", async () => {

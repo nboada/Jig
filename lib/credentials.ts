@@ -1,7 +1,7 @@
 import { assertEncryptionReady, decryptSecret, encryptSecret } from "./crypto";
 import type { Db, Row } from "./db";
 import { orderBy, parseSort, type Sort } from "./sort";
-import { availableSlug, parse, slugify, SnippetError } from "./snippets";
+import { insertWithSlug, parse, slugify, SnippetError } from "./snippets";
 import { credentialInputSchema, slugSchema, type CredentialInput } from "./validation";
 
 
@@ -160,22 +160,20 @@ export async function createCredential(db: Db, input: CredentialInput): Promise<
   assertEncryptionReady();
   const data = parse(credentialInputSchema, input);
 
-  let slug: string;
-  if (data.slug) {
-    slug = data.slug;
-    if (await findRow(db, slug)) throw new SnippetError(`The slug "${slug}" is already taken`, "conflict");
-  } else {
-    slug = await availableSlug(db, slugify(data.title), "credentials");
-  }
+  if (data.slug && (await findRow(db, data.slug))) throw new SnippetError(`The slug "${data.slug}" is already taken`, "conflict");
 
   const id = crypto.randomUUID();
   const fields = await buildFields(id, data.fields);
-  const rows = await db.query(
-    `INSERT INTO credentials (id, slug, title, url, tags, note, fields)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb) RETURNING *`,
-    [id, slug, data.title, data.url, JSON.stringify(data.tags), data.note, JSON.stringify(fields)],
-  );
-  return toCredential(rows[0]);
+  let created: Record<string, unknown>;
+  await insertWithSlug(db, "credentials", { explicit: data.slug, base: slugify(data.title, "credential") }, async (slug) => {
+    const rows = await db.query(
+      `INSERT INTO credentials (id, slug, title, url, tags, note, fields)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb) RETURNING *`,
+      [id, slug, data.title, data.url, JSON.stringify(data.tags), data.note, JSON.stringify(fields)],
+    );
+    created = rows[0];
+  });
+  return toCredential(created!);
 }
 
 export async function updateCredential(db: Db, slug: string, input: CredentialInput): Promise<Credential> {

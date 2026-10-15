@@ -1,4 +1,4 @@
-export function slugify(text: string): string {
+export function slugify(text: string, fallback = "snippet"): string {
   const slug = text
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -7,7 +7,7 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/g, "");
-  return slug || "snippet";
+  return slug || fallback;
 }
 
 export function renameForTitle<T extends { name: string }>(files: T[], from: string, to: string): T[] {

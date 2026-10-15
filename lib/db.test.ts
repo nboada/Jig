@@ -46,3 +46,36 @@ test("a failed batch falls back to one statement at a time", async () => {
   const [row] = await pg.query<{ n: number }>(`SELECT count(*)::int AS n FROM notes`);
   expect(row.n).toBe(0);
 });
+
+test("a statement that collides with a concurrent cold start is tried once more", async () => {
+  const pg = await pgliteDb();
+  const failed = new Set<string>();
+  const colliding: Db = {
+    query: async (text, params) => {
+      if (!failed.has(text)) {
+        failed.add(text);
+        throw Object.assign(new Error("relation already exists"), { code: "42P07" });
+      }
+      return pg.query(text, params);
+    },
+    batch: async () => {
+      throw new Error("transaction endpoint down");
+    },
+  };
+  const error = console.error;
+  console.error = () => {};
+  try {
+    await prepare(colliding);
+  } finally {
+    console.error = error;
+  }
+  const [row] = await pg.query<{ n: number }>(`SELECT count(*)::int AS n FROM snippets`);
+  expect(row.n).toBe(0);
+});
+
+test("two cold starts at once leave one working schema", async () => {
+  const pg = await pgliteDb();
+  await Promise.all([prepare(pg), prepare(pg)]);
+  const [row] = await pg.query<{ n: number }>(`SELECT count(*)::int AS n FROM oauth_grants`);
+  expect(row.n).toBe(0);
+});
