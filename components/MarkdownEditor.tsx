@@ -5,6 +5,7 @@ import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/r
 import { useState } from "react";
 import { readProseClass } from "@/components/Markdown";
 import { NoteAi } from "@/components/NoteAi";
+import { SelectionMenu, SlashMenu } from "@/lib/note-menus";
 import { noteExtensions } from "@/lib/note-editor";
 
 export function MarkdownEditor({
@@ -22,7 +23,7 @@ export function MarkdownEditor({
 }) {
   const [source, setSource] = useState(false);
   const editor = useEditor({
-    extensions: [...noteExtensions, Placeholder.configure({ placeholder })],
+    extensions: [...noteExtensions, SlashMenu, SelectionMenu, Placeholder.configure({ placeholder })],
     content: value,
     contentType: "markdown",
     immediatelyRender: false,
